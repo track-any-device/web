@@ -3,6 +3,8 @@ import Link from 'next/link';
 import DocCard from '@/components/docs/DocCard';
 import type { DocCardProps } from '@/components/docs/DocCard';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = { title: 'Documentation | Track Any Device' };
 
 const DOCS: DocCardProps[] = [

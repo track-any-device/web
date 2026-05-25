@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Callout, CodeBlock } from '@/components/docs/tad101-layout';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = { title: 'Command Registry – TAD101 | Track Any Device' };
 
 type Command = { name: string; label: string; params: Record<string, string> };

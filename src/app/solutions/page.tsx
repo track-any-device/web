@@ -2,6 +2,8 @@ import { makeServerClient } from '@/lib/apollo';
 import { gql } from '@apollo/client';
 import type { Metadata } from 'next';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = { title: 'Solutions' };
 
 const QUERY = gql`

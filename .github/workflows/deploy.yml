@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Next.js
-        run: pnpm build
+      - name: Build for Cloudflare Pages
+        run: pnpm dlx vercel build
         env:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           GRAPHQL_URL:         ${{ secrets.GRAPHQL_URL }}
@@ -43,12 +43,12 @@ jobs:
           SSO_USERINFO_URL:    ${{ secrets.SSO_USERINFO_URL }}
 
       - name: Transform for Cloudflare Pages
-        run: npx @cloudflare/next-on-pages
+        run: pnpm exec next-on-pages --skip-build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken:      ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId:     ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command:       pages deploy .vercel/output/static --project-name=tad-web --commit-dirty=true
-          gitHubToken:   ${{ secrets.GITHUB_TOKEN }}
+          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command:     pages deploy .vercel/output/static --project-name=tad-web --commit-dirty=true
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken, getUserInfo, SESSION_COOKIE, STATE_COOKIE, encodeSession } from '@/lib/auth';
 
+export const runtime = 'edge';
+
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://track-any-device.com';
 
 export async function GET(req: NextRequest) {

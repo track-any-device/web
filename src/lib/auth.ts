@@ -58,12 +58,15 @@ export async function getSession(): Promise<{ token: string; user?: Record<strin
   const raw  = jar.get(SESSION_COOKIE)?.value;
   if (!raw) return null;
   try {
-    return JSON.parse(Buffer.from(raw, 'base64').toString('utf-8'));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(raw), c => c.charCodeAt(0))));
   } catch {
     return null;
   }
 }
 
 export function encodeSession(data: { token: string; user?: Record<string, unknown> }): string {
-  return Buffer.from(JSON.stringify(data)).toString('base64');
+  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  let binary = '';
+  bytes.forEach(b => { binary += String.fromCharCode(b); });
+  return btoa(binary);
 }

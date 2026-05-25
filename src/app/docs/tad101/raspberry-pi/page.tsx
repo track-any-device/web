@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Callout, CodeBlock } from '@/components/docs/tad101-layout';
 
+export const runtime = 'edge';
 export const metadata: Metadata = { title: 'Raspberry Pi Guide – TAD101 | Track Any Device' };
 
 const PIP = `pip install pysher python-socketio requests`;
@@ -23,6 +24,7 @@ pusher.connection.bind("pusher:connection_established", connect_handler)
 pusher.connect()
 
 import time
+
 while True:
     time.sleep(30)  # send telemetry
 `;

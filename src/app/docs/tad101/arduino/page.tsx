@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Callout, CodeBlock } from '@/components/docs/tad101-layout';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = { title: 'Arduino Guide – TAD101 | Track Any Device' };
 
 const PLATFORMIO = `\

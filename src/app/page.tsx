@@ -2,6 +2,8 @@ import { makeServerClient } from '@/lib/apollo';
 import { getSession } from '@/lib/auth';
 import { gql } from '@apollo/client';
 
+export const runtime = 'edge';
+
 const HOME_QUERY = gql`
   query Home {
     featuredSolutions { id title slug description gradient_from gradient_to }

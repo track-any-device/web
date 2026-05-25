@@ -3,6 +3,8 @@ import { gql } from '@apollo/client';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
+export const runtime = 'edge';
+
 const QUERY = gql`
   query ProductDetail($slug: String!) {
     deviceType(slug: $slug) {
