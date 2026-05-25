@@ -73,12 +73,5 @@
     "tailwindcss": "^4.0.0",
     "typescript": "^5.0.0"
   },
-  "packageManager": "pnpm@11.2.2",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "workerd"
-    ]
-  }
+  "packageManager": "pnpm@11.2.2"
 }
