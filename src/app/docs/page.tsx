@@ -1,69 +1,46 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Building2, Code, Cpu } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-
-import { Card } from '@track-any-device/components';
-import { cn } from '@track-any-device/components';
+import DocCard from '@/components/docs/DocCard';
+import type { DocCardProps } from '@/components/docs/DocCard';
 
 export const metadata: Metadata = { title: 'Documentation | Track Any Device' };
 
-type DocEntry = {
-    title: string;
-    description: string;
-    href: string;
-    audience: string;
-    icon: LucideIcon;
-    tone: 'primary' | 'info' | 'success' | 'accent';
-    badge?: string;
-};
-
-const DOCS: DocEntry[] = [
+const DOCS: DocCardProps[] = [
     {
         title: 'User Manual',
-        description:
-            'Buy a device, register it to your account, set up personal beats, and monitor live tracking from the central app.',
+        description: 'Buy a device, register it to your account, set up personal beats, and monitor live tracking from the central app.',
         href: '/docs/user-manual',
         audience: 'End users (Role::User)',
-        icon: BookOpen,
+        icon: 'BookOpen',
         tone: 'primary',
     },
     {
         title: 'Tenant Manual',
-        description:
-            'Run an organisation on the platform — assignees, beats, incidents, workflows, and Supervisors & Teams.',
+        description: 'Run an organisation on the platform — assignees, beats, incidents, workflows, and Supervisors & Teams.',
         href: '/docs/tenant-manual',
         audience: 'Tenant operators (Role::TenantUser)',
-        icon: Building2,
+        icon: 'Building2',
         tone: 'info',
     },
     {
         title: 'Tenant API Manual',
-        description:
-            'REST endpoints, Sanctum token scopes, and Soketi channel auth for tenants building custom UIs or backend integrations.',
+        description: 'REST endpoints, Sanctum token scopes, and Soketi channel auth for tenants building custom UIs or backend integrations.',
         href: '/docs/tenant-api',
         audience: 'Tenant developers',
-        icon: Code,
+        icon: 'Code',
         tone: 'accent',
     },
     {
         title: 'TAD101 Protocol',
-        description:
-            'Universal device protocol for Android, iOS, Arduino, and Raspberry Pi. Envelope spec, channel taxonomy, SDK guides, sensors and command registry.',
+        description: 'Universal device protocol for Android, iOS, Arduino, and Raspberry Pi. Envelope spec, channel taxonomy, SDK guides, sensors and command registry.',
         href: '/docs/tad101',
         audience: 'Hardware engineers',
-        icon: Cpu,
+        icon: 'Cpu',
         tone: 'success',
         badge: 'v1.0.0',
     },
 ];
 
-const TONE_BG: Record<DocEntry['tone'], string> = {
-    primary: 'bg-primary/10 text-primary',
-    info: 'bg-info-subtle text-info-fg',
-    success: 'bg-primary/10 text-primary',
-    accent: 'bg-accent text-accent-foreground',
-};
 
 export default function DocsIndex() {
     return (
@@ -84,52 +61,9 @@ export default function DocsIndex() {
                 </header>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {DOCS.map((d) => {
-                        const Icon = d.icon;
-
-                        return (
-                            <Link
-                                key={d.href}
-                                href={d.href}
-                                className="group block"
-                            >
-                                <Card className="h-full border-border bg-card p-6 transition-all hover:border-primary/40 hover:shadow-md">
-                                    <div className="flex items-start gap-4">
-                                        <span
-                                            className={cn(
-                                                'grid size-12 shrink-0 place-items-center rounded-xl',
-                                                TONE_BG[d.tone],
-                                            )}
-                                        >
-                                            <Icon className="size-6" />
-                                        </span>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h2 className="text-lg font-semibold tracking-tight">
-                                                    {d.title}
-                                                </h2>
-                                                {d.badge && (
-                                                    <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-medium text-primary">
-                                                        {d.badge}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                                {d.audience}
-                                            </p>
-                                            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                                                {d.description}
-                                            </p>
-                                            <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary group-hover:underline">
-                                                Read the manual
-                                                <ArrowRight className="size-3.5" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                </Card>
-                            </Link>
-                        );
-                    })}
+                    {DOCS.map((d) => (
+                        <DocCard key={d.href} {...d} />
+                    ))}
                 </div>
 
                 <section className="mt-16 rounded-xl border border-border bg-card p-6">

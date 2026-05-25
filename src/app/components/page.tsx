@@ -20,57 +20,58 @@ export default async function ComponentsPage() {
   } catch {}
 
   return (
-    <>
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Compute Boards</h1>
-      <p className="text-gray-500 mb-8">Arduino, Raspberry Pi, ESP32, and other boards compatible with TAD101.</p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {items.map(b => (
-          <div key={b.id} className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-sm transition">
-            <h2 className="font-semibold text-gray-900 mb-1">{b.name}</h2>
-            {b.manufacturer && <p className="text-sm text-gray-500 mb-3">by {b.manufacturer}</p>}
-
-            <dl className="text-xs space-y-1.5">
-              {b.mcu && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">MCU</dt>
-                  <dd className="font-mono text-gray-700">{b.mcu}</dd>
-                </div>
-              )}
-              {b.flash_kb != null && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Flash</dt>
-                  <dd className="text-gray-700">{b.flash_kb} KB</dd>
-                </div>
-              )}
-              {b.ram_kb != null && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">RAM</dt>
-                  <dd className="text-gray-700">{b.ram_kb} KB</dd>
-                </div>
-              )}
-              {b.operating_voltage != null && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-400">Voltage</dt>
-                  <dd className="text-gray-700">{b.operating_voltage} V</dd>
-                </div>
-              )}
-            </dl>
-
-            {b.notes && <p className="text-xs text-gray-400 mt-3 line-clamp-2">{b.notes}</p>}
-            {b.datasheet_url && (
-              <a href={b.datasheet_url} target="_blank" rel="noopener"
-                className="inline-block mt-3 text-xs text-blue-600 hover:underline font-medium">
-                View Datasheet →
-              </a>
-            )}
-          </div>
-        ))}
+    <div className="max-w-7xl mx-auto px-6 py-14">
+      <div className="mb-12">
+        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#22d3ee' }}>Hardware</p>
+        <h1 className="text-4xl font-extrabold mb-3" style={{ color: '#f1f5f9' }}>Compute Boards</h1>
+        <p className="text-lg" style={{ color: '#64748b' }}>Arduino, Raspberry Pi, ESP32 and other boards compatible with TAD101.</p>
       </div>
 
-      {items.length === 0 && (
-        <p className="text-gray-400 text-sm text-center py-20">No compute boards in catalog yet.</p>
+      {items.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map(b => (
+            <div key={b.id} className="card-hover glass rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: 'linear-gradient(135deg,rgba(6,182,212,0.2),rgba(59,130,246,0.2))' }}>
+                  🖥️
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm" style={{ color: '#e2e8f0' }}>{b.name}</h2>
+                  {b.manufacturer && <p className="text-xs" style={{ color: '#64748b' }}>{b.manufacturer}</p>}
+                </div>
+              </div>
+
+              <div className="rounded-xl p-4 mb-4 space-y-2" style={{ background: 'rgba(15,23,42,0.5)' }}>
+                {[
+                  { label: 'MCU',     value: b.mcu },
+                  { label: 'Flash',   value: b.flash_kb != null  ? `${b.flash_kb} KB`  : null },
+                  { label: 'RAM',     value: b.ram_kb != null    ? `${b.ram_kb} KB`    : null },
+                  { label: 'Voltage', value: b.operating_voltage != null ? `${b.operating_voltage} V` : null },
+                ].filter(r => r.value).map(r => (
+                  <div key={r.label} className="flex justify-between items-center text-xs">
+                    <span style={{ color: '#475569' }}>{r.label}</span>
+                    <span className="font-mono font-medium" style={{ color: '#94a3b8' }}>{r.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {b.notes && <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: '#64748b' }}>{b.notes}</p>}
+              {b.datasheet_url && (
+                <a href={b.datasheet_url} target="_blank" rel="noopener"
+                  className="inline-flex items-center gap-1 mt-3 text-xs font-medium"
+                  style={{ color: '#60a5fa' }}>
+                  View Datasheet →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-32">
+          <p className="text-5xl mb-4">🖥️</p>
+          <p className="font-medium" style={{ color: '#475569' }}>No compute boards in catalog yet.</p>
+        </div>
       )}
-    </>
+    </div>
   );
 }

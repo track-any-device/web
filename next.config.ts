@@ -1,23 +1,17 @@
 import type { NextConfig } from 'next';
-import path from 'path';
 
 const config: NextConfig = {
-  output: 'standalone',
-  // @track-any-device/components is consumed as raw TS source via file: dep.
   typescript: { ignoreBuildErrors: true },
-  // Transpile the file: package so Next.js treats it as first-party code.
-  // This ensures only one React instance is used (eliminating useContext=null).
-  transpilePackages: ['@track-any-device/components'],
+  transpilePackages: ['@trackany-device/components'],
   env: {
-    GRAPHQL_URL: process.env.GRAPHQL_URL ?? 'http://app-graphql/graphql',
+    GRAPHQL_URL:          process.env.GRAPHQL_URL          ?? 'https://graphql.track-any-device.com/graphql',
+    NEXT_PUBLIC_APP_URL:  process.env.NEXT_PUBLIC_APP_URL  ?? 'https://track-any-device.com',
   },
   webpack(webpackConfig) {
-    // @track-any-device/components is a file: symlink to packages/node.
-    // Its deps live in web/node_modules — add it to module search paths.
-    webpackConfig.resolve.modules = [
-      ...(webpackConfig.resolve.modules ?? []),
-      path.resolve(__dirname, 'node_modules'),
-    ];
+    // pnpm resolves symlinks to a deep store path, which breaks transpilePackages
+    // (it checks the path before symlink resolution). Disabling symlink resolution
+    // keeps paths as node_modules/@trackany-device/components so the rule matches.
+    webpackConfig.resolve.symlinks = false;
     return webpackConfig;
   },
 };

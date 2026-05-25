@@ -39,7 +39,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-table": "^8.21.3",
-    "@track-any-device/components": "file:../packages/node",
+    "@trackany-device/components": "^1.1.0",
     "@xyflow/react": "^12.10.2",
     "axios": "^1.16.1",
     "class-variance-authority": "^0.7.1",
@@ -64,12 +64,21 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/next-on-pages": "latest",
     "@tailwindcss/postcss": "^4.0.0",
+    "@tailwindcss/typography": "^0.5.19",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.0.0"
   },
-  "packageManager": "yarn@4.6.0"
+  "packageManager": "pnpm@11.2.2",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
 }
