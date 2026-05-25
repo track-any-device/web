@@ -7,9 +7,9 @@ Use this skill when adding, modifying, or troubleshooting the use of `@trackany-
 ## 1. Install
 
 ```bash
-npm install @trackany-device/components
+pnpm add @trackany-device/components
 # peer deps (only the ones you actually use)
-npm install lucide-react tailwindcss
+pnpm add lucide-react tailwindcss
 ```
 
 The package ships source CSS — no build step needed for styles.
