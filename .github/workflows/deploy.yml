@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build for Cloudflare Pages
-        run: pnpm dlx vercel build
+      - name: Build & Transform for Cloudflare Pages
+        run: pnpm exec next-on-pages
         env:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
           GRAPHQL_URL:         ${{ secrets.GRAPHQL_URL }}
@@ -41,9 +41,6 @@ jobs:
           SSO_AUTH_URL:        ${{ secrets.SSO_AUTH_URL }}
           SSO_TOKEN_URL:       ${{ secrets.SSO_TOKEN_URL }}
           SSO_USERINFO_URL:    ${{ secrets.SSO_USERINFO_URL }}
-
-      - name: Transform for Cloudflare Pages
-        run: pnpm exec next-on-pages --skip-build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
