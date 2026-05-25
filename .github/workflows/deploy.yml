@@ -24,35 +24,31 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Enable Corepack (Yarn 4)
+      - name: Enable Corepack (pnpm)
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install --immutable
-        working-directory: web
+        run: pnpm install --frozen-lockfile
 
       - name: Build Next.js
-        run: yarn build
-        working-directory: web
+        run: pnpm build
         env:
-          NEXT_PUBLIC_APP_URL:  ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          GRAPHQL_URL:          ${{ secrets.GRAPHQL_URL }}
-          SSO_CLIENT_ID:        ${{ secrets.SSO_CLIENT_ID }}
-          SSO_CLIENT_SECRET:    ${{ secrets.SSO_CLIENT_SECRET }}
-          SSO_REDIRECT_URI:     ${{ secrets.SSO_REDIRECT_URI }}
-          SSO_AUTH_URL:         ${{ secrets.SSO_AUTH_URL }}
-          SSO_TOKEN_URL:        ${{ secrets.SSO_TOKEN_URL }}
-          SSO_USERINFO_URL:     ${{ secrets.SSO_USERINFO_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          GRAPHQL_URL:         ${{ secrets.GRAPHQL_URL }}
+          SSO_CLIENT_ID:       ${{ secrets.SSO_CLIENT_ID }}
+          SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
+          SSO_REDIRECT_URI:    ${{ secrets.SSO_REDIRECT_URI }}
+          SSO_AUTH_URL:        ${{ secrets.SSO_AUTH_URL }}
+          SSO_TOKEN_URL:       ${{ secrets.SSO_TOKEN_URL }}
+          SSO_USERINFO_URL:    ${{ secrets.SSO_USERINFO_URL }}
 
       - name: Transform for Cloudflare Pages
         run: npx @cloudflare/next-on-pages
-        working-directory: web
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .vercel/output/static --project-name=tad-web --commit-dirty=true
-          workingDirectory: web
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          apiToken:      ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId:     ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command:       pages deploy .vercel/output/static --project-name=tad-web --commit-dirty=true
+          gitHubToken:   ${{ secrets.GITHUB_TOKEN }}
