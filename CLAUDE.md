@@ -35,6 +35,20 @@ deployed. Always confirm API changes are live before deploying this app.
 **Database layer lives in `package-core` only.**
 This is a frontend app. No database interaction here. API calls go to `app/` or `server-graphql`.
 
+**Keep API documentation up to date — this repo owns the docs.**
+`src/app/docs/` is the single source of truth for all platform API documentation.
+When another repository files a cross-repo issue asking for a doc update (because they added
+an API endpoint or changed a protocol), implement it here immediately. Do not wait.
+
+When YOU change a web integration (new API call shape, new auth flow, new SSO param):
+- Update the relevant docs page in `src/app/docs/` in the same PR.
+- There is no separate "docs PR" — docs travel with the code change that necessitated them.
+
+Doc page map:
+- `src/app/docs/tad101/`   → TAD-101 device protocol docs
+- `src/app/docs/api/`      → REST API reference (create if missing)
+- `src/app/docs/`          → general platform / getting started
+
 ---
 
 ## Rule 1 — Plan before implementing
