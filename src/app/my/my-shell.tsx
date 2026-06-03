@@ -1,0 +1,83 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import {
+    LayoutGrid, Smartphone, AlertTriangle, Building2, LogOut,
+} from 'lucide-react';
+import { AppLogo } from '@trackany-device/components';
+
+const NAV = [
+    { href: '/my',           label: 'Dashboard',      icon: LayoutGrid },
+    { href: '/my/devices',   label: 'My Devices',     icon: Smartphone },
+    { href: '/my/incidents', label: 'Incidents',      icon: AlertTriangle },
+    { href: '/my/tenants',   label: 'Organizations',  icon: Building2 },
+];
+
+interface Props {
+    children: ReactNode;
+    user: { name?: string; email?: string } | null;
+}
+
+export default function MyShell({ children, user }: Props) {
+    const pathname = usePathname();
+
+    return (
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+            {/* Sidebar */}
+            <aside className="w-60 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col">
+                {/* Logo */}
+                <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
+                    <Link href="/my" className="block">
+                        <AppLogo />
+                    </Link>
+                    <p className="mt-2 text-xs text-gray-500 font-medium uppercase tracking-wide">My Portal</p>
+                </div>
+
+                {/* Nav */}
+                <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+                    {NAV.map(({ href, label, icon: Icon }) => {
+                        const active = pathname === href || (href !== '/my' && pathname.startsWith(href));
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    active
+                                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                        : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                                }`}
+                            >
+                                <Icon className="h-4 w-4 shrink-0" />
+                                {label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {/* User + logout */}
+                <div className="px-3 py-4 border-t border-gray-100 dark:border-gray-800">
+                    {user && (
+                        <div className="px-3 py-2 mb-1">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.name}</p>
+                            <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                        </div>
+                    )}
+                    <Link
+                        href="/api/auth/logout"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Sign out
+                    </Link>
+                </div>
+            </aside>
+
+            {/* Main content */}
+            <main className="flex-1 overflow-y-auto">
+                {children}
+            </main>
+        </div>
+    );
+}

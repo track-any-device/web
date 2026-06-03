@@ -6,6 +6,7 @@ const config: NextConfig = {
   env: {
     GRAPHQL_URL:          process.env.GRAPHQL_URL          ?? 'https://graphql.track-any-device.com/graphql',
     NEXT_PUBLIC_APP_URL:  process.env.NEXT_PUBLIC_APP_URL  ?? 'https://track-any-device.com',
+    API_URL:              process.env.API_URL               ?? 'https://api.track-any-device.com',
   },
   webpack(webpackConfig) {
     // pnpm resolves symlinks to a deep store path, which breaks transpilePackages
