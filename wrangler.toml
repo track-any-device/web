@@ -6,13 +6,22 @@ pages_build_output_dir = ".vercel/output/static"
 [vars]
 NEXT_PUBLIC_APP_URL = "https://track-any-device.com"
 
-# Secrets are set via Cloudflare dashboard or `wrangler secret put`:
-# SSO_CLIENT_SECRET
-# SSO_CLIENT_ID
-# SSO_REDIRECT_URI
-# SSO_AUTH_URL
-# SSO_TOKEN_URL
-# SSO_USERINFO_URL
-# GRAPHQL_URL
-# GRAPHQL_KEY
-# GRAPHQL_SECRET
+# Central REST API (Docker stack)
+API_URL = "https://api.track-any-device.com"
+
+# GraphQL API (Docker stack)
+GRAPHQL_URL = "https://graphql.track-any-device.com/graphql"
+
+# SSO — static well-known client seeded by OAuthClientSeeder.
+# Same values on every deployment — no secret rotation needed for dev.
+# Override via Cloudflare Pages secrets for production rotation.
+SSO_CLIENT_ID     = "tad_web_portal"
+SSO_CLIENT_SECRET = "tad_web_portal_secret"
+SSO_REDIRECT_URI  = "https://track-any-device.com/sso/callback"
+SSO_AUTH_URL      = "https://login.track-any-device.com/oauth/authorize"
+SSO_TOKEN_URL     = "https://login.track-any-device.com/oauth/token"
+SSO_USERINFO_URL  = "https://login.track-any-device.com/oauth/userinfo"
+
+# Secrets — set via Cloudflare Pages dashboard or `wrangler secret put`:
+#   GRAPHQL_KEY      ← M2M bearer token for server-graphql
+#   GRAPHQL_SECRET   ← M2M secret header for server-graphql
