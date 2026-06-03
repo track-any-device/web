@@ -2,6 +2,8 @@ import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import Image from 'next/image';
 
+export const runtime = 'edge';
+
 export const metadata = { title: 'My Organizations' };
 
 export default async function MyTenantsPage() {

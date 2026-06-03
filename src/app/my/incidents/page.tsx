@@ -1,6 +1,7 @@
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 
+export const runtime = 'edge';
 export const metadata = { title: 'My Incidents' };
 
 const STATUS_BADGE: Record<string, string> = {

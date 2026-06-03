@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import Link from 'next/link';
 
+export const runtime = 'edge';
 export const metadata = { title: 'My Dashboard' };
 
 const PRIORITY_COLORS: Record<string, string> = {
