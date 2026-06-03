@@ -1,7 +1,17 @@
 import { cookies } from 'next/headers';
 
-export const SSO_CLIENT_ID     = process.env.SSO_CLIENT_ID     ?? 'tci_web_12mMfRVHC8MMDNZZ0E5HwWteehdREJHb';
-export const SSO_CLIENT_SECRET = process.env.SSO_CLIENT_SECRET ?? '';
+/**
+ * Static OAuth client credentials — seeded by OAuthClientSeeder in package-sso-server.
+ *
+ * These defaults match the static client IDs in the seeder so fresh installs
+ * work without any additional configuration.
+ *
+ * Override via environment variables for production deployments with rotated secrets:
+ *   SSO_CLIENT_ID, SSO_CLIENT_SECRET, SSO_REDIRECT_URI
+ */
+// Static web-portal client — seeded as 'tad_web_portal' with 'tad_web_portal_secret'
+export const SSO_CLIENT_ID     = process.env.SSO_CLIENT_ID     ?? 'tad_web_portal';
+export const SSO_CLIENT_SECRET = process.env.SSO_CLIENT_SECRET ?? 'tad_web_portal_secret';
 export const SSO_REDIRECT_URI  = process.env.SSO_REDIRECT_URI  ?? 'https://track-any-device.com/sso/callback';
 export const SSO_AUTH_URL      = process.env.SSO_AUTH_URL      ?? 'https://login.track-any-device.com/oauth/authorize';
 export const SSO_TOKEN_URL     = process.env.SSO_TOKEN_URL     ?? 'https://login.track-any-device.com/oauth/token';
