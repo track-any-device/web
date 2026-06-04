@@ -9,18 +9,37 @@ export const metadata: Metadata = {
 };
 
 const NAV = [
-  { label: 'Products',       href: '/products' },
-  { label: 'Solutions',      href: '/solutions' },
-  { label: 'Chips',          href: '/chips' },
-  { label: 'Compute Boards', href: '/components' },
-  { label: 'Sensors',        href: '/sensors' },
-  { label: 'Docs',           href: '/docs' },
+  { label: 'Home',      href: '/'          },
+  { label: 'Shop',      href: '/shop'      },
+  { label: 'Solutions', href: '/solutions' },
+  { label: 'Support',   href: '/support'   },
 ];
 
 const FOOTER_COLS = [
-  { heading: 'Platform',  links: [{ l: 'Products', h: '/products' }, { l: 'Solutions', h: '/solutions' }, { l: 'Sensors', h: '/sensors' }] },
-  { heading: 'Hardware',  links: [{ l: 'Chips', h: '/chips' }, { l: 'Compute Boards', h: '/components' }] },
-  { heading: 'Resources', links: [{ l: 'Documentation', h: '/docs' }, { l: 'TAD101', h: '/docs/tad101' }] },
+  {
+    heading: 'Platform',
+    links: [
+      { l: 'Products',  h: '/products'  },
+      { l: 'Solutions', h: '/solutions' },
+      { l: 'Sensors',   h: '/sensors'   },
+    ],
+  },
+  {
+    heading: 'Hardware',
+    links: [
+      { l: 'Products',       h: '/shop'       },
+      { l: 'Chips',          h: '/chips'      },
+      { l: 'Compute Boards', h: '/components' },
+      { l: 'Accessories',    h: '/shop#accessories' },
+    ],
+  },
+  {
+    heading: 'Support',
+    links: [
+      { l: 'Contact',        h: '/support'    },
+      { l: 'Documentation',  h: '/docs'       },
+    ],
+  },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -50,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ))}
             </nav>
 
-            {/* Auth */}
+            {/* Auth / CTA */}
             <div className="flex items-center gap-3 shrink-0">
               {session ? (
                 <div className="flex items-center gap-3">
@@ -61,16 +80,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </div>
                     <span className="text-sm text-muted-foreground">{user?.name ?? user?.email}</span>
                   </div>
-                  <a href="/api/auth/logout"
-                    className="px-3 py-1.5 rounded-md text-sm font-medium border border-border bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                    Sign out
+                  <a href="/my/devices"
+                    className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
+                    style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
+                    My Devices
                   </a>
                 </div>
               ) : (
                 <a href="/api/auth/login"
                   className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
                   style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                  Sign in
+                  Get Started
                 </a>
               )}
             </div>

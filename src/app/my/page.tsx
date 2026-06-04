@@ -12,6 +12,14 @@ const PRIORITY_COLORS: Record<string, string> = {
     low:      'bg-gray-100 text-gray-600',
 };
 
+const ORDER_STATUS_COLORS: Record<string, string> = {
+    pending:    'bg-yellow-100 text-yellow-700',
+    confirmed:  'bg-blue-100 text-blue-700',
+    shipped:    'bg-indigo-100 text-indigo-700',
+    delivered:  'bg-green-100 text-green-700',
+    cancelled:  'bg-red-100 text-red-700',
+};
+
 export default async function MyDashboard() {
     const session = await getSession();
     const api     = new ApiClient(session!.token);
@@ -20,7 +28,7 @@ export default async function MyDashboard() {
     try {
         data = await api.dashboard();
     } catch {
-        data = { device_count: 0, tenant_count: 0, open_incidents: [] };
+        data = { device_count: 0, order_count: 0, tenant_count: 0, open_incidents: [] };
     }
 
     const user = session?.user as { name?: string } | undefined;
@@ -31,7 +39,7 @@ export default async function MyDashboard() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     Welcome back{user?.name ? `, ${user.name}` : ''}
                 </h1>
-                <p className="mt-1 text-sm text-gray-500">Here's what's happening across your devices.</p>
+                <p className="mt-1 text-sm text-gray-500">Here&apos;s what&apos;s happening across your account.</p>
             </div>
 
             {/* Stats */}
@@ -44,11 +52,11 @@ export default async function MyDashboard() {
                     </p>
                 </Link>
 
-                <Link href="/my/incidents?status=open"
-                    className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:border-orange-400 transition-colors group">
-                    <p className="text-sm text-gray-500">Open Incidents</p>
-                    <p className="mt-1 text-3xl font-bold text-orange-600">
-                        {data.open_incidents.length}
+                <Link href="/my/orders"
+                    className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:border-violet-400 transition-colors group">
+                    <p className="text-sm text-gray-500">My Orders</p>
+                    <p className="mt-1 text-3xl font-bold text-violet-600 group-hover:text-violet-700 transition-colors">
+                        {data.order_count}
                     </p>
                 </Link>
 
@@ -61,12 +69,12 @@ export default async function MyDashboard() {
                 </Link>
             </div>
 
-            {/* Recent incidents */}
+            {/* Recent incidents (if any) */}
             {data.open_incidents.length > 0 && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
                     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                         <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Active Incidents</h2>
-                        <Link href="/my/incidents" className="text-xs text-blue-600 hover:underline">View all</Link>
+                        <Link href="/my/stream" className="text-xs text-blue-600 hover:underline">View live stream</Link>
                     </div>
                     <ul className="divide-y divide-gray-100 dark:divide-gray-700">
                         {data.open_incidents.map((incident) => (
@@ -88,6 +96,24 @@ export default async function MyDashboard() {
                     </ul>
                 </div>
             )}
+
+            {/* Quick links */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                    { label: 'Live Stream',  href: '/my/stream',      emoji: '📡' },
+                    { label: 'My Devices',   href: '/my/devices',     emoji: '📱' },
+                    { label: 'My Orders',    href: '/my/orders',      emoji: '📦' },
+                    { label: 'My Profile',   href: '/my/profile',     emoji: '👤' },
+                ].map(q => (
+                    <Link key={q.href} href={q.href}
+                        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center hover:border-blue-300 transition-colors group">
+                        <p className="text-2xl mb-1">{q.emoji}</p>
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-blue-600 transition-colors">
+                            {q.label}
+                        </p>
+                    </Link>
+                ))}
+            </div>
         </div>
     );
 }

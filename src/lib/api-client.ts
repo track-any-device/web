@@ -20,7 +20,7 @@ export class ApiClient {
                 'Authorization': `Bearer ${this.token}`,
                 'Accept':        'application/json',
             },
-            next: { revalidate: 0 }, // no cache — all data is user-specific
+            next: { revalidate: 0 },
         });
         if (!res.ok) {
             const body = await res.text().catch(() => '');
@@ -29,9 +29,27 @@ export class ApiClient {
         return res.json() as Promise<T>;
     }
 
+    private async patch<T>(path: string, body: unknown): Promise<T> {
+        const res = await fetch(`${API_URL}/api/my${path}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${this.token}`,
+                'Content-Type':  'application/json',
+                'Accept':        'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`API ${res.status} ${path}: ${text.slice(0, 200)}`);
+        }
+        return res.json() as Promise<T>;
+    }
+
     async dashboard() {
         return this.get<{
             device_count: number;
+            order_count:  number;
             tenant_count: number;
             open_incidents: Incident[];
         }>('/dashboard');
@@ -53,8 +71,24 @@ export class ApiClient {
         return this.get<Incident>(`/incidents/${id}`);
     }
 
+    async orders(params?: Record<string, string>) {
+        return this.get<Paginated<Order>>('/orders', params);
+    }
+
+    async order(id: number) {
+        return this.get<Order>(`/orders/${id}`);
+    }
+
     async tenants() {
         return this.get<TenantSummary[]>('/tenants');
+    }
+
+    async profile() {
+        return this.get<UserProfile>('/profile');
+    }
+
+    async updateProfile(data: UpdateProfileData) {
+        return this.patch<UserProfile>('/profile', data);
     }
 }
 
@@ -93,6 +127,27 @@ export interface Incident {
     beat?: { id: number; name: string };
 }
 
+export interface Order {
+    id: number;
+    order_number: string;
+    status: string;
+    total_usd: number | null;
+    total_pkr: number | null;
+    items: OrderItem[];
+    created_at: string;
+    shipped_at: string | null;
+    delivered_at: string | null;
+    tracking_number: string | null;
+}
+
+export interface OrderItem {
+    id: number;
+    product_name: string;
+    product_type: 'device' | 'accessory';
+    quantity: number;
+    unit_price_usd: number | null;
+}
+
 export interface TenantSummary {
     id: number;
     name: string;
@@ -101,4 +156,21 @@ export interface TenantSummary {
     logo_url: string | null;
     status: string;
     portal_url: string;
+}
+
+export interface UserProfile {
+    id: number;
+    name: string;
+    email: string;
+    phone: string | null;
+    timezone: string | null;
+    avatar_url: string | null;
+    role: string;
+    created_at: string;
+}
+
+export interface UpdateProfileData {
+    name?: string;
+    phone?: string;
+    timezone?: string;
 }

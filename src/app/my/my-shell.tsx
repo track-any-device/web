@@ -4,24 +4,35 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-    LayoutGrid, Smartphone, AlertTriangle, Building2, LogOut,
+    LayoutGrid, Smartphone, Radio, ShoppingBag,
+    Building2, User, UserCog, LogOut,
 } from 'lucide-react';
 import { AppLogo } from '@trackany-device/components';
 
-const NAV = [
-    { href: '/my',           label: 'Dashboard',      icon: LayoutGrid },
-    { href: '/my/devices',   label: 'My Devices',     icon: Smartphone },
-    { href: '/my/incidents', label: 'Incidents',      icon: AlertTriangle },
-    { href: '/my/tenants',   label: 'Organizations',  icon: Building2 },
-];
-
 interface Props {
     children: ReactNode;
-    user: { name?: string; email?: string } | null;
+    user: { name?: string; email?: string; role?: string | string[] } | null;
+}
+
+function isTenantUser(role?: string | string[]): boolean {
+    if (!role) return false;
+    if (Array.isArray(role)) return role.includes('tenant_user');
+    return role === 'tenant_user';
 }
 
 export default function MyShell({ children, user }: Props) {
-    const pathname = usePathname();
+    const pathname   = usePathname();
+    const showTenant = isTenantUser(user?.role);
+
+    const NAV = [
+        { href: '/my',            label: 'Dashboard',    icon: LayoutGrid  },
+        { href: '/my/stream',     label: 'Live Stream',  icon: Radio       },
+        { href: '/my/devices',    label: 'My Devices',   icon: Smartphone  },
+        { href: '/my/orders',     label: 'My Orders',    icon: ShoppingBag },
+        ...(showTenant ? [{ href: '/my/tenants', label: 'My Tenants', icon: Building2 }] : []),
+        { href: '/my/profile',    label: 'My Profile',   icon: User        },
+        { href: '/my/profile/edit', label: 'Edit Profile', icon: UserCog   },
+    ];
 
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-950">

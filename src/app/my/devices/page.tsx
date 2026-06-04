@@ -16,7 +16,14 @@ const STATUS_BADGE: Record<string, string> = {
 export default async function MyDevicesPage() {
     const session = await getSession();
     const api     = new ApiClient(session!.token);
-    const { data: devices, total } = await api.devices();
+
+    let devices: Awaited<ReturnType<typeof api.devices>>['data'] = [];
+    let total = 0;
+    try {
+        const result = await api.devices();
+        devices = result.data;
+        total   = result.total;
+    } catch {}
 
     return (
         <div className="p-8 space-y-6">
@@ -24,8 +31,14 @@ export default async function MyDevicesPage() {
 
             {devices.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
+                    <p className="text-4xl mb-3">📡</p>
                     <p className="text-lg font-medium">No devices yet</p>
-                    <p className="text-sm mt-1">Devices you own or follow will appear here.</p>
+                    <p className="text-sm mt-1">Devices you own or are assigned to you will appear here.</p>
+                    <a href="/shop"
+                        className="inline-block mt-5 px-5 py-2 rounded-lg text-sm font-semibold text-white"
+                        style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
+                        Browse Shop
+                    </a>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

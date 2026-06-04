@@ -26,9 +26,15 @@ export default async function MyIncidentsPage({
     const params  = await searchParams;
     const session = await getSession();
     const api     = new ApiClient(session!.token);
-    const { data: incidents, total } = await api.incidents(
-        params.status ? { status: params.status } : undefined,
-    );
+    let incidents: Awaited<ReturnType<typeof api.incidents>>['data'] = [];
+    let total = 0;
+    try {
+        const result = await api.incidents(
+            params.status ? { status: params.status } : undefined,
+        );
+        incidents = result.data;
+        total     = result.total;
+    } catch {}
 
     return (
         <div className="p-8 space-y-6">

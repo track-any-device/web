@@ -4,23 +4,28 @@ import Image from 'next/image';
 
 export const runtime = 'edge';
 
-export const metadata = { title: 'My Organizations' };
+export const metadata = { title: 'My Tenants' };
 
 export default async function MyTenantsPage() {
     const session = await getSession();
     const api     = new ApiClient(session!.token);
-    const tenants = await api.tenants();
+
+    let tenants: Awaited<ReturnType<typeof api.tenants>> = [];
+    try {
+        tenants = await api.tenants();
+    } catch {}
 
     return (
         <div className="p-8 space-y-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                My Organizations ({tenants.length})
+                My Tenants ({tenants.length})
             </h1>
 
             {tenants.length === 0 ? (
                 <div className="text-center py-20 text-gray-400">
+                    <p className="text-4xl mb-3">🏢</p>
                     <p className="text-lg font-medium">No organizations yet</p>
-                    <p className="text-sm mt-1">You'll appear here when an admin adds you to an organization.</p>
+                    <p className="text-sm mt-1">You&apos;ll appear here when an admin adds you to an organization.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
