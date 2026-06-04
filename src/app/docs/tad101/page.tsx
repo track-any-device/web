@@ -51,11 +51,9 @@ export default function OverviewPage() {
                     </tr>
                     <tr>
                         <td>
-                            <strong>Driver Class</strong>
+                            <strong>Auth</strong>
                         </td>
-                        <td>
-                            <code>App\Drivers\Tad101Driver</code>
-                        </td>
+                        <td>Device secret + Pusher channel auth</td>
                     </tr>
                 </tbody>
             </table>
