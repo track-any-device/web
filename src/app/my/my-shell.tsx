@@ -34,9 +34,9 @@ export default function MyShell({ children, user }: Props) {
     ];
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-            {/* Sidebar */}
-            <aside className="w-60 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col">
+        <div className="flex bg-gray-50 dark:bg-gray-950 min-h-[calc(100vh-4rem)]">
+            {/* Sidebar — sticky, height fills below the 4rem (h-16) top nav */}
+            <aside className="w-60 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col sticky top-16 h-[calc(100vh-4rem)] self-start">
                 {/* Portal header */}
                 <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
                     <Link href="/my"
@@ -85,7 +85,7 @@ export default function MyShell({ children, user }: Props) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 min-w-0">
                 {children}
             </main>
         </div>
