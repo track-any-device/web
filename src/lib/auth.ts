@@ -15,7 +15,9 @@ export const SSO_CLIENT_SECRET = process.env.SSO_CLIENT_SECRET ?? 'tad_web_porta
 export const SSO_REDIRECT_URI  = process.env.SSO_REDIRECT_URI  ?? 'https://track-any-device.com/sso/callback';
 export const SSO_AUTH_URL      = process.env.SSO_AUTH_URL      ?? 'https://login.track-any-device.com/oauth/authorize';
 export const SSO_TOKEN_URL     = process.env.SSO_TOKEN_URL     ?? 'https://login.track-any-device.com/oauth/token';
-export const SSO_USERINFO_URL  = process.env.SSO_USERINFO_URL  ?? 'https://login.track-any-device.com/oauth/userinfo';
+// /api/sso/user is the TAD identity endpoint (registered by SsoServer::routes() in server-login).
+// It is NOT /oauth/userinfo — Passport does not expose a standard OIDC userinfo endpoint.
+export const SSO_USERINFO_URL  = process.env.SSO_USERINFO_URL  ?? 'https://login.track-any-device.com/api/sso/user';
 
 export const SESSION_COOKIE  = 'tad_session';
 export const STATE_COOKIE    = 'tad_oauth_state';
@@ -25,7 +27,7 @@ export function buildAuthorizationUrl(state: string): string {
     response_type: 'code',
     client_id:     SSO_CLIENT_ID,
     redirect_uri:  SSO_REDIRECT_URI,
-    scope:         'openid profile email',
+    scope:         'openid profile email role fleet:read fleet:write',
     state,
   });
   return `${SSO_AUTH_URL}?${params.toString()}`;

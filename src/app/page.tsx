@@ -39,7 +39,19 @@ const STATS = [
   { value: '24/7',  label: 'Fleet Monitoring' },
 ];
 
-export default async function HomePage() {
+const SSO_ERROR_MESSAGES: Record<string, string> = {
+  invalid_scope:         'Sign-in configuration error — please contact support.',
+  invalid_state:         'Sign-in session expired. Please try again.',
+  token_exchange_failed: 'Sign-in failed — could not complete authentication. Please try again.',
+  access_denied:         'Access denied. You do not have permission to sign in.',
+};
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sso_error?: string }>;
+}) {
+  const { sso_error: ssoError } = await searchParams;
   const session = await getSession();
   let solutions: Solution[]   = [];
   let products:  DeviceType[] = [];
@@ -50,8 +62,27 @@ export default async function HomePage() {
     products  = data.featuredDeviceTypes ?? [];
   } catch {}
 
+  const errorMessage = ssoError
+    ? (SSO_ERROR_MESSAGES[ssoError] ?? 'Sign-in failed. Please try again.')
+    : null;
+
   return (
     <>
+      {/* ── SSO error banner ── */}
+      {errorMessage && (
+        <div role="alert" style={{ background: '#450a0a', borderBottom: '1px solid #7f1d1d' }}>
+          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
+            <span style={{ color: '#fca5a5', fontSize: 16 }}>&#9888;</span>
+            <p className="text-sm" style={{ color: '#fca5a5' }}>
+              {errorMessage}
+            </p>
+            <a href="/" className="ml-auto text-xs underline shrink-0" style={{ color: '#f87171' }}>
+              Dismiss
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero (intentionally dark — blue gradient band) ── */}
       <section className="hero-bg relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none" style={{
