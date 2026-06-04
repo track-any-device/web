@@ -15,7 +15,13 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default async function MyDashboard() {
     const session = await getSession();
     const api     = new ApiClient(session!.token);
-    const data    = await api.dashboard();
+
+    let data: Awaited<ReturnType<typeof api.dashboard>>;
+    try {
+        data = await api.dashboard();
+    } catch {
+        data = { device_count: 0, tenant_count: 0, open_incidents: [] };
+    }
 
     const user = session?.user as { name?: string } | undefined;
 

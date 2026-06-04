@@ -22,7 +22,10 @@ export class ApiClient {
             },
             next: { revalidate: 0 }, // no cache — all data is user-specific
         });
-        if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+        if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            throw new Error(`API ${res.status} ${path}: ${body.slice(0, 200)}`);
+        }
         return res.json() as Promise<T>;
     }
 
