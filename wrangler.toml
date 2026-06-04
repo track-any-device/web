@@ -15,8 +15,10 @@ GRAPHQL_URL = "https://graphql.track-any-device.com/graphql"
 # SSO — static well-known client seeded by OAuthClientSeeder.
 # Same values on every deployment — no secret rotation needed for dev.
 # Override via Cloudflare Pages secrets for production rotation.
-SSO_CLIENT_ID     = "tci_web_1RyXGxsH2yQJkK1bpIUkFO8eK4mwyUnS"
-SSO_CLIENT_SECRET = "tcs_BEeuBMepy4VNwza7MZXQTZiK6f3FI8VGe45ZUr6E1eMbFXLp"
+# SSO credentials — set via Cloudflare Pages dashboard, NOT here.
+# Go to: Pages → tad-web → Settings → Environment variables
+# Add: SSO_CLIENT_ID and SSO_CLIENT_SECRET as encrypted secrets.
+# Get the values from: docker compose exec api php artisan db:seed OAuthClientSeeder
 SSO_REDIRECT_URI  = "https://track-any-device.com/sso/callback"
 SSO_AUTH_URL      = "https://login.track-any-device.com/oauth/authorize"
 SSO_TOKEN_URL     = "https://login.track-any-device.com/oauth/token"
