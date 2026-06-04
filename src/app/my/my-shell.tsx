@@ -7,7 +7,6 @@ import {
     LayoutGrid, Smartphone, Radio, ShoppingBag,
     Building2, User, UserCog, LogOut,
 } from 'lucide-react';
-import { AppLogo } from '@trackany-device/components';
 
 interface Props {
     children: ReactNode;
@@ -38,12 +37,12 @@ export default function MyShell({ children, user }: Props) {
         <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
             {/* Sidebar */}
             <aside className="w-60 shrink-0 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col">
-                {/* Logo */}
+                {/* Portal header */}
                 <div className="px-4 py-5 border-b border-gray-100 dark:border-gray-800">
-                    <Link href="/my" className="block">
-                        <AppLogo />
+                    <Link href="/my"
+                        className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 transition-colors">
+                        My Portal
                     </Link>
-                    <p className="mt-2 text-xs text-gray-500 font-medium uppercase tracking-wide">My Portal</p>
                 </div>
 
                 {/* Nav */}

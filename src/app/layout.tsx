@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { getSession } from '@/lib/auth';
 import { AppLogo } from '@trackany-device/components';
+import NavAuth from '@/components/nav-auth';
 
 export const metadata: Metadata = {
   title: { default: 'Track Any Device', template: '%s — Track Any Device' },
@@ -70,29 +71,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
 
             {/* Auth / CTA */}
-            <div className="flex items-center gap-3 shrink-0">
-              {session ? (
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-                      style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)' }}>
-                      {(user?.name ?? user?.email ?? 'U')[0].toUpperCase()}
-                    </div>
-                    <span className="text-sm text-muted-foreground">{user?.name ?? user?.email}</span>
-                  </div>
-                  <a href="/my/devices"
-                    className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
-                    style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                    My Devices
-                  </a>
-                </div>
-              ) : (
-                <a href="/api/auth/login"
-                  className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
-                  style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                  Get Started
-                </a>
-              )}
+            <div className="shrink-0">
+              <NavAuth user={user ?? null} />
             </div>
           </div>
         </header>
