@@ -25,9 +25,11 @@ export default async function MyDashboard() {
     const api     = new ApiClient(session!.token);
 
     let data: Awaited<ReturnType<typeof api.dashboard>>;
+    let apiError: string | null = null;
     try {
         data = await api.dashboard();
-    } catch {
+    } catch (e) {
+        apiError = e instanceof Error ? e.message : String(e);
         data = { device_count: 0, order_count: 0, tenant_count: 0, open_incidents: [] };
     }
 
@@ -41,6 +43,12 @@ export default async function MyDashboard() {
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">Here&apos;s what&apos;s happening across your account.</p>
             </div>
+
+            {apiError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 font-mono break-all">
+                    {apiError}
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

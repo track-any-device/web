@@ -24,13 +24,16 @@ export class ApiClient {
         });
         if (!res.ok) {
             const body = await res.text().catch(() => '');
-            throw new Error(`API ${res.status} ${path}: ${body.slice(0, 200)}`);
+            const msg  = `[API] GET ${url.toString()} → ${res.status}: ${body.slice(0, 400)}`;
+            console.error(msg);
+            throw new Error(msg);
         }
         return res.json() as Promise<T>;
     }
 
     private async patch<T>(path: string, body: unknown): Promise<T> {
-        const res = await fetch(`${API_URL}/api/my${path}`, {
+        const url = `${API_URL}/api/my${path}`;
+        const res = await fetch(url, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${this.token}`,
@@ -41,7 +44,9 @@ export class ApiClient {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '');
-            throw new Error(`API ${res.status} ${path}: ${text.slice(0, 200)}`);
+            const msg  = `[API] PATCH ${url} → ${res.status}: ${text.slice(0, 400)}`;
+            console.error(msg);
+            throw new Error(msg);
         }
         return res.json() as Promise<T>;
     }

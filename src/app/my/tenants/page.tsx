@@ -11,9 +11,12 @@ export default async function MyTenantsPage() {
     const api     = new ApiClient(session!.token);
 
     let tenants: Awaited<ReturnType<typeof api.tenants>> = [];
+    let apiError: string | null = null;
     try {
         tenants = await api.tenants();
-    } catch {}
+    } catch (e) {
+        apiError = e instanceof Error ? e.message : String(e);
+    }
 
     return (
         <div className="p-8 space-y-6">
@@ -21,13 +24,21 @@ export default async function MyTenantsPage() {
                 My Tenants ({tenants.length})
             </h1>
 
-            {tenants.length === 0 ? (
+            {apiError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 font-mono break-all">
+                    {apiError}
+                </div>
+            )}
+
+            {!apiError && tenants.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
                     <p className="text-4xl mb-3">🏢</p>
                     <p className="text-lg font-medium">No organizations yet</p>
                     <p className="text-sm mt-1">You&apos;ll appear here when an admin adds you to an organization.</p>
                 </div>
-            ) : (
+            )}
+
+            {!apiError && tenants.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {tenants.map((tenant) => (
                         <a key={tenant.id} href={tenant.portal_url}

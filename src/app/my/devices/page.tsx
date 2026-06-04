@@ -19,17 +19,26 @@ export default async function MyDevicesPage() {
 
     let devices: Awaited<ReturnType<typeof api.devices>>['data'] = [];
     let total = 0;
+    let apiError: string | null = null;
     try {
         const result = await api.devices();
         devices = result.data;
         total   = result.total;
-    } catch {}
+    } catch (e) {
+        apiError = e instanceof Error ? e.message : String(e);
+    }
 
     return (
         <div className="p-8 space-y-6">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Devices ({total})</h1>
 
-            {devices.length === 0 ? (
+            {apiError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 font-mono break-all">
+                    {apiError}
+                </div>
+            )}
+
+            {!apiError && devices.length === 0 && (
                 <div className="text-center py-20 text-gray-400">
                     <p className="text-4xl mb-3">📡</p>
                     <p className="text-lg font-medium">No devices yet</p>
@@ -40,7 +49,9 @@ export default async function MyDevicesPage() {
                         Browse Shop
                     </a>
                 </div>
-            ) : (
+            )}
+
+            {!apiError && devices.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {devices.map((device) => (
                         <Link key={device.id} href={`/my/devices/${device.id}`}
