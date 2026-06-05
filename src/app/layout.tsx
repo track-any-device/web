@@ -3,7 +3,6 @@ import './globals.css';
 import { getSession } from '@/lib/auth';
 import { AppLogo } from '@trackany-device/components';
 import NavAuth from '@/components/nav-auth';
-import TokenInit from '@/components/token-init';
 
 export const runtime = 'edge';
 
@@ -79,8 +78,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </div>
         </header>
-
-        <TokenInit />
 
         {/* ── Page content ── */}
         <main>{children}</main>

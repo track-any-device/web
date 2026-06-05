@@ -26,7 +26,7 @@ export default async function MyIncidentsPage({
 }) {
     const params  = await searchParams;
     const session = await getSession();
-    if (!session) redirect('/api/auth/login');
+    if (!session) redirect('/api/auth/signin/sso');
     const api = new ApiClient(session.token);
     let incidents: Awaited<ReturnType<typeof api.incidents>>['data'] = [];
     let total = 0;

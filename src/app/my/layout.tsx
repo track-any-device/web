@@ -7,7 +7,7 @@ export const runtime = 'edge';
 
 export default async function MyLayout({ children }: { children: ReactNode }) {
     const session = await getSession();
-    if (!session) redirect('/api/auth/login');
+    if (!session) redirect('/api/auth/signin/sso');
 
     const user = session.user as {
         name?: string;

@@ -9,7 +9,7 @@ export const metadata = { title: 'My Tenants' };
 
 export default async function MyTenantsPage() {
     const session = await getSession();
-    if (!session) redirect('/api/auth/login');
+    if (!session) redirect('/api/auth/signin/sso');
     const api = new ApiClient(session.token);
 
     let tenants: Awaited<ReturnType<typeof api.tenants>> = [];

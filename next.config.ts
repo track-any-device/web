@@ -7,6 +7,7 @@ const config: NextConfig = {
     GRAPHQL_URL:                  process.env.GRAPHQL_URL                  ?? 'https://graphql.track-any-device.com/graphql',
     NEXT_PUBLIC_APP_URL:          process.env.NEXT_PUBLIC_APP_URL          ?? 'https://track-any-device.com',
     API_URL:                      process.env.API_URL                      ?? 'https://api.track-any-device.com',
+    LOGIN_DOMAIN:                 process.env.LOGIN_DOMAIN                 ?? 'https://login.track-any-device.com',
     // Pusher / Soketi — broadcasting (set these in Cloudflare Pages env or .env.local)
     PUSHER_APP_ID:                process.env.PUSHER_APP_ID                ?? '',
     PUSHER_APP_SECRET:            process.env.PUSHER_APP_SECRET            ?? '',

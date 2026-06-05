@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Live Stream' };
 
 export default async function LiveStreamPage() {
     const session = await getSession();
-    if (!session) redirect('/api/auth/login');
+    if (!session) redirect('/api/auth/signin/sso');
     const api = new ApiClient(session.token);
 
     const user = session?.user as { sub?: string; id?: string | number } | undefined;

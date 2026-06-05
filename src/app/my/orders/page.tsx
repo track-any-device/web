@@ -29,7 +29,7 @@ export default async function MyOrdersPage({
 }) {
     const params  = await searchParams;
     const session = await getSession();
-    if (!session) redirect('/api/auth/login');
+    if (!session) redirect('/api/auth/signin/sso');
     const api = new ApiClient(session.token);
 
     let orders: Awaited<ReturnType<typeof api.orders>>['data'] = [];

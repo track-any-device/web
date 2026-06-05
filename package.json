@@ -50,6 +50,7 @@
     "lucide-react": "^1.16.0",
     "motion": "^12.40.0",
     "next": "15.3.2",
+    "next-auth": "5.0.0-beta.31",
     "pusher-js": "^8.5.0",
     "react": "^19.0.0",
     "react-aria-components": "^1.17.0",

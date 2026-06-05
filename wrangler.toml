@@ -12,14 +12,9 @@ API_URL = "https://api.track-any-device.com"
 # GraphQL API (Docker stack)
 GRAPHQL_URL = "https://graphql.track-any-device.com/graphql"
 
-# SSO — OAuth2 flow via login.track-any-device.com
-# Client ID is the static well-known value seeded by OAuthClientSeeder.
-SSO_CLIENT_ID     = "tad_web_portal"
-SSO_REDIRECT_URI  = "https://track-any-device.com/sso/callback"
-SSO_AUTH_URL      = "https://login.track-any-device.com/oauth/authorize"
-SSO_TOKEN_URL     = "https://login.track-any-device.com/oauth/token"
-# TAD uses a custom userinfo endpoint — NOT the standard /oauth/userinfo
-SSO_USERINFO_URL  = "https://login.track-any-device.com/api/sso/user"
+# SSO — OAuth2 via login.track-any-device.com (NextAuth)
+SSO_CLIENT_ID = "tad_web_portal"
+LOGIN_DOMAIN  = "https://login.track-any-device.com"
 
 # Pusher / Soketi — real-time broadcasting (public vars only)
 NEXT_PUBLIC_PUSHER_HOST    = "ws.track-any-device.com"
@@ -28,6 +23,7 @@ NEXT_PUBLIC_PUSHER_SCHEME  = "https"
 NEXT_PUBLIC_PUSHER_CLUSTER = "mt1"
 
 # Secrets — set via Cloudflare Pages dashboard (Settings → Environment variables):
+#   AUTH_SECRET                ← NextAuth session encryption secret (openssl rand -base64 32)
 #   SSO_CLIENT_SECRET          ← tad_web_portal OAuth secret
 #   NEXT_PUBLIC_PUSHER_APP_KEY ← Soketi app key (public but deployment-specific)
 #   PUSHER_APP_ID              ← Soketi app ID
