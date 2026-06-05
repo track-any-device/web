@@ -13,18 +13,6 @@ export function middleware(req: NextRequest) {
             headers.set('x-tad-session', JSON.stringify(session))
             return NextResponse.next({ request: { headers } })
         }
-
-        // Cookie exists but is corrupt — clear it and redirect to login
-        const res = NextResponse.redirect(new URL('/api/auth/login', req.url))
-        res.cookies.delete(SESSION_COOKIE)
-        res.cookies.set(REDIRECT_COOKIE, req.nextUrl.pathname, {
-            httpOnly: true,
-            secure:   process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge:   300,
-            path:     '/',
-        })
-        return res
     }
 
     const res = NextResponse.redirect(new URL('/api/auth/login', req.url))

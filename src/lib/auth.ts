@@ -64,9 +64,15 @@ export type Session = { token: string; user?: Record<string, unknown> }
 
 export function decodeSessionValue(raw: string): Session | null {
     try {
+        let v: string
+        try { v = decodeURIComponent(raw) } catch { v = raw }
+        v = v.replace(/-/g, '+').replace(/_/g, '/')
+        const pad = v.length % 4
+        if (pad === 2) v += '=='
+        else if (pad === 3) v += '='
         return JSON.parse(
             new TextDecoder().decode(
-                Uint8Array.from(atob(raw), c => c.charCodeAt(0)),
+                Uint8Array.from(atob(v), c => c.charCodeAt(0)),
             ),
         )
     } catch {
@@ -88,5 +94,5 @@ export function encodeSession(data: {
     const bytes = new TextEncoder().encode(JSON.stringify(data))
     let binary = ''
     bytes.forEach(b => { binary += String.fromCharCode(b) })
-    return btoa(binary)
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
