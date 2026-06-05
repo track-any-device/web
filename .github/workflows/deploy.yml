@@ -39,6 +39,33 @@ jobs:
           SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
           AUTH_SECRET:         ${{ secrets.AUTH_SECRET }}
 
+      - name: Sync runtime secrets to Cloudflare Pages
+        # wrangler pages deploy does not carry over dashboard secrets —
+        # push them via the Cloudflare API before each deployment so the
+        # Pages Function always has AUTH_SECRET and SSO_CLIENT_SECRET.
+        env:
+          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          AUTH_SECRET:           ${{ secrets.AUTH_SECRET }}
+          SSO_CLIENT_SECRET:     ${{ secrets.SSO_CLIENT_SECRET }}
+        run: |
+          for CF_ENV in production preview; do
+            curl -s -X PATCH \
+              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/tad-web" \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"deployment_configs\": {
+                  \"${CF_ENV}\": {
+                    \"env_vars\": {
+                      \"AUTH_SECRET\":       { \"type\": \"secret_text\", \"value\": \"${AUTH_SECRET}\" },
+                      \"SSO_CLIENT_SECRET\": { \"type\": \"secret_text\", \"value\": \"${SSO_CLIENT_SECRET}\" }
+                    }
+                  }
+                }
+              }"
+          done
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
