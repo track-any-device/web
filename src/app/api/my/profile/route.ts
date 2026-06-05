@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
 
 export const runtime = 'edge';
 
 const API_URL = process.env.API_URL ?? 'https://api.track-any-device.com';
 
-export async function GET() {
-    const session = await getSession();
-    if (!session) {
+function getToken(req: NextRequest): string | null {
+    const auth = req.headers.get('Authorization');
+    if (auth?.startsWith('Bearer ')) return auth.slice(7);
+    return null;
+}
+
+export async function GET(req: NextRequest) {
+    const token = getToken(req);
+    if (!token) {
         return NextResponse.json({ message: 'Unauthenticated' }, { status: 401 });
     }
 
     const res = await fetch(`${API_URL}/api/my/profile`, {
         headers: {
-            'Authorization': `Bearer ${session.token}`,
+            'Authorization': `Bearer ${token}`,
             'Accept':        'application/json',
         },
     });
@@ -23,8 +28,8 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-    const session = await getSession();
-    if (!session) {
+    const token = getToken(req);
+    if (!token) {
         return NextResponse.json({ message: 'Unauthenticated' }, { status: 401 });
     }
 
@@ -33,7 +38,7 @@ export async function PATCH(req: NextRequest) {
     const res = await fetch(`${API_URL}/api/my/profile`, {
         method: 'PATCH',
         headers: {
-            'Authorization': `Bearer ${session.token}`,
+            'Authorization': `Bearer ${token}`,
             'Content-Type':  'application/json',
             'Accept':        'application/json',
         },

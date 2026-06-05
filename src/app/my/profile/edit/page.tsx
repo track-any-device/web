@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 const TIMEZONES = [
     'UTC',
@@ -32,6 +33,7 @@ interface ProfileData {
 
 export default function EditProfilePage() {
     const router = useRouter();
+    const { token } = useAuth();
 
     const [form, setForm]     = useState<ProfileData>({ name: '', email: '', phone: '', timezone: '' });
     const [loading, setLoading]   = useState(true);
@@ -40,7 +42,10 @@ export default function EditProfilePage() {
     const [success, setSuccess]   = useState(false);
 
     useEffect(() => {
-        fetch('/api/my/profile')
+        if (!token) return;
+        fetch('/api/my/profile', {
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
             .then((data: ProfileData) => {
                 setForm({
@@ -52,7 +57,7 @@ export default function EditProfilePage() {
             })
             .catch(() => setError('Could not load profile.'))
             .finally(() => setLoading(false));
-    }, []);
+    }, [token]);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -63,7 +68,10 @@ export default function EditProfilePage() {
         try {
             const res = await fetch('/api/my/profile', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
                 body: JSON.stringify({ name: form.name, phone: form.phone, timezone: form.timezone }),
             });
 
