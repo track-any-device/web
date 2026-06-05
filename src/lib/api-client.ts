@@ -239,13 +239,12 @@ export interface Beat {
     geo_fence_type: 'polygon' | 'circle';
     color: string;
     status: string;
+    coordinates: LatLng[];
     created_at: string;
     updated_at: string;
 }
 
-export interface BeatDetail extends Beat {
-    coordinates: LatLng[];
-}
+export type BeatDetail = Beat;
 
 export interface BeatPayload {
     name: string;
