@@ -40,6 +40,7 @@ export default function BeatForm({ token, beat }: Props) {
 
     const [name,        setName]        = useState(beat?.name ?? '');
     const [description, setDescription] = useState(beat?.description ?? '');
+    const [color,       setColor]       = useState(beat?.color ?? '#2563eb');
     const [coords,      setCoords]      = useState<LatLng[]>(beat?.coordinates ?? []);
     const [saving,      setSaving]      = useState(false);
     const [error,       setError]       = useState<string | null>(null);
@@ -86,9 +87,9 @@ export default function BeatForm({ token, beat }: Props) {
                 drawingModes: [google.maps.drawing.OverlayType.POLYGON],
             },
             polygonOptions: {
-                fillColor: '#2563eb',
+                fillColor: color,
                 fillOpacity: 0.25,
-                strokeColor: '#2563eb',
+                strokeColor: color,
                 strokeWeight: 2,
                 editable: true,
             },
@@ -158,6 +159,16 @@ export default function BeatForm({ token, beat }: Props) {
         e.target.value = '';
     }
 
+    function handleColorChange(hex: string) {
+        setColor(hex);
+        if (polyRef.current) {
+            polyRef.current.setOptions({ fillColor: hex, strokeColor: hex });
+        }
+        if (drawRef.current) {
+            drawRef.current.setOptions({ polygonOptions: { fillColor: hex, fillOpacity: 0.25, strokeColor: hex, strokeWeight: 2, editable: true } });
+        }
+    }
+
     function clearPolygon() {
         polyRef.current?.setMap(null);
         polyRef.current = null;
@@ -176,7 +187,7 @@ export default function BeatForm({ token, beat }: Props) {
 
         setSaving(true);
         try {
-            const payload = { name: name.trim(), description: description.trim() || undefined, geo_fence_type: 'polygon' as const, coordinates: coords };
+            const payload = { name: name.trim(), description: description.trim() || undefined, geo_fence_type: 'polygon' as const, color, coordinates: coords };
             const url     = beat ? `${API_URL}/api/my/beats/${beat.id}` : `${API_URL}/api/my/beats`;
             const method  = beat ? 'PUT' : 'POST';
 
@@ -227,6 +238,26 @@ export default function BeatForm({ token, beat }: Props) {
                         className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Optional description"
                     />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Zone colour</label>
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="color"
+                            value={color}
+                            onChange={e => handleColorChange(e.target.value)}
+                            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer p-0.5 bg-white dark:bg-gray-800"
+                        />
+                        <div className="flex flex-wrap gap-1.5">
+                            {['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#64748b'].map(hex => (
+                                <button key={hex} type="button"
+                                    onClick={() => handleColorChange(hex)}
+                                    className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${color === hex ? 'border-gray-800 dark:border-white scale-110' : 'border-transparent'}`}
+                                    style={{ background: hex }}
+                                />
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
 

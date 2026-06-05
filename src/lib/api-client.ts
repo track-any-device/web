@@ -237,6 +237,7 @@ export interface Beat {
     name: string;
     description: string | null;
     geo_fence_type: 'polygon' | 'circle';
+    color: string;
     status: string;
     created_at: string;
     updated_at: string;
@@ -250,6 +251,7 @@ export interface BeatPayload {
     name: string;
     description?: string;
     geo_fence_type: 'polygon' | 'circle';
+    color: string;
     coordinates: LatLng[];
 }
 
