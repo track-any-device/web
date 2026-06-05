@@ -12,18 +12,25 @@ API_URL = "https://api.track-any-device.com"
 # GraphQL API (Docker stack)
 GRAPHQL_URL = "https://graphql.track-any-device.com/graphql"
 
-# SSO — static well-known client seeded by OAuthClientSeeder.
-# Same values on every deployment — no secret rotation needed for dev.
-# Override via Cloudflare Pages secrets for production rotation.
-# SSO credentials — set via Cloudflare Pages dashboard, NOT here.
-# Go to: Pages → tad-web → Settings → Environment variables
-# Add: SSO_CLIENT_ID and SSO_CLIENT_SECRET as encrypted secrets.
-# Get the values from: docker compose exec api php artisan db:seed OAuthClientSeeder
+# SSO — OAuth2 flow via login.track-any-device.com
+# Client ID is the static well-known value seeded by OAuthClientSeeder.
+SSO_CLIENT_ID     = "tad_web_portal"
 SSO_REDIRECT_URI  = "https://track-any-device.com/sso/callback"
 SSO_AUTH_URL      = "https://login.track-any-device.com/oauth/authorize"
 SSO_TOKEN_URL     = "https://login.track-any-device.com/oauth/token"
-SSO_USERINFO_URL  = "https://login.track-any-device.com/oauth/userinfo"
+# TAD uses a custom userinfo endpoint — NOT the standard /oauth/userinfo
+SSO_USERINFO_URL  = "https://login.track-any-device.com/api/sso/user"
 
-# Secrets — set via Cloudflare Pages dashboard or `wrangler secret put`:
-#   GRAPHQL_KEY      ← M2M bearer token for server-graphql
-#   GRAPHQL_SECRET   ← M2M secret header for server-graphql
+# Pusher / Soketi — real-time broadcasting (public vars only)
+NEXT_PUBLIC_PUSHER_HOST    = "ws.track-any-device.com"
+NEXT_PUBLIC_PUSHER_PORT    = "443"
+NEXT_PUBLIC_PUSHER_SCHEME  = "https"
+NEXT_PUBLIC_PUSHER_CLUSTER = "mt1"
+
+# Secrets — set via Cloudflare Pages dashboard (Settings → Environment variables):
+#   SSO_CLIENT_SECRET          ← tad_web_portal OAuth secret
+#   NEXT_PUBLIC_PUSHER_APP_KEY ← Soketi app key (public but deployment-specific)
+#   PUSHER_APP_ID              ← Soketi app ID
+#   PUSHER_APP_SECRET          ← Soketi app secret (used for channel auth signing)
+#   GRAPHQL_KEY                ← M2M bearer token for server-graphql
+#   GRAPHQL_SECRET             ← M2M secret header for server-graphql
