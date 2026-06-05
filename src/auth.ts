@@ -39,11 +39,21 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             if (account?.access_token) {
                 token.accessToken = account.access_token
                 token.expiresAt   = account.expires_at
+                token.error       = undefined
             }
             if (profile) {
                 const p = profile as Record<string, unknown>
                 token.role   = p.role
                 token.avatar = p.avatar
+            }
+            // Passport access token expired — flag it so the middleware
+            // redirects to sign-in once instead of serving stale API calls.
+            if (
+                token.expiresAt &&
+                Date.now() / 1000 > (token.expiresAt as number)
+            ) {
+                token.accessToken = undefined
+                token.error       = 'TokenExpired'
             }
             return token
         },
@@ -52,6 +62,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             return {
                 ...session,
                 accessToken: token.accessToken as string | undefined,
+                error:       token.error       as string | undefined,
                 user: {
                     ...session.user,
                     role:   token.role   as string | undefined,
@@ -65,6 +76,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 declare module 'next-auth' {
     interface Session {
         accessToken?: string
+        error?:       string
         user: {
             id?:     string | null
             name?:   string | null

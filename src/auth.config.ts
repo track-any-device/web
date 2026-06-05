@@ -1,10 +1,5 @@
 import type { NextAuthConfig } from 'next-auth'
 
-/**
- * Edge-compatible auth config — used only by the middleware.
- * No providers here (OAuth provider uses Node crypto internally).
- * The middleware only needs to check whether a session cookie exists.
- */
 export const authConfig: NextAuthConfig = {
     providers: [],
 
@@ -12,12 +7,18 @@ export const authConfig: NextAuthConfig = {
 
     pages: {
         signIn: '/api/auth/signin/sso',
-        error:  '/api/auth/error',
+        // Custom static page — not a NextAuth handler route.
+        // This breaks the redirect loop: if NextAuth itself fails,
+        // it lands here instead of looping back into the auth handler.
+        error: '/auth/error',
     },
 
     callbacks: {
         authorized({ auth }) {
-            return !!auth
+            if (!auth) return false
+            // Passport token expired — force re-login cleanly (one redirect, no loop)
+            if ((auth as { error?: string }).error === 'TokenExpired') return false
+            return true
         },
     },
 }
