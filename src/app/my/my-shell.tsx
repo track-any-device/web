@@ -4,8 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-    LayoutGrid, Smartphone, Radio, ShoppingBag,
-    Building2, MapPin, LogOut,
+    Smartphone, ShoppingBag, AlertTriangle, MapPin, LogOut,
 } from 'lucide-react';
 
 interface Props {
@@ -13,24 +12,15 @@ interface Props {
     user: { name?: string; email?: string; role?: string | string[] } | null;
 }
 
-function isTenantUser(role?: string | string[]): boolean {
-    if (!role) return false;
-    if (Array.isArray(role)) return role.includes('tenant_user');
-    return role === 'tenant_user';
-}
+const NAV = [
+    { href: '/my/devices',    label: 'My Devices',   icon: Smartphone    },
+    { href: '/my/beats',      label: 'My Beats',     icon: MapPin        },
+    { href: '/my/incidents',  label: 'My Incidents', icon: AlertTriangle },
+    { href: '/my/orders',     label: 'My Orders',    icon: ShoppingBag   },
+];
 
 export default function MyShell({ children, user }: Props) {
-    const pathname   = usePathname();
-    const showTenant = isTenantUser(user?.role);
-
-    const NAV = [
-        { href: '/my',            label: 'Dashboard',    icon: LayoutGrid  },
-        { href: '/my/stream',     label: 'Live Stream',  icon: Radio       },
-        { href: '/my/devices',    label: 'My Devices',   icon: Smartphone  },
-        { href: '/my/beats',      label: 'My Beats',     icon: MapPin      },
-        { href: '/my/orders',     label: 'My Orders',    icon: ShoppingBag },
-        ...(showTenant ? [{ href: '/my/tenants', label: 'My Tenants', icon: Building2 }] : []),
-    ];
+    const pathname = usePathname();
 
     return (
         <div className="flex bg-gray-50 dark:bg-gray-950 min-h-[calc(100vh-4rem)]">
@@ -47,7 +37,7 @@ export default function MyShell({ children, user }: Props) {
                 {/* Nav */}
                 <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
                     {NAV.map(({ href, label, icon: Icon }) => {
-                        const active = pathname === href || (href !== '/my' && pathname.startsWith(href));
+                        const active = pathname === href || pathname.startsWith(href);
                         return (
                             <Link
                                 key={href}

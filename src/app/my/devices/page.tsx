@@ -21,5 +21,5 @@ export default async function MyDevicesPage() {
     const devices   = devicesRes.status   === 'fulfilled' ? devicesRes.value.data   : [];
     const incidents = incidentsRes.status === 'fulfilled' ? incidentsRes.value.data : [];
 
-    return <DevicesView devices={devices} incidents={incidents} />;
+    return <DevicesView devices={devices} incidents={incidents} token={session.token} />;
 }

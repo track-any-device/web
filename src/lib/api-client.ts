@@ -68,6 +68,10 @@ export class ApiClient {
         return this.get<Device>(`/devices/${id}`);
     }
 
+    async updateDevice(id: number, data: { name?: string; map_icon?: string | null }) {
+        return this.patch<Device>(`/devices/${id}`, data);
+    }
+
     async incidents(params?: Record<string, string>) {
         return this.get<Paginated<Incident>>('/incidents', params);
     }
@@ -165,6 +169,7 @@ export interface Device {
     name: string;
     imei: string;
     status: string;
+    map_icon: string | null;
     last_lat: number | null;
     last_lon: number | null;
     battery_percent: number | null;
