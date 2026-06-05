@@ -10,7 +10,7 @@ export async function GET() {
     const res = NextResponse.redirect(buildAuthorizationUrl(state))
     res.cookies.set(STATE_COOKIE, state, {
         httpOnly: true,
-        secure:   true,
+        secure:   process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge:   300,
         path:     '/',

@@ -60,13 +60,9 @@ export async function getUserInfo(
     }
 }
 
-export async function getSession(): Promise<{
-    token: string
-    user?: Record<string, unknown>
-} | null> {
-    const jar = await cookies()
-    const raw = jar.get(SESSION_COOKIE)?.value
-    if (!raw) return null
+export type Session = { token: string; user?: Record<string, unknown> }
+
+export function decodeSessionValue(raw: string): Session | null {
     try {
         return JSON.parse(
             new TextDecoder().decode(
@@ -76,6 +72,13 @@ export async function getSession(): Promise<{
     } catch {
         return null
     }
+}
+
+export async function getSession(): Promise<Session | null> {
+    const jar = await cookies()
+    const raw = jar.get(SESSION_COOKIE)?.value
+    if (!raw) return null
+    return decodeSessionValue(raw)
 }
 
 export function encodeSession(data: {

@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         encodeSession({ token: tokenData.access_token, user: user ?? undefined }),
         {
             httpOnly: true,
-            secure:   true,
+            secure:   process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge,
             path:     '/',

@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { SESSION_COOKIE, decodeSessionValue } from '@/lib/auth'
 
-const SESSION_COOKIE  = 'tad_session'
 const REDIRECT_COOKIE = 'tad_redirect'
 
 export function middleware(req: NextRequest) {
-    if (req.cookies.get(SESSION_COOKIE)) return NextResponse.next()
+    const raw = req.cookies.get(SESSION_COOKIE)?.value
+
+    if (raw) {
+        const session = decodeSessionValue(raw)
+        if (session) {
+            const headers = new Headers(req.headers)
+            headers.set('x-tad-session', JSON.stringify(session))
+            return NextResponse.next({ request: { headers } })
+        }
+
+        // Cookie exists but is corrupt — clear it and redirect to login
+        const res = NextResponse.redirect(new URL('/api/auth/login', req.url))
+        res.cookies.delete(SESSION_COOKIE)
+        res.cookies.set(REDIRECT_COOKIE, req.nextUrl.pathname, {
+            httpOnly: true,
+            secure:   process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge:   300,
+            path:     '/',
+        })
+        return res
+    }
 
     const res = NextResponse.redirect(new URL('/api/auth/login', req.url))
     res.cookies.set(REDIRECT_COOKIE, req.nextUrl.pathname, {
         httpOnly: true,
-        secure:   true,
+        secure:   process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge:   300,
         path:     '/',
