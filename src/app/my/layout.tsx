@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { headers } from 'next/headers';
-import type { Session } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getSession, type Session } from '@/lib/auth';
 import MyShell from './my-shell';
 
 export const runtime = 'edge';
@@ -8,7 +9,8 @@ export const runtime = 'edge';
 export default async function MyLayout({ children }: { children: ReactNode }) {
     const hdrs = await headers();
     const raw = hdrs.get('x-tad-session');
-    const session: Session | null = raw ? JSON.parse(raw) : null;
+    const session: Session | null = raw ? JSON.parse(raw) : await getSession();
+    if (!session) redirect('/api/auth/login');
 
     const user = session?.user as {
         name?: string;
