@@ -5,7 +5,7 @@
  * Token is read from the tad_session cookie via getSession() in server components.
  */
 
-const API_URL = process.env.API_URL ?? 'https://api.track-any-device.com';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https://api.track-any-device.com';
 
 export class ApiClient {
     constructor(private token: string) {}

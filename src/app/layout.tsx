@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { getSession } from '@/lib/auth';
 import { AppLogo } from '@trackany-device/components';
 import NavAuth from '@/components/nav-auth';
 
@@ -45,10 +44,7 @@ const FOOTER_COLS = [
   },
 ];
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-  const user    = session?.user as { name?: string; email?: string } | undefined;
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="default">
       <body className="min-h-screen bg-background text-foreground">
@@ -74,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
             {/* Auth / CTA */}
             <div className="shrink-0">
-              <NavAuth user={user ?? null} />
+              <NavAuth />
             </div>
           </div>
         </header>
@@ -109,7 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ))}
             </div>
             <div className="pt-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-              <span>© {new Date().getFullYear()} Track Any Device. All rights reserved.</span>
+              <span>&copy; {new Date().getFullYear()} Track Any Device. All rights reserved.</span>
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot" />
                 All systems operational

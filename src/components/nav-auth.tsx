@@ -3,16 +3,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
-interface Props {
-    user: { name?: string; email?: string } | null;
-}
-
-export default function NavAuth({ user }: Props) {
+export default function NavAuth() {
     const pathname  = usePathname();
     const isMyPage  = pathname.startsWith('/my');
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const { user, loading, logout } = useAuth();
 
     useEffect(() => {
         function onMouseDown(e: MouseEvent) {
@@ -23,6 +21,8 @@ export default function NavAuth({ user }: Props) {
         document.addEventListener('mousedown', onMouseDown);
         return () => document.removeEventListener('mousedown', onMouseDown);
     }, []);
+
+    if (loading) return null;
 
     if (!user) {
         return (
@@ -71,13 +71,14 @@ export default function NavAuth({ user }: Props) {
                             My Profile
                         </Link>
                         <div style={{ borderTop: '1px solid hsl(var(--border))' }} />
-                        <a href="/api/auth/logout"
-                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                        <button
+                            onClick={logout}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors w-full">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
                             Sign out
-                        </a>
+                        </button>
                     </div>
                 )}
             </div>
