@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import Image from 'next/image';
@@ -8,7 +9,8 @@ export const metadata = { title: 'My Tenants' };
 
 export default async function MyTenantsPage() {
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     let tenants: Awaited<ReturnType<typeof api.tenants>> = [];
     let apiError: string | null = null;

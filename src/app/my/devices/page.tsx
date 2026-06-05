@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import Link from 'next/link';
@@ -15,7 +16,8 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default async function MyDevicesPage() {
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     let devices: Awaited<ReturnType<typeof api.devices>>['data'] = [];
     let total = 0;

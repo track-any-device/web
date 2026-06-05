@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 
@@ -25,7 +26,8 @@ export default async function MyIncidentsPage({
 }) {
     const params  = await searchParams;
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
     let incidents: Awaited<ReturnType<typeof api.incidents>>['data'] = [];
     let total = 0;
     try {

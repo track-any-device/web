@@ -1,5 +1,6 @@
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import StreamClient from './stream-client';
 
@@ -8,7 +9,8 @@ export const metadata: Metadata = { title: 'Live Stream' };
 
 export default async function LiveStreamPage() {
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     const user = session?.user as { sub?: string; id?: string | number } | undefined;
     const userId = String(user?.sub ?? user?.id ?? '0');

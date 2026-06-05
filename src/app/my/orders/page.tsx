@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import type { Metadata } from 'next';
@@ -28,7 +29,8 @@ export default async function MyOrdersPage({
 }) {
     const params  = await searchParams;
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     let orders: Awaited<ReturnType<typeof api.orders>>['data'] = [];
     let total = 0;

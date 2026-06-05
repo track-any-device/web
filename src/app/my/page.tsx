@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import Link from 'next/link';
@@ -22,7 +23,8 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
 
 export default async function MyDashboard() {
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     let data: Awaited<ReturnType<typeof api.dashboard>>;
     let apiError: string | null = null;

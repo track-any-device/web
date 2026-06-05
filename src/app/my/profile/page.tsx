@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { ApiClient } from '@/lib/api-client';
 import type { Metadata } from 'next';
@@ -14,7 +15,8 @@ const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = 
 
 export default async function MyProfilePage() {
     const session = await getSession();
-    const api     = new ApiClient(session!.token);
+    if (!session) redirect('/api/auth/login');
+    const api = new ApiClient(session.token);
 
     let profile: Awaited<ReturnType<typeof api.profile>> | null = null;
     try {
