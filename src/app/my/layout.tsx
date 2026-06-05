@@ -3,6 +3,8 @@ import { headers } from 'next/headers';
 import type { Session } from '@/lib/auth';
 import MyShell from './my-shell';
 
+export const runtime = 'edge';
+
 export default async function MyLayout({ children }: { children: ReactNode }) {
     const hdrs = await headers();
     const raw = hdrs.get('x-tad-session');

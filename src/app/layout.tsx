@@ -4,6 +4,8 @@ import { getSession } from '@/lib/auth';
 import { AppLogo } from '@trackany-device/components';
 import NavAuth from '@/components/nav-auth';
 
+export const runtime = 'edge';
+
 export const metadata: Metadata = {
   title: { default: 'Track Any Device', template: '%s — Track Any Device' },
   description: 'Real-time IoT fleet tracking platform — GPS trackers, sensors, compute boards.',
