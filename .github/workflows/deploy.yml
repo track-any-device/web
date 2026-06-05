@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Pages
+name: CI
 
 on:
   push:
@@ -7,13 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    name: Build & Deploy
-    permissions:
-      contents: read
-      deployments: write
-      pull-requests: write
+    name: Build check
 
     steps:
       - name: Checkout
@@ -33,43 +29,11 @@ jobs:
       - name: Build & Transform for Cloudflare Pages
         run: pnpm exec next-on-pages
         env:
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          GRAPHQL_URL:         ${{ secrets.GRAPHQL_URL }}
-          SSO_CLIENT_ID:       ${{ secrets.SSO_CLIENT_ID }}
-          SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
+          NEXT_PUBLIC_APP_URL: https://track-any-device.com
+          SSO_CLIENT_ID:       tad_web_portal
           AUTH_SECRET:         ${{ secrets.AUTH_SECRET }}
+          SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
 
-      - name: Sync runtime secrets to Cloudflare Pages
-        # wrangler pages deploy does not carry over dashboard secrets —
-        # push them via the Cloudflare API before each deployment so the
-        # Pages Function always has AUTH_SECRET and SSO_CLIENT_SECRET.
-        env:
-          CLOUDFLARE_API_TOKEN:  ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          AUTH_SECRET:           ${{ secrets.AUTH_SECRET }}
-          SSO_CLIENT_SECRET:     ${{ secrets.SSO_CLIENT_SECRET }}
-        run: |
-          for CF_ENV in production preview; do
-            curl -s -X PATCH \
-              "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/tad-web" \
-              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -d "{
-                \"deployment_configs\": {
-                  \"${CF_ENV}\": {
-                    \"env_vars\": {
-                      \"AUTH_SECRET\":       { \"type\": \"secret_text\", \"value\": \"${AUTH_SECRET}\" },
-                      \"SSO_CLIENT_SECRET\": { \"type\": \"secret_text\", \"value\": \"${SSO_CLIENT_SECRET}\" }
-                    }
-                  }
-                }
-              }"
-          done
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken:    ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId:   ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command:     pages deploy .vercel/output/static --project-name=tad-web --commit-dirty=true
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+      # Deployment is handled by Cloudflare Pages native GitHub integration.
+      # Secrets are set directly in the Cloudflare dashboard and are available
+      # at both build time and runtime without any extra API calls.
