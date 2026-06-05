@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutGrid, Smartphone, Radio, ShoppingBag,
-    Building2, User, UserCog, LogOut,
+    Building2, User, UserCog, MapPin, LogOut,
 } from 'lucide-react';
 
 interface Props {
@@ -27,6 +27,7 @@ export default function MyShell({ children, user }: Props) {
         { href: '/my',            label: 'Dashboard',    icon: LayoutGrid  },
         { href: '/my/stream',     label: 'Live Stream',  icon: Radio       },
         { href: '/my/devices',    label: 'My Devices',   icon: Smartphone  },
+        { href: '/my/beats',      label: 'My Beats',     icon: MapPin      },
         { href: '/my/orders',     label: 'My Orders',    icon: ShoppingBag },
         ...(showTenant ? [{ href: '/my/tenants', label: 'My Tenants', icon: Building2 }] : []),
         { href: '/my/profile',    label: 'My Profile',   icon: User        },

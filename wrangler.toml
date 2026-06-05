@@ -4,7 +4,8 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
 [vars]
-NEXT_PUBLIC_APP_URL = "https://track-any-device.com"
+NEXT_PUBLIC_APP_URL          = "https://track-any-device.com"
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = ""
 
 # Central REST API (Docker stack)
 API_URL = "https://api.track-any-device.com"

@@ -95,6 +95,59 @@ export class ApiClient {
     async updateProfile(data: UpdateProfileData) {
         return this.patch<UserProfile>('/profile', data);
     }
+
+    async beats() {
+        return this.get<{ data: Beat[] }>('/beats');
+    }
+
+    async beat(id: number) {
+        return this.get<BeatDetail>(`/beats/${id}`);
+    }
+
+    async createBeat(data: BeatPayload) {
+        return this.post<BeatDetail>('/beats', data);
+    }
+
+    async updateBeat(id: number, data: BeatPayload) {
+        return this.put<BeatDetail>(`/beats/${id}`, data);
+    }
+
+    async deleteBeat(id: number) {
+        const url = `${API_URL}/api/my/beats/${id}`;
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${this.token}`, 'Accept': 'application/json' },
+        });
+        if (!res.ok && res.status !== 204) throw new Error(`DELETE ${url} → ${res.status}`);
+    }
+
+    private async post<T>(path: string, body: unknown): Promise<T> {
+        const url = `${API_URL}/api/my${path}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`[API] POST ${url} → ${res.status}: ${text.slice(0, 400)}`);
+        }
+        return res.json();
+    }
+
+    private async put<T>(path: string, body: unknown): Promise<T> {
+        const url = `${API_URL}/api/my${path}`;
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`[API] PUT ${url} → ${res.status}: ${text.slice(0, 400)}`);
+        }
+        return res.json();
+    }
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -172,6 +225,32 @@ export interface UserProfile {
     avatar_url: string | null;
     role: string;
     created_at: string;
+}
+
+export interface LatLng {
+    lat: number;
+    lng: number;
+}
+
+export interface Beat {
+    id: number;
+    name: string;
+    description: string | null;
+    geo_fence_type: 'polygon' | 'circle';
+    status: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface BeatDetail extends Beat {
+    coordinates: LatLng[];
+}
+
+export interface BeatPayload {
+    name: string;
+    description?: string;
+    geo_fence_type: 'polygon' | 'circle';
+    coordinates: LatLng[];
 }
 
 export interface UpdateProfileData {
