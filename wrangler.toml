@@ -5,6 +5,7 @@ pages_build_output_dir = ".vercel/output/static"
 
 [vars]
 NEXT_PUBLIC_APP_URL = "https://track-any-device.com"
+AUTH_URL           = "https://track-any-device.com"
 
 # Central REST API (Docker stack)
 API_URL = "https://api.track-any-device.com"
