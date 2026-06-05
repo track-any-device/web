@@ -15,7 +15,7 @@ const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = 
 
 export default async function MyProfilePage() {
     const session = await getSession();
-    if (!session) redirect('/api/auth/signin/sso');
+    if (!session) redirect('/api/auth/login');
     const api = new ApiClient(session.token);
 
     let profile: Awaited<ReturnType<typeof api.profile>> | null = null;

@@ -31,7 +31,6 @@ jobs:
         env:
           NEXT_PUBLIC_APP_URL: https://track-any-device.com
           SSO_CLIENT_ID:       tad_web_portal
-          AUTH_SECRET:         ${{ secrets.AUTH_SECRET }}
           SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
 
       # Deployment is handled by Cloudflare Pages native GitHub integration.

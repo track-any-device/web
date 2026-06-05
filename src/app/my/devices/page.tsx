@@ -16,7 +16,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default async function MyDevicesPage() {
     const session = await getSession();
-    if (!session) redirect('/api/auth/signin/sso');
+    if (!session) redirect('/api/auth/login');
     const api = new ApiClient(session.token);
 
     let devices: Awaited<ReturnType<typeof api.devices>>['data'] = [];

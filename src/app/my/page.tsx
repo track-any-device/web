@@ -23,7 +23,7 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
 
 export default async function MyDashboard() {
     const session = await getSession();
-    if (!session) redirect('/api/auth/signin/sso');
+    if (!session) redirect('/api/auth/login');
     const api = new ApiClient(session.token);
 
     let data: Awaited<ReturnType<typeof api.dashboard>>;

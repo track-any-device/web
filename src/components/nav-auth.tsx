@@ -26,7 +26,7 @@ export default function NavAuth({ user }: Props) {
 
     if (!user) {
         return (
-            <a href="/api/auth/signin/sso"
+            <a href="/api/auth/login"
                 className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
                 style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
                 Get Started
@@ -71,15 +71,13 @@ export default function NavAuth({ user }: Props) {
                             My Profile
                         </Link>
                         <div style={{ borderTop: '1px solid hsl(var(--border))' }} />
-                        <form action="/api/auth/signout" method="POST">
-                            <button type="submit"
-                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                                Sign out
-                            </button>
-                        </form>
+                        <a href="/api/auth/logout"
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Sign out
+                        </a>
                     </div>
                 )}
             </div>
