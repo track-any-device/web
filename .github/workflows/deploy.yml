@@ -37,10 +37,7 @@ jobs:
           GRAPHQL_URL:         ${{ secrets.GRAPHQL_URL }}
           SSO_CLIENT_ID:       ${{ secrets.SSO_CLIENT_ID }}
           SSO_CLIENT_SECRET:   ${{ secrets.SSO_CLIENT_SECRET }}
-          SSO_REDIRECT_URI:    ${{ secrets.SSO_REDIRECT_URI }}
-          SSO_AUTH_URL:        ${{ secrets.SSO_AUTH_URL }}
-          SSO_TOKEN_URL:       ${{ secrets.SSO_TOKEN_URL }}
-          SSO_USERINFO_URL:    ${{ secrets.SSO_USERINFO_URL }}
+          AUTH_SECRET:         ${{ secrets.AUTH_SECRET }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
