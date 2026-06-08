@@ -10,6 +10,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https
 export class ApiClient {
     constructor(private token: string) {}
 
+    private throwApiError(method: string, url: string, status: number, body: string): never {
+        if (status === 401 && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('tad:unauthorized'));
+        }
+        const msg = `[API] ${method} ${url} → ${status}: ${body.slice(0, 400)}`;
+        console.error(msg);
+        throw new Error(msg);
+    }
+
     private async get<T>(path: string, params?: Record<string, string>): Promise<T> {
         const url = new URL(`${API_URL}/api/my${path}`);
         if (params) {
@@ -24,9 +33,7 @@ export class ApiClient {
         });
         if (!res.ok) {
             const body = await res.text().catch(() => '');
-            const msg  = `[API] GET ${url.toString()} → ${res.status}: ${body.slice(0, 400)}`;
-            console.error(msg);
-            throw new Error(msg);
+            this.throwApiError('GET', url.toString(), res.status, body);
         }
         return res.json() as Promise<T>;
     }
@@ -44,9 +51,7 @@ export class ApiClient {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '');
-            const msg  = `[API] PATCH ${url} → ${res.status}: ${text.slice(0, 400)}`;
-            console.error(msg);
-            throw new Error(msg);
+            this.throwApiError('PATCH', url, res.status, text);
         }
         return res.json() as Promise<T>;
     }
@@ -122,7 +127,10 @@ export class ApiClient {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${this.token}`, 'Accept': 'application/json' },
         });
-        if (!res.ok && res.status !== 204) throw new Error(`DELETE ${url} → ${res.status}`);
+        if (!res.ok && res.status !== 204) {
+            const body = await res.text().catch(() => '');
+            this.throwApiError('DELETE', url, res.status, body);
+        }
     }
 
     private async post<T>(path: string, body: unknown): Promise<T> {
@@ -134,7 +142,7 @@ export class ApiClient {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '');
-            throw new Error(`[API] POST ${url} → ${res.status}: ${text.slice(0, 400)}`);
+            this.throwApiError('POST', url, res.status, text);
         }
         return res.json();
     }
@@ -148,7 +156,7 @@ export class ApiClient {
         });
         if (!res.ok) {
             const text = await res.text().catch(() => '');
-            throw new Error(`[API] PUT ${url} → ${res.status}: ${text.slice(0, 400)}`);
+            this.throwApiError('PUT', url, res.status, text);
         }
         return res.json();
     }

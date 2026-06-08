@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { clearAuth } from '@/lib/auth-store';
 import {
     Smartphone, ShoppingBag, AlertTriangle, MapPin, LogOut,
 } from 'lucide-react';
@@ -25,6 +26,15 @@ export default function MyShell({ children }: { children: ReactNode }) {
             window.location.href = '/api/auth/login';
         }
     }, [loading, token]);
+
+    useEffect(() => {
+        function onUnauthorized() {
+            clearAuth();
+            window.location.href = '/api/auth/login';
+        }
+        window.addEventListener('tad:unauthorized', onUnauthorized);
+        return () => window.removeEventListener('tad:unauthorized', onUnauthorized);
+    }, []);
 
     if (loading || !token) {
         return (
