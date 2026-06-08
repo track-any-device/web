@@ -2,6 +2,7 @@ const TOKEN_KEY = 'tad_token'
 const USER_KEY  = 'tad_user'
 
 export interface AuthUser {
+    id?: number | string
     name?: string
     email?: string
     sub?: string

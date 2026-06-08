@@ -9,7 +9,7 @@ import DevicesView from './devices-view';
 
 export default function DevicesClient() {
     const { token, user } = useAuth();
-    const userId = String(user?.sub ?? '0');
+    const userId = String(user?.id ?? user?.sub ?? '0');
 
     const [initialDevices, setInitialDevices] = useState<Device[]>([]);
     const [incidents,      setIncidents]      = useState<Incident[]>([]);
