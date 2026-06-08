@@ -63,6 +63,14 @@ const SECTION_3: DocCardProps[] = [
         icon:        'Code',
         tone:        'accent',
     },
+    {
+        title:       'Shop API',
+        description: 'Product catalog, Cash on Delivery checkout, order management, and device claiming via claim codes or QR scan.',
+        href:        '/docs/api/shop/products',
+        audience:    'App & integration developers',
+        icon:        'Code',
+        tone:        'accent',
+    },
 ];
 
 function SectionHeader({ label, title, description }: { label: string; title: string; description: string }) {
