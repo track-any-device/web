@@ -38,6 +38,32 @@ export class ApiClient {
         return res.json() as Promise<T>;
     }
 
+    private async put<T>(path: string, body: unknown): Promise<T> {
+        const url = `${API_URL}/api/my${path}`;
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            this.throwApiError('PUT', url, res.status, text);
+        }
+        return res.json() as Promise<T>;
+    }
+
+    private async delete(path: string): Promise<void> {
+        const url = `${API_URL}/api/my${path}`;
+        const res = await fetch(url, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${this.token}`, 'Accept': 'application/json' },
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            this.throwApiError('DELETE', url, res.status, text);
+        }
+    }
+
     private async patch<T>(path: string, body: unknown): Promise<T> {
         const url = `${API_URL}/api/my${path}`;
         const res = await fetch(url, {
@@ -75,6 +101,14 @@ export class ApiClient {
 
     async updateDevice(id: number, data: { name?: string; map_icon?: string | null }) {
         return this.patch<Device>(`/devices/${id}`, data);
+    }
+
+    async assignBeat(deviceId: number, beatId: number) {
+        return this.put<{ beat: { id: number; name: string; color: string } }>(`/devices/${deviceId}/beat`, { beat_id: beatId });
+    }
+
+    async unassignBeat(deviceId: number) {
+        await this.delete(`/devices/${deviceId}/beat`);
     }
 
     async incidents(params?: Record<string, string>) {
@@ -182,6 +216,7 @@ export interface Device {
     last_lon: number | null;
     battery_percent: number | null;
     last_signal_at: string | null;
+    current_beat: { id: number; name: string; color: string } | null;
     device_type?: { id: number; name: string; slug: string; image?: string };
     tenant?: { id: number; name: string; slug: string };
 }

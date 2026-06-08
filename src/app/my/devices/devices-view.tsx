@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Pencil, Check, X } from 'lucide-react';
+import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat } from '@/lib/api-client';
 
 interface Props {
@@ -59,15 +60,16 @@ const BEAT_STATUS_LABEL: Record<string, string> = {
 };
 
 export default function DevicesView({ devices: incomingDevices, incidents, beats, token, realtimeConnected }: Props) {
-    const [devices,      setDevices]      = useState<Device[]>(incomingDevices);
-    const [activeTab,    setActiveTab]    = useState<'devices' | 'beats'>('devices');
-    const [drawerDevId,  setDrawerDevId]  = useState<number | null>(null);
-    const [selectedBeat, setSelectedBeat] = useState<number | null>(null);
-    const [mapsReady,    setMapsReady]    = useState(false);
-    const [editingId,    setEditingId]    = useState<number | null>(null);
-    const [editName,     setEditName]     = useState('');
-    const [iconPickFor,  setIconPickFor]  = useState<number | null>(null);
-    const [saving,       setSaving]       = useState(false);
+    const [devices,        setDevices]        = useState<Device[]>(incomingDevices);
+    const [activeTab,      setActiveTab]      = useState<'devices' | 'beats'>('devices');
+    const [drawerDevId,    setDrawerDevId]    = useState<number | null>(null);
+    const [selectedBeat,   setSelectedBeat]   = useState<number | null>(null);
+    const [mapsReady,      setMapsReady]      = useState(false);
+    const [editingId,      setEditingId]      = useState<number | null>(null);
+    const [editName,       setEditName]       = useState('');
+    const [iconPickFor,    setIconPickFor]    = useState<number | null>(null);
+    const [saving,         setSaving]         = useState(false);
+    const [beatAssigning,  setBeatAssigning]  = useState(false);
 
     const mapRef     = useRef<HTMLDivElement>(null);
     const gmapRef    = useRef<google.maps.Map | null>(null);
@@ -312,6 +314,28 @@ export default function DevicesView({ devices: incomingDevices, incidents, beats
             setDevices(prev => prev.map(d => d.id === id ? updated : d));
             const marker = markersRef.current.get(id);
             if (marker) marker.setLabel({ text: icon, fontSize: '18px' });
+        }
+    }
+
+    async function assignBeat(deviceId: number, beatId: number) {
+        setBeatAssigning(true);
+        try {
+            const api = new ApiClient(token);
+            const { beat } = await api.assignBeat(deviceId, beatId);
+            setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, current_beat: beat } : d));
+        } finally {
+            setBeatAssigning(false);
+        }
+    }
+
+    async function unassignBeat(deviceId: number) {
+        setBeatAssigning(true);
+        try {
+            const api = new ApiClient(token);
+            await api.unassignBeat(deviceId);
+            setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, current_beat: null } : d));
+        } finally {
+            setBeatAssigning(false);
         }
     }
 
@@ -567,6 +591,45 @@ export default function DevicesView({ devices: incomingDevices, incidents, beats
                                         </p>
                                     </div>
                                 )}
+
+                                {/* Beat assignment */}
+                                <div>
+                                    <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Beat (Geofence)</p>
+                                    {drawerDevice.current_beat ? (
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="w-2.5 h-2.5 rounded-sm shrink-0"
+                                                style={{ background: drawerDevice.current_beat.color }} />
+                                            <span className="text-xs font-medium text-gray-800 dark:text-gray-200 flex-1">
+                                                {drawerDevice.current_beat.name}
+                                            </span>
+                                            <button
+                                                onClick={() => unassignBeat(drawerDevice.id)}
+                                                disabled={beatAssigning}
+                                                className="text-[10px] text-red-500 hover:text-red-700 font-medium disabled:opacity-40 shrink-0">
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-gray-400 mb-2">Not assigned to any beat</p>
+                                    )}
+                                    {beats.length > 0 && (
+                                        <select
+                                            value={drawerDevice.current_beat?.id ?? ''}
+                                            onChange={e => {
+                                                const id = Number(e.target.value);
+                                                if (id) assignBeat(drawerDevice.id, id);
+                                            }}
+                                            disabled={beatAssigning}
+                                            className="w-full text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40">
+                                            <option value="">
+                                                {beatAssigning ? 'Saving…' : '— Assign to beat —'}
+                                            </option>
+                                            {beats.map(b => (
+                                                <option key={b.id} value={b.id}>{b.name}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                </div>
 
                                 {/* Map icon picker */}
                                 <div>
