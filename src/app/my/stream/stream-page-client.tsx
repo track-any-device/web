@@ -30,7 +30,7 @@ export default function StreamPageClient() {
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Stream</h1>
                 <p className="text-sm text-gray-500 mt-1">Real-time device activity. Updates push automatically via WebSocket.</p>
             </div>
-            <StreamClient initialDevices={initialDevices} userId={userId} />
+            <StreamClient initialDevices={initialDevices} token={token!} userId={userId} />
         </div>
     );
 }

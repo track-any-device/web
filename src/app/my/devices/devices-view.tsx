@@ -5,10 +5,11 @@ import { Pencil, Check, X } from 'lucide-react';
 import type { Device, Incident, Beat } from '@/lib/api-client';
 
 interface Props {
-    devices:   Device[];
-    incidents: Incident[];
-    beats:     Beat[];
-    token:     string;
+    devices:           Device[];
+    incidents:         Incident[];
+    beats:             Beat[];
+    token:             string;
+    realtimeConnected?: boolean;
 }
 
 const MAPS_KEY    = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
@@ -57,8 +58,8 @@ const BEAT_STATUS_LABEL: Record<string, string> = {
     active: 'Active', inactive: 'Inactive', draft: 'Draft',
 };
 
-export default function DevicesView({ devices: initialDevices, incidents, beats, token }: Props) {
-    const [devices,      setDevices]      = useState<Device[]>(initialDevices);
+export default function DevicesView({ devices: incomingDevices, incidents, beats, token, realtimeConnected }: Props) {
+    const [devices,      setDevices]      = useState<Device[]>(incomingDevices);
     const [activeTab,    setActiveTab]    = useState<'devices' | 'beats'>('devices');
     const [drawerDevId,  setDrawerDevId]  = useState<number | null>(null);
     const [selectedBeat, setSelectedBeat] = useState<number | null>(null);
@@ -151,6 +152,60 @@ export default function DevicesView({ devices: initialDevices, incidents, beats,
 
         if (hasBounds) map.fitBounds(bounds, 80);
     }, [mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Sync realtime device updates from parent (location, status, battery) ─
+    // Preserves local user edits (name, map_icon) — only overwrites server fields.
+    useEffect(() => {
+        setDevices(prev => {
+            const prevMap = Object.fromEntries(prev.map(d => [d.id, d]));
+            return incomingDevices.map(incoming => ({
+                ...incoming,
+                // Keep local name/icon edits the user may have made in this session
+                name:     prevMap[incoming.id]?.name     ?? incoming.name,
+                map_icon: prevMap[incoming.id]?.map_icon ?? incoming.map_icon,
+            }));
+        });
+    }, [incomingDevices]);
+
+    // ── Update Google Maps markers when realtime positions change ──────────
+    useEffect(() => {
+        if (!gmapRef.current || !mapsReady) return;
+
+        devices.forEach(device => {
+            const lat = Number(device.last_lat);
+            const lng = Number(device.last_lon);
+            const st  = getMyStatus(device);
+            const isSelected = drawerDevId === device.id;
+
+            const iconConfig = {
+                path:         google.maps.SymbolPath.CIRCLE,
+                scale:        isSelected ? 13 : 9,
+                fillColor:    STATUS_MARKER_COLOR[st],
+                fillOpacity:  1,
+                strokeColor:  '#fff',
+                strokeWeight: isSelected ? 3 : 2,
+            };
+
+            const existing = markersRef.current.get(device.id);
+
+            if (existing) {
+                if (!isNaN(lat) && !isNaN(lng)) existing.setPosition({ lat, lng });
+                existing.setIcon(iconConfig);
+                if (device.name) existing.setTitle(device.name);
+            } else if (!isNaN(lat) && !isNaN(lng) && gmapRef.current) {
+                // New device appeared via realtime — add marker
+                const marker = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: gmapRef.current,
+                    title: device.name,
+                    label: device.map_icon ? { text: device.map_icon, fontSize: '18px' } : undefined,
+                    icon: iconConfig,
+                });
+                marker.addListener('click', () => openDrawer(device.id));
+                markersRef.current.set(device.id, marker);
+            }
+        });
+    }, [devices, drawerDevId, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Open device drawer ────────────────────────────────────────────────
     const openDrawer = useCallback((id: number, map?: google.maps.Map) => {
@@ -416,13 +471,25 @@ export default function DevicesView({ devices: initialDevices, incidents, beats,
                 ) : <div ref={mapRef} className="w-full h-full" />}
 
                 {mapsReady && (
-                    <div className="absolute bottom-4 left-4 bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-xs space-y-1.5">
-                        {(['online','offline','unavailable'] as MyStatus[]).map(s => (
-                            <div key={s} className="flex items-center gap-2">
-                                <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[s]}`} />
-                                <span className="capitalize text-gray-600 dark:text-gray-400">{STATUS_LABEL[s]}</span>
-                            </div>
-                        ))}
+                    <div className="absolute bottom-4 left-4 flex flex-col gap-2">
+                        {/* Live connection badge */}
+                        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium shadow border
+                            ${realtimeConnected
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400'
+                                : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                            {realtimeConnected ? 'Live' : 'Connecting…'}
+                        </div>
+
+                        {/* Map legend */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 px-3 py-2.5 text-xs space-y-1.5">
+                            {(['online','offline','unavailable'] as MyStatus[]).map(s => (
+                                <div key={s} className="flex items-center gap-2">
+                                    <span className={`w-2.5 h-2.5 rounded-full ${STATUS_DOT[s]}`} />
+                                    <span className="capitalize text-gray-600 dark:text-gray-400">{STATUS_LABEL[s]}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
