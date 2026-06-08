@@ -11,7 +11,7 @@ export default function StreamPageClient() {
     const [initialDevices, setInitialDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const userId = String(user?.sub ?? '0');
+    const userId = String(user?.id ?? user?.sub ?? '0');
 
     useEffect(() => {
         if (!token) return;
