@@ -22,32 +22,66 @@ interface Props {
 
 // ── KML / KMZ parsers ─────────────────────────────────────────────────────────
 
+function extractKmlName(pm: Element): string {
+    // 1. Standard <name> element
+    const direct = pm.querySelector(':scope > name')?.textContent?.trim();
+    if (direct) return direct;
+
+    // 2. Extended data — <Data name="..."><value> (common in QGIS / ArcGIS exports)
+    for (const data of Array.from(pm.querySelectorAll('ExtendedData Data'))) {
+        const key = data.getAttribute('name')?.toLowerCase() ?? '';
+        if (key === 'name' || key === 'label' || key === 'title') {
+            const val = data.querySelector('value')?.textContent?.trim();
+            if (val) return val;
+        }
+    }
+
+    // 3. Schema-based extended data — <SimpleData name="Name">
+    for (const sd of Array.from(pm.querySelectorAll('ExtendedData SchemaData SimpleData'))) {
+        const key = sd.getAttribute('name')?.toLowerCase() ?? '';
+        if (key === 'name' || key === 'label' || key === 'title') {
+            const val = sd.textContent?.trim();
+            if (val) return val;
+        }
+    }
+
+    // 4. First non-empty <SimpleData> value as last resort
+    const anySimple = pm.querySelector('ExtendedData SimpleData')?.textContent?.trim();
+    if (anySimple) return anySimple;
+
+    // 5. Parent <Folder><name> as final fallback
+    const folderName = pm.closest('Folder')?.querySelector(':scope > name')?.textContent?.trim();
+    if (folderName) return folderName;
+
+    return 'Unnamed Zone';
+}
+
+function parseCoords(text: string): LatLng[] {
+    return text.trim().split(/\s+/).flatMap(token => {
+        const [lngStr, latStr] = token.split(',');
+        const lat = parseFloat(latStr), lng = parseFloat(lngStr);
+        return isNaN(lat) || isNaN(lng) ? [] : [{ lat, lng } as LatLng];
+    });
+}
+
 function parseKmlBeats(kml: string): KmlBeat[] {
     const doc = new DOMParser().parseFromString(kml, 'text/xml');
     const results: KmlBeat[] = [];
 
     for (const pm of Array.from(doc.querySelectorAll('Placemark'))) {
-        const name = pm.querySelector('name')?.textContent?.trim() || 'Unnamed Zone';
+        const name    = extractKmlName(pm);
         const coordEl = pm.querySelector('Polygon coordinates, LinearRing coordinates, coordinates');
         if (!coordEl?.textContent) continue;
 
-        const coords = coordEl.textContent.trim().split(/\s+/).flatMap(token => {
-            const [lngStr, latStr] = token.split(',');
-            const lat = parseFloat(latStr), lng = parseFloat(lngStr);
-            return isNaN(lat) || isNaN(lng) ? [] : [{ lat, lng } as LatLng];
-        });
-
+        const coords = parseCoords(coordEl.textContent);
         if (coords.length >= 3) results.push({ name, coordinates: coords });
     }
 
+    // Fallback: bare polygon with no Placemark wrapper
     if (results.length === 0) {
         const coordEl = doc.querySelector('Polygon coordinates, LinearRing coordinates, coordinates');
         if (coordEl?.textContent) {
-            const coords = coordEl.textContent.trim().split(/\s+/).flatMap(token => {
-                const [lngStr, latStr] = token.split(',');
-                const lat = parseFloat(latStr), lng = parseFloat(lngStr);
-                return isNaN(lat) || isNaN(lng) ? [] : [{ lat, lng } as LatLng];
-            });
+            const coords = parseCoords(coordEl.textContent);
             if (coords.length >= 3) results.push({ name: 'Imported Beat', coordinates: coords });
         }
     }
