@@ -12,26 +12,6 @@ const API_URL  = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.track-any-devic
 // Pixels within which clicking near the first vertex auto-closes the polygon
 const SNAP_PX = 20;
 
-function parseKml(kml: string): LatLng[] {
-    const doc     = new DOMParser().parseFromString(kml, 'text/xml');
-    const coordEl = doc.querySelector('Polygon coordinates, LinearRing coordinates, coordinates');
-    if (!coordEl?.textContent) return [];
-    return coordEl.textContent.trim().split(/\s+/).map(token => {
-        const [lngStr, latStr] = token.split(',');
-        return { lat: parseFloat(latStr), lng: parseFloat(lngStr) };
-    }).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
-}
-
-async function parseKmz(file: File): Promise<LatLng[]> {
-    // Dynamically import jszip so it doesn't bloat the main bundle
-    const JSZip = (await import('jszip')).default;
-    const zip   = await JSZip.loadAsync(file);
-    // Find the first .kml entry inside the archive
-    const kmlEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml'));
-    if (!kmlEntry) throw new Error('No .kml file found inside the .kmz archive.');
-    const kmlText = await kmlEntry.async('string');
-    return parseKml(kmlText);
-}
 
 export default function BeatForm({ token, beat }: Props) {
     const router  = useRouter();
@@ -238,37 +218,6 @@ export default function BeatForm({ token, beat }: Props) {
         }));
     }
 
-    function handleKmlFile(kmlText: string) {
-        const parsed = parseKml(kmlText);
-        if (parsed.length < 3) { setError('KML must contain a polygon with at least 3 points.'); return; }
-        cancelDrawing();
-        setCoords(parsed);
-        if (gmap.current) renderPolygon(gmap.current, parsed, color);
-    }
-
-    function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setError(null);
-
-        if (file.name.toLowerCase().endsWith('.kmz')) {
-            parseKmz(file)
-                .then(parsed => {
-                    if (parsed.length < 3) { setError('KMZ polygon must have at least 3 points.'); return; }
-                    cancelDrawing();
-                    setCoords(parsed);
-                    if (gmap.current) renderPolygon(gmap.current, parsed, color);
-                })
-                .catch(err => setError(err instanceof Error ? err.message : 'Failed to read KMZ file.'));
-        } else {
-            const reader = new FileReader();
-            reader.onload = ev => handleKmlFile(ev.target?.result as string);
-            reader.readAsText(file);
-        }
-
-        e.target.value = '';
-    }
-
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
@@ -360,10 +309,6 @@ export default function BeatForm({ token, beat }: Props) {
                                 </button>
                             </>
                         )}
-                        <label className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-blue-200 hover:border-blue-400 transition-colors">
-                            Import KML / KMZ
-                            <input type="file" accept=".kml,.kmz" className="hidden" onChange={handleFileImport} />
-                        </label>
                         {coords.length > 0 && !drawing && (
                             <button type="button" onClick={clearPolygon}
                                 className="text-xs font-medium text-red-600 px-2 py-1 rounded border border-red-200 hover:border-red-400 transition-colors">
@@ -379,7 +324,6 @@ export default function BeatForm({ token, beat }: Props) {
                             <p className="text-3xl mb-2">🗺️</p>
                             <p className="text-sm text-gray-400">Google Maps API key not configured.</p>
                             <p className="text-xs text-gray-400 mt-1">Set <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable map drawing.</p>
-                            <p className="text-xs text-gray-400 mt-1">You can still import a .kml or .kmz file above.</p>
                         </div>
                     </div>
                 ) : (
@@ -392,7 +336,7 @@ export default function BeatForm({ token, beat }: Props) {
                     </p>
                 )}
                 {!drawing && coords.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">Click <strong>Draw</strong> to place polygon vertices, or import a .kml / .kmz file.</p>
+                    <p className="text-xs text-gray-500 mt-1">Click <strong>Draw</strong> to place polygon vertices on the map.</p>
                 )}
             </div>
 

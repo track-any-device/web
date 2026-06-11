@@ -8,19 +8,20 @@ import BeatsMapView from './beats-map-view';
 
 export default function BeatsClient() {
     const { token } = useAuth();
-    const [beats, setBeats] = useState<Beat[]>([]);
+    const [beats,   setBeats]   = useState<Beat[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    function loadBeats() {
         if (!token) return;
-        const api = new ApiClient(token);
-        api.beats()
+        new ApiClient(token).beats()
             .then(res => setBeats(res.data))
             .catch(() => {})
             .finally(() => setLoading(false));
-    }, [token]);
+    }
+
+    useEffect(() => { loadBeats(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (loading) return <div className="p-8 text-sm text-gray-400">Loading…</div>;
 
-    return <BeatsMapView beats={beats} token={token!} />;
+    return <BeatsMapView beats={beats} token={token!} onImported={loadBeats} />;
 }

@@ -121,6 +121,10 @@ export class ApiClient {
         return this.patch<Device>(`/devices/${id}`, data);
     }
 
+    async unlinkDevice(id: number): Promise<void> {
+        await this.delete(`/devices/${id}`);
+    }
+
     async uploadDeviceImage(id: number, file: File): Promise<{ image_url: string }> {
         const url = `${API_URL}/api/my/devices/${id}/image`;
         const form = new FormData();

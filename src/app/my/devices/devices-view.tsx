@@ -134,6 +134,8 @@ export default function DevicesView({
     const [saving,          setSaving]          = useState(false);
     const [uploadingImage,  setUploadingImage]  = useState(false);
     const [beatAssigning,   setBeatAssigning]   = useState(false);
+    const [unlinkConfirm,   setUnlinkConfirm]   = useState(false);
+    const [unlinking,       setUnlinking]       = useState(false);
     const [drawerError,     setDrawerError]     = useState<string | null>(null);
     const [notifPrefs,      setNotifPrefs]      = useState<NotificationPreference[]>([]);
     const [notifLoading,    setNotifLoading]    = useState(false);
@@ -315,6 +317,7 @@ export default function DevicesView({
         setDrawerOpen(true);
         setDrawerError(null);
         setEditTab('info');
+        setUnlinkConfirm(false);
         document.getElementById(`device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, [devices]);
 
@@ -421,6 +424,25 @@ export default function DevicesView({
             setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, current_beat: null } : d));
             setDrawerDevice(prev => prev?.id === deviceId ? { ...prev, current_beat: null } : prev);
         } finally { setBeatAssigning(false); }
+    }
+
+    // ── Unlink device ─────────────────────────────────────────────────────────
+    async function unlinkDevice() {
+        if (!drawerDevice) return;
+        setUnlinking(true);
+        setDrawerError(null);
+        try {
+            await new ApiClient(token).unlinkDevice(drawerDevice.id);
+            setDevices(prev => prev.filter(d => d.id !== drawerDevice.id));
+            markersRef.current.get(drawerDevice.id)?.setMap?.(null);
+            markersRef.current.delete(drawerDevice.id);
+            closeDrawer();
+        } catch {
+            setDrawerError('Failed to unlink device. Please try again.');
+        } finally {
+            setUnlinking(false);
+            setUnlinkConfirm(false);
+        }
     }
 
     // ── Focus beat on map ─────────────────────────────────────────────────────
@@ -794,6 +816,31 @@ export default function DevicesView({
                                             <p className="text-xs font-medium">{drawerDevice.device_type.name}</p>
                                         </div>
                                     )}
+
+                                    {/* Unlink device */}
+                                    <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                                        {unlinkConfirm ? (
+                                            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-3 space-y-2">
+                                                <p className="text-xs font-medium text-red-700 dark:text-red-400">Remove this device from your account?</p>
+                                                <p className="text-[10px] text-red-600 dark:text-red-500">You can re-register it later using the device ID.</p>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setUnlinkConfirm(false)}
+                                                        className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                                        Cancel
+                                                    </button>
+                                                    <button onClick={unlinkDevice} disabled={unlinking}
+                                                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                                                        {unlinking ? 'Removing…' : 'Yes, remove'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => setUnlinkConfirm(true)}
+                                                className="w-full py-1.5 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                                Unlink Device
+                                            </button>
+                                        )}
+                                    </div>
                                 </>
                             )}
 

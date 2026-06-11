@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import type { Beat } from '@/lib/api-client';
+import ImportBeatsModal from './import-beats-modal';
 
-interface Props { beats: Beat[]; token: string }
+interface Props { beats: Beat[]; token: string; onImported: () => void; }
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -20,12 +21,13 @@ const STATUS_LABEL: Record<string, string> = {
     draft:    'Draft',
 };
 
-export default function BeatsMapView({ beats }: Props) {
+export default function BeatsMapView({ beats, token, onImported }: Props) {
     const mapRef      = useRef<HTMLDivElement>(null);
     const gmapRef     = useRef<google.maps.Map | null>(null);
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
-    const [selected,  setSelected]  = useState<number | null>(null);
-    const [mapsReady, setMapsReady] = useState(false);
+    const [selected,      setSelected]      = useState<number | null>(null);
+    const [mapsReady,     setMapsReady]     = useState(false);
+    const [showImport,    setShowImport]    = useState(false);
 
     // ── Load Maps API ─────────────────────────────────────────────────────
     useEffect(() => {
@@ -128,15 +130,25 @@ export default function BeatsMapView({ beats }: Props) {
             {/* ── Beat list ─────────────────────────────────────────── */}
             <div className="w-64 shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
 
-                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-800 dark:text-white">
-                        My Beats <span className="text-gray-400 font-normal text-xs">({beats.length})</span>
-                    </span>
-                    <Link href="/my/beats/create"
-                        className="text-xs font-semibold text-white px-2.5 py-1 rounded-lg"
-                        style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                        + New
-                    </Link>
+                <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-800 dark:text-white">
+                            My Beats <span className="text-gray-400 font-normal text-xs">({beats.length})</span>
+                        </span>
+                        <Link href="/my/beats/create"
+                            className="text-xs font-semibold text-white px-2.5 py-1 rounded-lg"
+                            style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
+                            + New
+                        </Link>
+                    </div>
+                    <button
+                        onClick={() => setShowImport(true)}
+                        className="w-full text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 hover:border-blue-400 rounded-lg px-2.5 py-1.5 transition-colors flex items-center justify-center gap-1.5">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Import KML / KMZ
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
@@ -214,6 +226,14 @@ export default function BeatsMapView({ beats }: Props) {
                     </button>
                 )}
             </div>
+
+            {showImport && (
+                <ImportBeatsModal
+                    token={token}
+                    onClose={() => setShowImport(false)}
+                    onImported={() => { setShowImport(false); onImported(); }}
+                />
+            )}
         </div>
     );
 }
