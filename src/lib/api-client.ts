@@ -189,6 +189,10 @@ export class ApiClient {
         return this.get<TenantSummary[]>('/tenants');
     }
 
+    async requestTenant(data: { org_name: string; message?: string }): Promise<{ message: string }> {
+        return this.post('/tenant-request', data);
+    }
+
     // ── Profile ──────────────────────────────────────────────────────────────
 
     async profile() {
