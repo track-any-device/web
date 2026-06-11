@@ -448,7 +448,7 @@ export default function DevicesView({
     }
 
     return (
-        <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="mx-auto flex w-full max-w-[1600px] h-[calc(100vh-4rem)] overflow-hidden">
 
             {/* ── LEFT: Devices / Beats tabs ──────────────────────────────── */}
             <div className="w-64 shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">

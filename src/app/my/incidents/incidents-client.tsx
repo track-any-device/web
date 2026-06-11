@@ -44,10 +44,10 @@ export default function IncidentsClient() {
             .finally(() => setLoading(false));
     }, [token, statusFilter]);
 
-    if (loading) return <div className="p-8 text-sm text-gray-400">Loading...</div>;
+    if (loading) return <div className="mx-auto max-w-4xl px-6 py-8 text-sm text-gray-400">Loading...</div>;
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Incidents ({total})</h1>
                 {/* Status filter tabs */}

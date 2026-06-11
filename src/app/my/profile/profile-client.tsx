@@ -30,7 +30,7 @@ export default function ProfileClient() {
     }, [token, authLoading, router]);
 
     if (authLoading || loading) {
-        return <div className="p-8 text-sm text-gray-400">Loading…</div>;
+        return <div className="mx-auto max-w-2xl px-6 py-8 text-sm text-gray-400">Loading…</div>;
     }
 
     const role  = profile?.role ?? (authUser as { role?: string } | null)?.role ?? 'user';
@@ -40,7 +40,7 @@ export default function ProfileClient() {
     const displayEmail = profile?.email ?? authUser?.email ?? '—';
 
     return (
-        <div className="p-8 max-w-2xl space-y-6">
+        <div className="mx-auto max-w-2xl px-6 py-8 space-y-6">
 
             {/* Header */}
             <div className="flex items-center justify-between">

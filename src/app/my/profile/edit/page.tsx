@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { ApiClient } from '@/lib/api-client';
 
 const TIMEZONES = [
     'UTC',
@@ -43,11 +44,8 @@ export default function EditProfilePage() {
 
     useEffect(() => {
         if (!token) return;
-        fetch('/api/my/profile', {
-            headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(r => r.ok ? r.json() : Promise.reject(r.status))
-            .then((data: ProfileData) => {
+        new ApiClient(token).profile()
+            .then((data) => {
                 setForm({
                     name:     data.name     ?? '',
                     email:    data.email    ?? '',
@@ -66,31 +64,23 @@ export default function EditProfilePage() {
         setSuccess(false);
 
         try {
-            const res = await fetch('/api/my/profile', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ name: form.name, phone: form.phone, timezone: form.timezone }),
+            await new ApiClient(token!).updateProfile({
+                name: form.name,
+                phone: form.phone,
+                timezone: form.timezone,
             });
-
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                setError(body.message ?? 'Failed to save changes. Please try again.');
-            } else {
-                setSuccess(true);
-                setTimeout(() => router.push('/my/profile'), 1200);
-            }
-        } catch {
-            setError('Network error — please check your connection.');
+            setSuccess(true);
+            setTimeout(() => router.push('/my/profile'), 1200);
+        } catch (err: unknown) {
+            const msg = (err as { message?: string })?.message;
+            setError(msg ?? 'Failed to save changes. Please try again.');
         } finally {
             setSaving(false);
         }
     }
 
     return (
-        <div className="p-8 max-w-lg space-y-6">
+        <div className="mx-auto max-w-lg px-6 py-8 space-y-6">
 
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -102,7 +92,7 @@ export default function EditProfilePage() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white -mt-2">Edit Profile</h1>
 
             {loading && (
-                <div className="text-center py-12 text-gray-400 text-sm">Loading profile…</div>
+                <div className="py-12 text-center text-sm text-gray-400">Loading profile…</div>
             )}
 
             {!loading && (
