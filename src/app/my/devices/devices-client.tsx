@@ -52,7 +52,7 @@ export default function DevicesClient() {
             <DevicesView
                 devices={deviceList}
                 incidents={incidents}
-                beats={beats}
+                initialBeats={beats}
                 token={token!}
                 realtimeConnected={connected}
                 onRegisterClick={() => setShowRegister(true)}

@@ -45,7 +45,7 @@ export default function BeatEditClient({ id }: { id: string }) {
         <div className="p-8 max-w-3xl space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <a href="/my/beats" className="text-xs text-blue-600 hover:underline">&larr; My Beats</a>
+                    <a href="/my/devices" className="text-xs text-blue-600 hover:underline">&larr; My Devices</a>
                     <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{beat.name}</h1>
                     {beat.description && (
                         <p className="text-sm text-gray-500 mt-0.5">{beat.description}</p>

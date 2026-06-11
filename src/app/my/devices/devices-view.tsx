@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Pencil, Check, Bell, BellOff, Plus, Camera } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
+import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     devicePinColor,
     deviceArrowUrl,
@@ -14,7 +15,7 @@ import {
 interface Props {
     devices:            Device[];
     incidents:          Incident[];
-    beats:              Beat[];
+    initialBeats:       Beat[];
     token:              string;
     realtimeConnected?: boolean;
     onRegisterClick:    () => void;
@@ -114,16 +115,18 @@ function makeSelectedMarkerElement(device: Device): HTMLElement {
 export default function DevicesView({
     devices: incomingDevices,
     incidents,
-    beats,
+    initialBeats,
     token,
     realtimeConnected,
     onRegisterClick,
 }: Props) {
     const [devices,         setDevices]         = useState<Device[]>(incomingDevices);
+    const [beats,           setBeats]           = useState<Beat[]>(initialBeats);
     const [activeTab,       setActiveTab]       = useState<'devices' | 'beats'>('devices');
     const [selectedDev,     setSelectedDev]     = useState<number | null>(null);
     const [selectedBeat,    setSelectedBeat]    = useState<number | null>(null);
     const [mapsReady,       setMapsReady]       = useState(false);
+    const [showImport,      setShowImport]      = useState(false);
 
     // Device drawer state
     const [drawerOpen,      setDrawerOpen]      = useState(false);
@@ -445,6 +448,13 @@ export default function DevicesView({
         }
     }
 
+    // ── Reload beats (after import) ───────────────────────────────────────────
+    function loadBeats() {
+        new ApiClient(token).beats()
+            .then(res => setBeats(res.data))
+            .catch(() => {});
+    }
+
     // ── Focus beat on map ─────────────────────────────────────────────────────
     function focusBeat(id: number) {
         polysRef.current.forEach((p, pid) => {
@@ -581,12 +591,19 @@ export default function DevicesView({
                         </button>
                     ))}
 
-                    <div className="mt-auto p-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
+                    <div className="mt-auto p-3 border-t border-gray-100 dark:border-gray-800 shrink-0 space-y-1.5">
                         <a href="/my/beats/create"
                             className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 py-2 rounded-lg border border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                             <Plus className="w-3.5 h-3.5" />
                             Create Beat
                         </a>
+                        <button onClick={() => setShowImport(true)}
+                            className="w-full flex items-center justify-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 py-2 rounded-lg border border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Import KML / KMZ
+                        </button>
                     </div>
                 </div>
             </div>
@@ -677,6 +694,14 @@ export default function DevicesView({
                     ))}
                 </div>
             </div>
+
+            {showImport && (
+                <ImportBeatsModal
+                    token={token}
+                    onClose={() => setShowImport(false)}
+                    onImported={() => { setShowImport(false); loadBeats(); }}
+                />
+            )}
 
             {/* ── Device detail drawer (slides over the right incidents panel) */}
             {drawerOpen && (

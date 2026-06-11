@@ -22,9 +22,9 @@ export default function BeatCreateClient() {
     return (
         <div className="p-8 max-w-3xl space-y-6">
             <div>
-                <a href="/my/beats" className="text-xs text-blue-600 hover:underline">&larr; My Beats</a>
+                <a href="/my/devices" className="text-xs text-blue-600 hover:underline">&larr; My Devices</a>
                 <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">New Beat</h1>
-                <p className="text-sm text-gray-500 mt-0.5">Draw a geofence polygon on the map or import a .kml file.</p>
+                <p className="text-sm text-gray-500 mt-0.5">Draw a geofence polygon on the map.</p>
             </div>
 
             <BeatForm token={token} />
