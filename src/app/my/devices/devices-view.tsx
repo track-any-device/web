@@ -148,6 +148,7 @@ export default function DevicesView({
     const gmapRef     = useRef<google.maps.Map | null>(null);
     const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; position?: { lat: number; lng: number } }>>(new Map());
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
+    const beatsRef    = useRef<Beat[]>(initialBeats);
 
     // ── Filtered incidents ────────────────────────────────────────────────────
     const visibleIncidents = incidents.filter(i => {
@@ -255,6 +256,14 @@ export default function DevicesView({
                 const marker = createAdvancedMarker(map, device, isSelected);
                 marker.addListener?.('click', () => openDevice(device.id));
                 markersRef.current.set(device.id, marker);
+            }
+
+            // Follow selected device — pan when it moves outside the visible area
+            if (isSelected && !isNaN(lat) && !isNaN(lng)) {
+                const bounds = map.getBounds();
+                if (!bounds || !bounds.contains({ lat, lng })) {
+                    map.panTo({ lat, lng });
+                }
             }
         });
     }, [devices, selectedDev, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -409,6 +418,47 @@ export default function DevicesView({
         ));
     }
 
+    // Keep beatsRef current so polygon click listeners always see the latest beats
+    useEffect(() => { beatsRef.current = beats; }, [beats]);
+
+    // ── Sync beat polygons when beats state changes (e.g. after import) ──────
+    useEffect(() => {
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+
+        const beatIds = new Set(beats.map(b => b.id));
+
+        // Remove polygons for beats that no longer exist
+        polysRef.current.forEach((poly, id) => {
+            if (!beatIds.has(id)) {
+                poly.setMap(null);
+                polysRef.current.delete(id);
+            }
+        });
+
+        // Add polygons for newly added beats
+        const newBeats = beats.filter(b => !polysRef.current.has(b.id) && (b.coordinates?.length ?? 0) > 0);
+        newBeats.forEach(beat => {
+            const poly = new google.maps.Polygon({
+                paths:        beat.coordinates,
+                fillColor:    beat.color ?? '#2563eb',
+                fillOpacity:  0.15,
+                strokeColor:  beat.color ?? '#2563eb',
+                strokeWeight: 2,
+                map,
+            });
+            polysRef.current.set(beat.id, poly);
+            poly.addListener('click', () => focusBeat(beat.id));
+        });
+
+        // Pan to newly added beats
+        if (newBeats.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            newBeats.forEach(beat => beat.coordinates.forEach(v => bounds.extend(v)));
+            map.fitBounds(bounds, 80);
+        }
+    }, [beats, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ── Beat operations ───────────────────────────────────────────────────────
     async function assignBeat(deviceId: number, beatId: number) {
         setBeatAssigning(true);
@@ -457,14 +507,15 @@ export default function DevicesView({
 
     // ── Focus beat on map ─────────────────────────────────────────────────────
     function focusBeat(id: number) {
+        const currentBeats = beatsRef.current;
         polysRef.current.forEach((p, pid) => {
-            const b = beats.find(x => x.id === pid);
+            const b = currentBeats.find(x => x.id === pid);
             p.setOptions({ fillOpacity: 0.15, strokeWeight: 2, strokeColor: b?.color ?? '#2563eb', fillColor: b?.color ?? '#2563eb', zIndex: 1 });
         });
         const poly = polysRef.current.get(id);
         if (poly) poly.setOptions({ fillOpacity: 0.35, strokeWeight: 3, zIndex: 10 });
 
-        const beat = beats.find(b => b.id === id);
+        const beat = currentBeats.find(b => b.id === id);
         const m    = gmapRef.current;
         if (beat?.coordinates?.length && m) {
             const b = new google.maps.LatLngBounds();

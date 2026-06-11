@@ -230,9 +230,18 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
         polysRef.current.clear();
 
         try {
-            const beats = file.name.toLowerCase().endsWith('.kmz')
-                ? await parseKmzBeats(file)
-                : parseKmlBeats(await file.text());
+            const isKmz  = file.name.toLowerCase().endsWith('.kmz');
+            const kmlText = isKmz ? null : await file.text();
+            const beats   = isKmz ? await parseKmzBeats(file) : parseKmlBeats(kmlText!);
+
+            console.log('[KML import] file:', file.name, '| beats found:', beats.length);
+            console.log('[KML import] parsed beats:', beats.map(b => ({ name: b.name, points: b.coordinates.length })));
+            if (kmlText) {
+                const doc = new DOMParser().parseFromString(kmlText, 'text/xml');
+                Array.from(doc.querySelectorAll('Placemark')).forEach((pm, i) => {
+                    console.log(`[KML import] Placemark[${i}] raw:`, pm.outerHTML);
+                });
+            }
 
             if (beats.length === 0) {
                 setParseError('No valid polygons found. Make sure the file contains at least one Placemark with a polygon.');

@@ -346,7 +346,7 @@ export default function BeatForm({ token, beat }: Props) {
                     style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
                     {saving ? 'Saving…' : beat ? 'Update Beat' : 'Create Beat'}
                 </button>
-                <a href="/my/beats" className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</a>
+                <a href="/my/devices" className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</a>
             </div>
         </form>
     );
