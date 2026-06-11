@@ -56,6 +56,14 @@ const SECTION_2: DocCardProps[] = [
 
 const SECTION_3: DocCardProps[] = [
     {
+        title:       'My Portal API',
+        description: 'Register devices, upload photos, manage notification preferences per event type, draw beats, and filter incidents — all scoped to the authenticated end user.',
+        href:        '/docs/api/my',
+        audience:    'App & integration developers',
+        icon:        'Code',
+        tone:        'accent',
+    },
+    {
         title:       'Tenant API',
         description: 'REST endpoints, machine API key authentication, and real-time WebSocket channels for building custom tenant integrations and dashboards.',
         href:        '/docs/tenant-api',
@@ -125,7 +133,7 @@ export default function DocsIndex() {
                     title="API Reference"
                     description="Technical reference for developers building on top of the platform."
                 />
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {SECTION_3.map(d => <DocCard key={d.href} {...d} />)}
                 </div>
             </section>
