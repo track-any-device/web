@@ -9,6 +9,9 @@ interface Props { token: string; beat?: BeatDetail }
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const API_URL  = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.track-any-device.com';
 
+// Pixels within which clicking near the first vertex auto-closes the polygon
+const SNAP_PX = 20;
+
 function parseKml(kml: string): LatLng[] {
     const doc     = new DOMParser().parseFromString(kml, 'text/xml');
     const coordEl = doc.querySelector('Polygon coordinates, LinearRing coordinates, coordinates');
@@ -19,6 +22,17 @@ function parseKml(kml: string): LatLng[] {
     }).filter(p => !isNaN(p.lat) && !isNaN(p.lng));
 }
 
+async function parseKmz(file: File): Promise<LatLng[]> {
+    // Dynamically import jszip so it doesn't bloat the main bundle
+    const JSZip = (await import('jszip')).default;
+    const zip   = await JSZip.loadAsync(file);
+    // Find the first .kml entry inside the archive
+    const kmlEntry = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith('.kml'));
+    if (!kmlEntry) throw new Error('No .kml file found inside the .kmz archive.');
+    const kmlText = await kmlEntry.async('string');
+    return parseKml(kmlText);
+}
+
 export default function BeatForm({ token, beat }: Props) {
     const router  = useRouter();
     const mapRef  = useRef<HTMLDivElement>(null);
@@ -26,8 +40,10 @@ export default function BeatForm({ token, beat }: Props) {
     const poly    = useRef<google.maps.Polygon | null>(null);
     const preview = useRef<google.maps.Polyline | null>(null);
     const markers = useRef<google.maps.Marker[]>([]);
-    const clickListener = useRef<google.maps.MapsEventListener | null>(null);
+    const clickListener    = useRef<google.maps.MapsEventListener | null>(null);
     const dblClickListener = useRef<google.maps.MapsEventListener | null>(null);
+    // Timestamp of last dblclick — used to swallow the spurious click that fires just before it
+    const lastDblClick     = useRef<number>(0);
 
     const [name,        setName]        = useState(beat?.name ?? '');
     const [description, setDescription] = useState(beat?.description ?? '');
@@ -39,7 +55,11 @@ export default function BeatForm({ token, beat }: Props) {
     const [saving,      setSaving]      = useState(false);
     const [error,       setError]       = useState<string | null>(null);
 
-    // ── Load Maps API (no libraries needed) ──────────────────────────────
+    // Keep a ref of tempPts so event handlers always see the latest value
+    const tempPtsRef = useRef<LatLng[]>([]);
+    useEffect(() => { tempPtsRef.current = tempPts; }, [tempPts]);
+
+    // ── Load Maps API ─────────────────────────────────────────────────────────
     useEffect(() => {
         if (typeof google !== 'undefined') { setMapsReady(true); return; }
         if (!MAPS_KEY) return;
@@ -50,12 +70,12 @@ export default function BeatForm({ token, beat }: Props) {
         document.head.appendChild(s);
     }, []);
 
-    // ── Init map ──────────────────────────────────────────────────────────
+    // ── Init map ──────────────────────────────────────────────────────────────
     const initMap = useCallback(() => {
         if (!mapRef.current || gmap.current) return;
         const center = coords.length > 0 ? coords[0] : { lat: 31.5204, lng: 74.3587 };
         const map = new google.maps.Map(mapRef.current, {
-            center, zoom: coords.length > 0 ? 13 : 10, mapTypeId: 'roadmap',
+            center, zoom: coords.length > 0 ? 13 : 10,
             disableDoubleClickZoom: true,
         });
         gmap.current = map;
@@ -64,13 +84,12 @@ export default function BeatForm({ token, beat }: Props) {
 
     useEffect(() => { if (mapsReady) initMap(); }, [mapsReady, initMap]);
 
-    // ── Drawing mode ──────────────────────────────────────────────────────
+    // ── Drawing mode ──────────────────────────────────────────────────────────
     useEffect(() => {
         const map = gmap.current;
         if (!map) return;
 
-        // Clean up previous listeners
-        clickListener.current && google.maps.event.removeListener(clickListener.current);
+        clickListener.current    && google.maps.event.removeListener(clickListener.current);
         dblClickListener.current && google.maps.event.removeListener(dblClickListener.current);
 
         if (!drawing) {
@@ -82,7 +101,36 @@ export default function BeatForm({ token, beat }: Props) {
 
         clickListener.current = map.addListener('click', (e: google.maps.MapMouseEvent) => {
             if (!e.latLng) return;
-            const pt = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+
+            // Ignore this click if it fired within 300 ms of the last dblclick
+            // (Google Maps fires click → dblclick in quick succession; the click
+            //  would add an unwanted extra vertex right before finishing the polygon)
+            if (Date.now() - lastDblClick.current < 300) return;
+
+            const pt      = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+            const current = tempPtsRef.current;
+
+            // Snap-to-first: if ≥ 3 points already and click is near the first vertex, close
+            if (current.length >= 3 && map) {
+                const first    = current[0];
+                const proj     = map.getProjection();
+                const zoom     = map.getZoom() ?? 10;
+                const scale    = Math.pow(2, zoom);
+                if (proj) {
+                    const fp   = proj.fromLatLngToPoint(new google.maps.LatLng(first.lat, first.lng));
+                    const cp   = proj.fromLatLngToPoint(new google.maps.LatLng(pt.lat, pt.lng));
+                    if (fp && cp) {
+                        const dx   = (fp.x - cp.x) * scale;
+                        const dy   = (fp.y - cp.y) * scale;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < SNAP_PX) {
+                            finishDrawing(current);
+                            setTempPts([]);
+                            return;
+                        }
+                    }
+                }
+            }
 
             setTempPts(prev => {
                 const next = [...prev, pt];
@@ -93,20 +141,21 @@ export default function BeatForm({ token, beat }: Props) {
 
         dblClickListener.current = map.addListener('dblclick', (e: google.maps.MapMouseEvent) => {
             if (!e.latLng) return;
-            setTempPts(prev => {
-                if (prev.length >= 3) { finishDrawing(prev); return []; }
-                return prev;
-            });
+            lastDblClick.current = Date.now();  // record timestamp to suppress the preceding click
+            const pts = tempPtsRef.current;
+            if (pts.length >= 3) {
+                finishDrawing(pts);
+                setTempPts([]);
+            }
         });
 
         return () => {
-            clickListener.current && google.maps.event.removeListener(clickListener.current);
+            clickListener.current    && google.maps.event.removeListener(clickListener.current);
             dblClickListener.current && google.maps.event.removeListener(dblClickListener.current);
         };
     }, [drawing, color]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function updatePreview(map: google.maps.Map, pts: LatLng[], hex: string) {
-        // Update vertex markers
         markers.current.forEach(m => m.setMap(null));
         markers.current = pts.map((pt, i) => new google.maps.Marker({
             position: pt, map,
@@ -119,12 +168,13 @@ export default function BeatForm({ token, beat }: Props) {
             zIndex: 10,
         }));
 
-        // Update preview polyline
         preview.current?.setMap(null);
         if (pts.length >= 2) {
+            // Close the preview line back to the first point to hint at snap
+            const pathWithClose = pts.length >= 3 ? [...pts, pts[0]] : pts;
             preview.current = new google.maps.Polyline({
-                path: pts, map,
-                strokeColor: hex, strokeWeight: 2, strokeOpacity: 0.8,
+                path: pathWithClose, map,
+                strokeColor: hex, strokeWeight: 2, strokeOpacity: 0.7,
             });
         }
     }
@@ -133,7 +183,6 @@ export default function BeatForm({ token, beat }: Props) {
         const map = gmap.current;
         if (!map || pts.length < 3) return;
 
-        // Clear preview
         markers.current.forEach(m => m.setMap(null));
         markers.current = [];
         preview.current?.setMap(null);
@@ -189,18 +238,34 @@ export default function BeatForm({ token, beat }: Props) {
         }));
     }
 
-    function handleKml(e: React.ChangeEvent<HTMLInputElement>) {
+    function handleKmlFile(kmlText: string) {
+        const parsed = parseKml(kmlText);
+        if (parsed.length < 3) { setError('KML must contain a polygon with at least 3 points.'); return; }
+        cancelDrawing();
+        setCoords(parsed);
+        if (gmap.current) renderPolygon(gmap.current, parsed, color);
+    }
+
+    function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-            const parsed = parseKml(ev.target?.result as string);
-            if (parsed.length < 3) { setError('KML must contain a polygon with at least 3 points.'); return; }
-            cancelDrawing();
-            setCoords(parsed);
-            if (gmap.current) renderPolygon(gmap.current, parsed, color);
-        };
-        reader.readAsText(file);
+        setError(null);
+
+        if (file.name.toLowerCase().endsWith('.kmz')) {
+            parseKmz(file)
+                .then(parsed => {
+                    if (parsed.length < 3) { setError('KMZ polygon must have at least 3 points.'); return; }
+                    cancelDrawing();
+                    setCoords(parsed);
+                    if (gmap.current) renderPolygon(gmap.current, parsed, color);
+                })
+                .catch(err => setError(err instanceof Error ? err.message : 'Failed to read KMZ file.'));
+        } else {
+            const reader = new FileReader();
+            reader.onload = ev => handleKmlFile(ev.target?.result as string);
+            reader.readAsText(file);
+        }
+
         e.target.value = '';
     }
 
@@ -211,10 +276,20 @@ export default function BeatForm({ token, beat }: Props) {
         if (coords.length < 3) { setError('Draw a polygon with at least 3 points.'); return; }
         setSaving(true);
         try {
-            const payload = { name: name.trim(), description: description.trim() || undefined, geo_fence_type: 'polygon' as const, color, coordinates: coords };
+            const payload = {
+                name: name.trim(),
+                description: description.trim() || undefined,
+                geo_fence_type: 'polygon' as const,
+                color,
+                coordinates: coords,
+            };
             const res = await fetch(
                 beat ? `${API_URL}/api/my/beats/${beat.id}` : `${API_URL}/api/my/beats`,
-                { method: beat ? 'PUT' : 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(payload) },
+                {
+                    method: beat ? 'PUT' : 'POST',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify(payload),
+                },
             );
             if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b?.message ?? `${res.status}`); }
             const saved = await res.json();
@@ -286,8 +361,8 @@ export default function BeatForm({ token, beat }: Props) {
                             </>
                         )}
                         <label className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-blue-200 hover:border-blue-400 transition-colors">
-                            Import KML
-                            <input type="file" accept=".kml" className="hidden" onChange={handleKml} />
+                            Import KML / KMZ
+                            <input type="file" accept=".kml,.kmz" className="hidden" onChange={handleFileImport} />
                         </label>
                         {coords.length > 0 && !drawing && (
                             <button type="button" onClick={clearPolygon}
@@ -304,7 +379,7 @@ export default function BeatForm({ token, beat }: Props) {
                             <p className="text-3xl mb-2">🗺️</p>
                             <p className="text-sm text-gray-400">Google Maps API key not configured.</p>
                             <p className="text-xs text-gray-400 mt-1">Set <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable map drawing.</p>
-                            <p className="text-xs text-gray-400 mt-1">You can still import a .kml file above.</p>
+                            <p className="text-xs text-gray-400 mt-1">You can still import a .kml or .kmz file above.</p>
                         </div>
                     </div>
                 ) : (
@@ -312,10 +387,12 @@ export default function BeatForm({ token, beat }: Props) {
                 )}
 
                 {drawing && (
-                    <p className="text-xs text-orange-600 mt-1">Click to place vertices · Double-click to finish · Minimum 3 points</p>
+                    <p className="text-xs text-orange-600 mt-1">
+                        Click to place vertices · Double-click or click near the first point to finish · Minimum 3 points
+                    </p>
                 )}
                 {!drawing && coords.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">Click <strong>Draw</strong> to place polygon vertices on the map, or import a .kml file.</p>
+                    <p className="text-xs text-gray-500 mt-1">Click <strong>Draw</strong> to place polygon vertices, or import a .kml / .kmz file.</p>
                 )}
             </div>
 
