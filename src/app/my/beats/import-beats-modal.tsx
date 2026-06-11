@@ -443,20 +443,6 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                                 </div>
                             )}
 
-                            {/* Progress */}
-                            {importing && progress && (
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-xs text-gray-500">
-                                        <span>Importing…</span>
-                                        <span>{progress.done} / {progress.total}</span>
-                                    </div>
-                                    <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                            style={{ width: `${(progress.done / progress.total) * 100}%` }} />
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Results */}
                             {allDone && (
                                 <div className="space-y-3">
@@ -482,8 +468,23 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                             )}
                         </div>
 
-                        {/* Footer buttons */}
-                        <div className="shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                        {/* Footer */}
+                        <div className="shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                            {/* Progress bar — always visible while importing */}
+                            {importing && progress && (
+                                <div>
+                                    <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                                        <span>Importing beat {progress.done + (progress.done < progress.total ? 1 : 0)} of {progress.total}…</span>
+                                        <span className="font-medium text-blue-600">{Math.round((progress.done / progress.total) * 100)}%</span>
+                                    </div>
+                                    <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-blue-500 rounded-full transition-all duration-200"
+                                            style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action buttons */}
                             {allDone ? (
                                 <button onClick={onClose}
                                     className="w-full py-2 rounded-lg text-sm font-semibold text-white"
@@ -492,8 +493,8 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <button onClick={onClose}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                    <button onClick={onClose} disabled={importing}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors">
                                         Cancel
                                     </button>
                                     <button onClick={handleImport}
