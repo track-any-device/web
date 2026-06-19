@@ -1,0 +1,9 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TAD-PAK app icon">
+  <rect width="64" height="64" rx="15" fill="#FBFAF7"></rect>
+  <g transform="translate(11 8) scale(0.66)">
+    <path d="M32 3.5C18.2 3.5 7 14.4 7 28.2c0 9.1 6.9 18.7 12.8 25.3a86 86 0 0 0 10.6 9.9c.9.7 2.3.7 3.2 0a86 86 0 0 0 10.6-9.9C50.1 46.9 57 37.3 57 28.2 57 14.4 45.8 3.5 32 3.5Z" fill="#01411C"></path>
+    <circle cx="29.5" cy="27" r="12" fill="#fff"></circle>
+    <circle cx="35.8" cy="23.2" r="9.8" fill="#01411C"></circle>
+    <path d="M41 12.6 42.27 16.3 46.18 16.37 43.06 18.74 44.22 22.5 41 20.27 37.78 22.5 38.94 18.74 35.82 16.37 39.73 16.3Z" fill="#fff"></path>
+  </g>
+</svg>
