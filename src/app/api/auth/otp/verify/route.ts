@@ -3,13 +3,13 @@ import { AUTH_API, SESSION_COOKIE, encodeSession } from '@/lib/auth'
 
 export const runtime = 'edge'
 
-/** BFF: email + password login against app; stores the Sanctum token in the tad_session cookie. */
+/** BFF: verify SMS-OTP with app, then store the Sanctum token in the httpOnly tad_session cookie. */
 export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
-    const res = await fetch(`${AUTH_API}/login`, {
+    const res = await fetch(`${AUTH_API}/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: body.email, password: body.password, device_name: 'web' }),
+        body: JSON.stringify({ phone: body.phone, otp: body.otp, device_name: 'web' }),
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return NextResponse.json(data, { status: res.status })
