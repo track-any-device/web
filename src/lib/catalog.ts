@@ -1,5 +1,5 @@
 import { sanityFetch } from './sanity';
-import { PRODUCTS, type Product } from '@/app/tad-preview/_products';
+import { PRODUCTS, type Product } from '@/lib/products';
 
 /* Catalog data access — reads the DeviceType catalog from Sanity (server-side), with a graceful
    fallback to the local placeholder list until Sanity read access is wired (viewer token / public). */

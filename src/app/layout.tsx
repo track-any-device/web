@@ -1,120 +1,21 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { AppLogo } from '@trackany-device/components';
-import NavAuth from '@/components/nav-auth';
 
 export const runtime = 'edge';
 
 export const metadata: Metadata = {
-  title: { default: 'Track Any Device', template: '%s — Track Any Device' },
-  description: 'Real-time IoT fleet tracking platform — GPS trackers, sensors, compute boards.',
+  title: { default: 'TAD-PAK — Track Any Device', template: '%s — TAD-PAK' },
+  description: 'Real-time GPS tracking for cars, bikes, and people across Pakistan.',
 };
 
-const NAV = [
-  { label: 'Home',      href: '/'          },
-  { label: 'Shop',      href: '/shop'      },
-  { label: 'Solutions', href: '/solutions' },
-  { label: 'Support',   href: '/support'   },
-];
-
-const FOOTER_COLS = [
-  {
-    heading: 'Platform',
-    links: [
-      { l: 'Products',  h: '/products'  },
-      { l: 'Solutions', h: '/solutions' },
-      { l: 'Sensors',   h: '/sensors'   },
-    ],
-  },
-  {
-    heading: 'Hardware',
-    links: [
-      { l: 'Products',       h: '/shop'       },
-      { l: 'Chips',          h: '/chips'      },
-      { l: 'Compute Boards', h: '/components' },
-      { l: 'Accessories',    h: '/shop#accessories' },
-    ],
-  },
-  {
-    heading: 'Support',
-    links: [
-      { l: 'Contact',        h: '/support'    },
-      { l: 'Documentation',  h: '/docs'       },
-    ],
-  },
-];
-
+/**
+ * Minimal root shell. Chrome is owned per-section: marketing pages wrap themselves in
+ * `SiteShell`, account/auth pages in `AuthLayout`, and `/my` has its own portal layout.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" data-theme="default">
-      <body className="min-h-screen bg-background text-foreground">
-
-        {/* ── Navigation ── */}
-        <header className="nav-blur sticky top-0 z-50 border-b border-border bg-background/90">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-6">
-
-            {/* Logo */}
-            <a href="/" className="flex items-center gap-2.5 shrink-0">
-              <AppLogo src="/logo.png" alt="Track Any Device" className="h-8" />
-            </a>
-
-            {/* Nav links */}
-            <nav className="hidden lg:flex items-center gap-1">
-              {NAV.map(n => (
-                <a key={n.href} href={n.href}
-                  className="px-3 py-1.5 text-sm font-medium transition-colors nav-link">
-                  {n.label}
-                </a>
-              ))}
-            </nav>
-
-            {/* Auth / CTA */}
-            <div className="shrink-0">
-              <NavAuth />
-            </div>
-          </div>
-        </header>
-
-        {/* ── Page content ── */}
-        <main>{children}</main>
-
-        {/* ── Footer ── */}
-        <footer className="mt-24 border-t border-border py-12 bg-muted/30">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 mb-10">
-              <div className="sm:col-span-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <AppLogo src="/logo.png" alt="Track Any Device" className="h-7" />
-                  <span className="font-semibold text-sm gradient-text">Track Any Device</span>
-                </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Real-time IoT fleet tracking for enterprise, government, and field teams.
-                </p>
-              </div>
-              {FOOTER_COLS.map(col => (
-                <div key={col.heading}>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-3 text-muted-foreground">{col.heading}</p>
-                  <ul className="space-y-2">
-                    {col.links.map(({ l, h }) => (
-                      <li key={h}>
-                        <a href={h} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{l}</a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <div className="pt-6 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-              <span>&copy; {new Date().getFullYear()} Track Any Device. All rights reserved.</span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot" />
-                All systems operational
-              </span>
-            </div>
-          </div>
-        </footer>
-
-      </body>
+      <body className="min-h-screen bg-background text-foreground">{children}</body>
     </html>
   );
 }

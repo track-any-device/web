@@ -2,7 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Input, Button, Card, Badge } from '@/components/ui';
-import { PRODUCTS } from '../_products';
+import { PRODUCTS } from '@/lib/products';
 
 /* Cash-on-Delivery checkout (PKR). Placeholder cart = first catalog item + its 1-year subscription. */
 
