@@ -1,17 +1,18 @@
-import { SESSION_COOKIE } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import { AUTH_API, SESSION_COOKIE, getSession } from '@/lib/auth'
 
 export const runtime = 'edge'
 
-export async function GET() {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
-<script>
-try{localStorage.removeItem('tad_token');localStorage.removeItem('tad_user')}catch(e){}
-location.replace('/');
-</script></body></html>`
-
-    const res = new Response(html, {
-        headers: { 'Content-Type': 'text/html;charset=utf-8', 'Cache-Control': 'no-store' },
-    })
-    res.headers.append('Set-Cookie', `${SESSION_COOKIE}=; Path=/; Max-Age=0`)
+/** BFF: revoke the token at app and clear the tad_session cookie. */
+export async function POST() {
+    const session = await getSession()
+    if (session?.token) {
+        await fetch(`${AUTH_API}/logout`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${session.token}`, Accept: 'application/json' },
+        }).catch(() => {})
+    }
+    const res = NextResponse.json({ status: 'logged_out' })
+    res.cookies.delete(SESSION_COOKIE)
     return res
 }

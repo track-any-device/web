@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const REDIRECT_COOKIE = 'tad_redirect'
+// Cookie name is duplicated from lib/auth (middleware can't import next/headers).
+const SESSION_COOKIE = 'tad_session'
 
 export function middleware(req: NextRequest) {
-    const res = NextResponse.redirect(new URL('/api/auth/login', req.url))
-    res.cookies.set(REDIRECT_COOKIE, req.nextUrl.pathname, {
-        httpOnly: true,
-        secure:   process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge:   300,
-        path:     '/',
-    })
-    return res
+    if (!req.cookies.has(SESSION_COOKIE)) {
+        const url = new URL('/account', req.url)
+        url.searchParams.set('next', req.nextUrl.pathname)
+        return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
 }
 
 export const config = {
-    matcher: [],
+    matcher: ['/my/:path*'],
 }
