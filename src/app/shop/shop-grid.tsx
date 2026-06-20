@@ -2,7 +2,7 @@
 import React from 'react';
 import { Tabs } from '@/components/ui';
 import { ProductCard } from '@/components/tad/marketing';
-import type { Product } from '../_products';
+import type { Product } from '@/lib/products';
 
 const CATS = [
   { value: 'all', label: 'All' },
@@ -18,7 +18,7 @@ export function ShopGrid({ products }: { products: Product[] }) {
     <div style={{ display: 'grid', gap: 'var(--space-6)' }}>
       <Tabs variant="pill" value={cat} onChange={setCat} items={CATS} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
-        {items.map((p) => <ProductCard key={p.name} {...p} href="/tad-preview/product" />)}
+        {items.map((p) => <ProductCard key={p.name} {...p} href={`/products/${p.slug}`} />)}
       </div>
     </div>
   );
