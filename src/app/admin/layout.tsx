@@ -1,5 +1,8 @@
 import React from 'react';
+import { redirect } from 'next/navigation';
 import { PortalSidebar, type PortalNavItem } from '@/components/tad/portal-shell';
+import { getSession } from '@/lib/auth';
+import { ADMIN_ROLES, type Role } from '@/lib/portal-data';
 
 const ADMIN_NAV: PortalNavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: 'grid', exact: true },
@@ -7,14 +10,18 @@ const ADMIN_NAV: PortalNavItem[] = [
   { href: '/admin/organisations', label: 'Organisations', icon: 'building' },
   { href: '/admin/devices', label: 'Devices', icon: 'cpu' },
   { href: '/admin/device-types', label: 'Device types', icon: 'tag' },
-  { href: '/admin/incidents', label: 'Incidents', icon: 'alert', badge: 2 },
+  { href: '/admin/incidents', label: 'Incidents', icon: 'alert' },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession();
+  const role = String(session?.user?.role ?? '');
+  if (!ADMIN_ROLES.includes(role as Role)) redirect('/my');
+  const name = String(session?.user?.name ?? 'Admin');
   return (
     <div className="tad">
       <div className="tad-portal">
-        <PortalSidebar nav={ADMIN_NAV} user={{ name: 'Ayesha Khan', role: 'Admin', initials: 'AK' }} />
+        <PortalSidebar nav={ADMIN_NAV} user={{ name, role: 'Admin', initials: name.slice(0, 2).toUpperCase() }} />
         <main className="tad-portal__main">{children}</main>
       </div>
     </div>
