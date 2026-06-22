@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
     const data = await res.json().catch(() => ({}))
     if (!res.ok) return NextResponse.json(data, { status: res.status })
 
-    const response = NextResponse.json({ user: data.user })
+    // Return the token too: the /my portal is client-driven (auth-store/localStorage →
+    // ApiClient Bearer). The httpOnly cookie gates middleware; the token drives client calls.
+    const response = NextResponse.json({ user: data.user, token: data.token })
     response.cookies.set(SESSION_COOKIE, encodeSession({ token: data.token, user: data.user }), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
