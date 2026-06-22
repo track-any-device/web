@@ -335,3 +335,39 @@
   .tad-shell__nav{ display:none; }
   .tad-footer__cols{ grid-template-columns:1fr 1fr; }
 }
+
+/* ── Internal portal chrome (operations + admin) ───────────────────────── */
+.tad .tad-portal { display: flex; height: 100vh; background: var(--bg); }
+.tad-portal__sidebar {
+  width: var(--sidebar-w, 248px); flex: none; height: 100%; box-sizing: border-box;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 18px 14px;
+}
+.tad-portal__nav-item {
+  position: relative; display: flex; align-items: center; gap: 11px; width: 100%;
+  padding: 10px 12px; border: none; cursor: pointer; border-radius: var(--radius-md);
+  font-family: var(--font-body); font-size: var(--text-base); font-weight: 500;
+  color: var(--text-secondary); background: transparent; text-align: left;
+  text-decoration: none; transition: var(--transition-colors, color .15s, background .15s);
+}
+.tad-portal__nav-item:hover { color: var(--text); background: var(--surface-hover); }
+.tad-portal__nav-item.is-active { color: var(--brand-on-subtle, var(--brand)); background: var(--brand-subtle); font-weight: 700; }
+.tad-portal__nav-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tad-portal__nav-badge { min-width: 19px; height: 19px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
+.tad-portal__user { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border-subtle); padding: 12px 8px 2px; margin-top: 8px; }
+.tad-portal__avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #0A4D26, #2E8455); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 12px; font-family: var(--font-display); flex: none; }
+.tad-portal__main { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
+.tad-portal__topbar {
+  height: var(--topbar-h, 60px); flex: none; box-sizing: border-box; display: flex;
+  align-items: center; justify-content: space-between; padding: 0 22px;
+  border-bottom: 1px solid var(--border); background: var(--surface);
+  position: sticky; top: 0; z-index: 10;
+}
+.tad-portal__body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); }
+/* simple data table */
+.tad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tad-table th { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.tad-table td { padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text); vertical-align: middle; }
+.tad-table tbody tr:hover { background: var(--surface-hover); }
+.tad-table tbody tr:last-child td { border-bottom: none; }
+.tad-statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); }
