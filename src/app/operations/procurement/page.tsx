@@ -4,13 +4,13 @@ import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button, Input } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
 import { requirePortal } from '@/lib/portal-guard';
-import { DEVICES, type Device } from '@/lib/portal-data';
+import { type Device } from '@/lib/portal-data';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
 export default async function ProcurementPage() {
   await requirePortal('procurement');
-  const rows = await fetchPortal<Device[]>('/ops/devices', DEVICES);
+  const { data: rows, error } = await fetchPortal<Device>('/ops/devices');
   return (
     <>
       <PortalTopbar title="Procurement — Device inventory" subtitle="Register incoming devices by IMEI" right={<Button size="sm">Register device</Button>} />
@@ -26,6 +26,7 @@ export default async function ProcurementPage() {
           <Button>Add to inventory</Button>
         </div>
         <DataTable<Device>
+          empty={error ?? 'No devices to procure yet.'}
           rows={rows}
           columns={[
             { key: 'imei', header: 'IMEI', mono: true },

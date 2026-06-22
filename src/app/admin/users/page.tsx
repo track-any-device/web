@@ -3,15 +3,16 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
-import { USERS, ROLE_LABEL, type PortalUser } from '@/lib/portal-data';
+import { ROLE_LABEL, type PortalUser } from '@/lib/portal-data';
 
 export default async function AdminUsersPage() {
-  const rows = await fetchPortal<PortalUser[]>('/admin/users', USERS);
+  const { data: rows, error } = await fetchPortal<PortalUser>('/admin/users');
   return (
     <>
       <PortalTopbar title="Users" subtitle="People with access to the platform" right={<Button size="sm">Invite user</Button>} />
       <div className="tad-portal__body">
         <DataTable<PortalUser>
+          empty={error ?? 'No users yet.'}
           rows={rows}
           columns={[
             { key: 'name', header: 'Name' },

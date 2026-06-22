@@ -3,13 +3,13 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
-import { INCIDENTS, eventLabel, type Incident } from '@/lib/portal-data';
+import { eventLabel, type Incident } from '@/lib/portal-data';
 
 const PRIORITY: Record<string, 'danger' | 'warning' | 'neutral'> = { critical: 'danger', high: 'warning', medium: 'neutral', low: 'neutral', info: 'neutral' };
 const STATUS: Record<string, 'danger' | 'warning' | 'success' | 'neutral'> = { open: 'danger', acknowledged: 'warning', escalated: 'danger', resolved: 'success', dismissed: 'neutral' };
 
 export default async function AdminIncidentsPage() {
-  const rows = await fetchPortal<Incident[]>('/admin/incidents', INCIDENTS);
+  const { data: rows, error } = await fetchPortal<Incident>('/admin/incidents');
   return (
     <>
       <PortalTopbar title="Incidents" subtitle="Alerts raised across all devices" />
@@ -20,6 +20,7 @@ export default async function AdminIncidentsPage() {
           { label: 'Resolved', value: rows.filter((i) => i.status === 'resolved').length },
         ]} />
         <DataTable<Incident>
+          empty={error ?? 'No incidents.'}
           rows={rows}
           columns={[
             { key: 'id', header: 'Incident', mono: true },

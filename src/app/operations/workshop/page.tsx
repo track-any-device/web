@@ -4,11 +4,11 @@ import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
 import { requirePortal } from '@/lib/portal-guard';
-import { DEVICES, type Device } from '@/lib/portal-data';
+import { type Device } from '@/lib/portal-data';
 
 export default async function WorkshopPage() {
   await requirePortal('workshop');
-  const all = await fetchPortal<Device[]>('/ops/devices', DEVICES);
+  const { data: all, error } = await fetchPortal<Device>('/ops/devices');
   const queue = all.filter((d) => !d.sim || d.status === 'pending');
   return (
     <>
@@ -21,7 +21,7 @@ export default async function WorkshopPage() {
         ]} />
         <DataTable<Device>
           rows={queue}
-          empty="Nothing in the workshop queue."
+          empty={error ?? 'No devices in the workshop queue.'}
           columns={[
             { key: 'imei', header: 'IMEI', mono: true },
             { key: 'model', header: 'Model', render: (r) => r.model ?? '—' },
