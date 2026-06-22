@@ -23,7 +23,7 @@ export function CheckoutClient() {
           <p style={{ color: 'var(--text-secondary)', maxWidth: 380 }}>
             We&apos;ll call to confirm your cash-on-delivery order and have your {item.name} on its way shortly.
           </p>
-          <Link href="/tad-preview/shop" className="tad-btn tad-btn--secondary">Continue shopping</Link>
+          <Link href="/shop" className="tad-btn tad-btn--secondary">Continue shopping</Link>
         </div>
       </Card>
     );
