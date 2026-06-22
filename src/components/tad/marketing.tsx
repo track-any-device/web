@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Badge, Card } from '@/components/ui';
-import { HeroGlobe } from '@/components/tad/hero-globe';
+import { HeroGlobe3D } from '@/components/tad/hero-globe-3d';
 
 /* TAD-PAK marketing primitives (server-compatible). Compose marketing/shop surfaces from these. */
 
@@ -62,7 +62,7 @@ export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta }: Her
             </div>
           )}
         </div>
-        <HeroGlobe />
+        <HeroGlobe3D />
       </div>
     </section>
   );

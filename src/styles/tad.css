@@ -372,16 +372,10 @@
 .tad-table tbody tr:last-child td { border-bottom: none; }
 .tad-statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); }
 
-/* ── Hero GPS visual (globe + pins + satellites) ──────────────────────── */
+/* ── Hero 3D globe (Three.js canvas) ──────────────────────────────────── */
 .tad-hero-globe {
-  position: absolute; right: -36px; top: 50%; transform: translateY(-50%);
-  width: 480px; max-width: 46%; pointer-events: none; z-index: 0;
+  position: absolute; right: -24px; top: 50%; transform: translateY(-50%);
+  width: 520px; max-width: 48%; aspect-ratio: 1 / 1; pointer-events: none; z-index: 0;
 }
-.tad-hero-globe svg { width: 100%; height: auto; display: block; }
-.tad-globe__ping { fill: var(--brand); opacity: 0; animation: tad-globe-ping 2.6s ease-out infinite; }
-@keyframes tad-globe-ping { 0% { r: 6px; opacity: 0.45; } 70% { r: 30px; opacity: 0; } 100% { r: 30px; opacity: 0; } }
-.tad-globe__sat { animation: tad-globe-twinkle 5s ease-in-out infinite; }
-.tad-globe__sat--slow { animation-duration: 7s; animation-delay: -2.5s; }
-@keyframes tad-globe-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.tad-hero-globe canvas { display: block; width: 100% !important; height: 100% !important; }
 @media (max-width: 1024px) { .tad-hero-globe { display: none; } }
-@media (prefers-reduced-motion: reduce) { .tad-globe__ping, .tad-globe__sat { animation: none; } }

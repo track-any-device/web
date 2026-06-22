@@ -1,183 +1,121 @@
 # web — AI Instructions
 
-This is the **Next.js 15 public website and "my" user portal** for the Track Any Device platform.
-Docker image: `trackanydevice/server-web`
-
-This app serves two distinct contexts:
-
-1. **Marketing site** — public-facing pages (product info, pricing, device catalogue). Content
-   comes from `server-graphql` via Apollo Client. No authentication required.
-
-2. **"My" portal** — authenticated end-user area (`/my/*`). Users manage their own devices,
-   orders, beats, and incidents. Authentication via NextAuth SSO. Data comes from the `app/`
-   REST API.
+This is the **Next.js 15 web app** for the TAD-PAK platform (Track Any Device, Pakistan) — the
+public website **and** every authenticated portal. Deployed to **Cloudflare Pages** on merge to `main`.
 
 Read this file before making any change.
 
----
+It serves four contexts, all in one Next.js app:
 
-## Platform-Wide Rules
+1. **Marketing site** — public pages (`/`, `/products`, `/business`, `/about`, `/stores`,
+   `/contact`, `/status`, …). Content comes from **Sanity**. No authentication.
+2. **`/my` — customer portal** — end users manage their own devices/orders/incidents.
+3. **`/operations` — internal staff portals** — Support / Procurement / Workshop / Orders.
+4. **`/admin` — internal admin** — users, organisations, devices, device-types, incidents.
 
-These three rules apply in every repository under the `track-any-device` organisation.
-
-**Cross-repo changes: file a GitHub issue first.**
-If a task in this repository requires a change in another package or server app — stop. Open a
-GitHub issue in the target repository describing exactly what is needed and why. Reference that
-issue number in your commit message (`ref track-any-device/{repo}#{n}`). Do not directly edit
-files in another repository. When picking up a cross-repo issue, run Claude locally inside that
-repository's working directory and work only within its scope.
-
-**Release order: packages before server apps.**
-This app depends on `@trackany-device/components` (npm) and the `app/` REST API + `server-graphql`
-GraphQL API. Never ship a feature here that depends on an API change before that API change is
-deployed. Always confirm API changes are live before deploying this app.
-
-**Database layer lives in `package-core` only.**
-This is a frontend app. No database interaction here. API calls go to `app/` or `server-graphql`.
-
-**Keep API documentation up to date — this repo owns the docs.**
-`src/app/docs/` is the single source of truth for all platform API documentation.
-When another repository files a cross-repo issue asking for a doc update (because they added
-an API endpoint or changed a protocol), implement it here immediately. Do not wait.
-
-When YOU change a web integration (new API call shape, new auth flow, new SSO param):
-- Update the relevant docs page in `src/app/docs/` in the same PR.
-- There is no separate "docs PR" — docs travel with the code change that necessitated them.
-
-Doc page map:
-- `src/app/docs/tad101/`   → TAD-101 device protocol docs
-- `src/app/docs/api/`      → REST API reference (create if missing)
-- `src/app/docs/`          → general platform / getting started
+Portals 2–4 require a session; data comes from the `app/` REST API.
 
 ---
 
-## Rule 1 — Plan before implementing
+## Platform-Wide Rules (every repo in the org)
 
-Before writing any code, ask clarifying questions. Present a plan and get explicit agreement.
-Only begin once the approach is confirmed.
+**Cross-repo changes: file a GitHub issue first.** If a task here needs a change in another repo —
+stop, open an issue in that repo, reference it in the commit (`ref track-any-device/{repo}#{n}`).
+Don't edit another repo's files from here.
+
+**API before UI.** Never ship a feature here that depends on an `app/` API change before that
+change is deployed. Confirm the endpoint is live first.
+
+**No database layer here.** This is a frontend app. All data comes from the `app/` REST API or Sanity.
+
+**This repo owns the public API docs** (`src/app/docs/`). When a web integration changes (new API
+call shape, new auth flow), update the matching docs page **in the same PR**.
 
 ---
 
-## Authentication ("my" portal)
+## Authentication — first-party SMS-OTP (Sanctum), no SSO
 
-Authentication uses **NextAuth** configured as an SSO OAuth2 consumer:
+There is **no NextAuth, no OAuth redirect, no `login.*` provider.** The app is its own identity.
 
 ```
-User visits /my/* (unauthenticated)
-  → NextAuth redirects to login.tad.com/oauth/authorize?client_id=MY_CLIENT_ID
-  → User authenticates on login.*
-  → Passport issues auth code → NextAuth callback at /api/auth/callback/sso
-  → NextAuth exchanges code for access token
-  → NextAuth stores session (HTTP-only cookie)
-  → Server components call app/ REST API with Bearer token from session
+User → /login (phone) → POST /api/auth/otp/request   (BFF → app /api/auth/otp/request)
+     → enters OTP      → POST /api/auth/otp/verify    → app returns { token, user }
+     → web stores an encrypted session in the `tad_session` cookie (lib/auth.ts)
+     → server components/handlers call app's REST API with `Authorization: Bearer {token}`
 ```
 
-**OAuth client used:** `OAuthClientKind::My` (env: `MY_CLIENT_ID`, `MY_CLIENT_SECRET`)
+- `src/lib/auth.ts` — `getSession()`, `encodeSession`/`decodeSessionValue`, `SESSION_COOKIE = 'tad_session'`, `AUTH_API`.
+- `src/middleware.ts` — gates `['/my/:path*', '/operations/:path*', '/admin/:path*']`; no session → redirect `/login`.
+- **Role gating is server-side**, inside the portal layouts: `/admin` requires Admin/Core, `/operations`
+  requires Admin/Core + operations roles (`src/lib/portal-data.ts` `ADMIN_ROLES`/`OPS_ROLES`), else `redirect('/my')`.
+
+### BFF route handlers
+The browser never talks to `app/` directly. Route handlers under `src/app/api/*` proxy to the API
+(attaching the session token server-side): `api/auth/{login,otp/request,otp/verify,logout}`,
+`api/my/*`, `api/pusher/auth`. Server components may also fetch the API directly server-side (the
+Next server IS the BFF) — see `src/lib/api-client.ts` and `src/lib/admin-api.ts` (`fetchPortal`).
 
 ---
 
-## Data Sources
+## Data sources
 
-| Data type | Source | Auth |
+| Data | Source | How |
 |---|---|---|
-| Device types, solutions, public content | `server-graphql` (Apollo) | None (public queries) |
-| User's devices, orders, beats, incidents | `app/` REST API (`/api/my/*`) | Bearer token (NextAuth session) |
-| Real-time device updates | Soketi (Pusher JS client) | Channel auth via `app/` REST endpoint |
+| Marketing content, device catalogue | **Sanity** | `src/lib/sanity.ts`, `catalog.ts`, `products.ts` |
+| `/my` device/order/incident data | `app/` REST `/api/my/*` | server fetch w/ session token (`api-client.ts`) |
+| `/admin` + `/operations` data | `app/` REST `/api/admin/*`, `/api/ops/*` (role-gated) | `admin-api.ts` `fetchPortal(path, fallback)` |
+| Real-time device updates | Soketi (Pusher JS) | channel auth via `api/pusher/auth` |
 
 ---
 
-## Rule 2 — Public pages must not require authentication
+## UI — in-house TAD-PAK design system
 
-Marketing pages (`/`, `/devices`, `/solutions`, `/pricing`, etc.) must render without a session.
-They may use Apollo for GraphQL content queries. Never add `auth` guards to public routes.
+Build UI from the in-house component sets, **not** a third-party kit:
+- `src/components/ui/` — primitives (Button, Input, Badge, Card, …).
+- `src/components/tad/` — TAD-PAK compositions (SiteShell, marketing, PortalShell, DataTable, Hero, …).
 
----
+Tokens/fonts/brand follow the **`track-any-device-ui-guidelines`** skill (Pakistan green `#01411C`,
+Plus Jakarta Sans + DM Mono, warm sand neutrals, rounded everything, gentle motion). TAD-PAK styles
+are scoped under the `.tad` class (`src/styles/tad.css`); Tailwind v4 via `@tailwindcss/postcss`.
 
-## Rule 3 — "My" pages must redirect unauthenticated users
+> Legacy note: `@trackany-device/components` is still a transitional dependency in `package.json`
+> (+ `transpilePackages` in `next.config.ts`). It is being removed — do not build new UI on it.
 
-All routes under `/my/*` must be protected by NextAuth middleware. Unauthenticated requests
-redirect to the SSO provider. Never render "my" page content without a valid session.
-
----
-
-## Rule 4 — Only use `@trackany-device/components` for UI
-
-Pages and layouts must import components from `@trackany-device/components`.
-No raw HTML in page files. No inline Tailwind without a component wrapping it.
-If a component is missing, add it to `ui-kit` and file an issue there first.
+`'use client'` only where a component uses hooks / event handlers / browser APIs; keep pages and
+data-fetching layouts as Server Components.
 
 ---
 
-## Rule 5 — `'use client'` only where needed
-
-Use React Server Components for pages that fetch data and don't need browser APIs.
-Add `'use client'` only for components that use hooks, event handlers, or browser APIs.
-Avoid making entire page routes client components — use the client-boundary pattern.
-
----
-
-## Rule 6 — `transpilePackages` is required for `@trackany-device/components`
-
-`next.config.ts` must include:
-```ts
-transpilePackages: ['@trackany-device/components']
-```
-
-This is required so Next.js transpiles the raw TypeScript source from the package.
-Do not remove this setting.
-
----
-
-## Rule 7 — Do not alias React in `next.config.ts`
-
-Do not add `react` or `react-dom` to `webpackConfig.resolve.alias`. Next.js manages its own
-React alias internally. Overriding it breaks static generation with a null context error.
-The `resolve.modules` addition pointing to `web/node_modules` is sufficient.
-
----
-
-## Directory Structure
+## Directory structure
 
 ```
 src/
-├── app/                    ← Next.js App Router
-│   ├── (marketing)/        ← Public marketing pages
-│   │   ├── page.tsx        ← Homepage
-│   │   ├── devices/        ← Device catalogue
-│   │   └── solutions/      ← Solution pages
-│   ├── my/                 ← Authenticated "my" portal
-│   │   ├── layout.tsx      ← Auth guard + shell layout
-│   │   ├── devices/        ← User's devices
-│   │   ├── orders/         ← User's orders
-│   │   └── incidents/      ← User's incidents
-│   └── api/
-│       └── auth/[...nextauth]/  ← NextAuth handler
-├── lib/
-│   ├── api.ts              ← app/ REST API client (fetch with Bearer token)
-│   ├── graphql/            ← Apollo client + queries
-│   └── auth.ts             ← NextAuth configuration
+├── app/
+│   ├── page.tsx, (marketing routes: products, business, about, stores, contact, status, …)
+│   ├── login/                ← SMS-OTP login UI
+│   ├── my/                   ← customer portal (session-gated)
+│   ├── operations/           ← Support / Procurement / Workshop / Orders (layout role-gates)
+│   ├── admin/                ← Dashboard + Users / Organisations / Devices / Device-types / Incidents
+│   ├── docs/                 ← public API documentation (this repo owns it)
+│   └── api/                  ← BFF route handlers (auth, my, pusher)
+├── components/{ui,tad,docs}/ ← in-house design system
+├── lib/                      ← auth.ts, api-client.ts, admin-api.ts, sanity.ts, catalog.ts, portal-data.ts
+└── styles/tad.css            ← TAD-PAK tokens/components (.tad scope)
 ```
 
 ---
 
-## Environment Variables
+## Environment variables
 
 | Variable | Purpose |
 |---|---|
-| `NEXTAUTH_URL` | Public URL of this app (e.g. `https://track-any-device.com`) |
-| `NEXTAUTH_SECRET` | NextAuth JWT signing secret |
-| `MY_CLIENT_ID` | OAuth2 client ID for the "my" portal |
-| `MY_CLIENT_SECRET` | OAuth2 client secret |
-| `LOGIN_DOMAIN` | SSO provider base URL (e.g. `https://login.track-any-device.com`) |
-| `API_URL` | app/ REST API base URL |
-| `GRAPHQL_URL` | server-graphql endpoint |
-| `NEXT_PUBLIC_PUSHER_APP_KEY` | Pusher JS client app key |
-| `NEXT_PUBLIC_PUSHER_HOST` | Soketi host |
-| `NEXT_PUBLIC_PUSHER_PORT` | Soketi port |
+| `API_URL` / `NEXT_PUBLIC_API_URL` | `app/` REST API base URL |
+| `SESSION_SECRET` | key for encrypting the `tad_session` cookie |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID` / `_DATASET` | Sanity content source |
+| `NEXT_PUBLIC_PUSHER_*` | Soketi/Pusher JS client (key, host, port) |
 
 ---
 
-## Versioning
+## Versioning / deploy
 
-Docker images are built and pushed on every merge to `main`.
-Tag format: `latest` + `v0.1.{commit-count}-{short-sha}`.
+Cloudflare Pages builds and deploys on merge to `main` (`.github/workflows/deploy.yml`).
