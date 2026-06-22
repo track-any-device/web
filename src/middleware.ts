@@ -12,6 +12,8 @@ export function middleware(req: NextRequest) {
     return NextResponse.next()
 }
 
+// /my = customer portal; /operations + /admin = internal staff portals. All require a session;
+// fine-grained role gating (Admin/Core/operations roles) happens server-side once wired to the API.
 export const config = {
-    matcher: ['/my/:path*'],
+    matcher: ['/my/:path*', '/operations/:path*', '/admin/:path*'],
 }
