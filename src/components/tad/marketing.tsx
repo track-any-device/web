@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Badge, Card } from '@/components/ui';
+import { HeroGlobe } from '@/components/tad/hero-globe';
 
 /* TAD-PAK marketing primitives (server-compatible). Compose marketing/shop surfaces from these. */
 
@@ -50,7 +51,7 @@ export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta }: Her
           border: '1px solid var(--border)', padding: 'var(--space-20) var(--space-12)',
         }}
       >
-        <div style={{ maxWidth: 640, display: 'grid', gap: 'var(--space-5)' }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 640, display: 'grid', gap: 'var(--space-5)' }}>
           {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
           <h1 style={{ fontSize: 'var(--text-6xl)', lineHeight: 'var(--leading-tight)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{title}</h1>
           {subtitle && <p style={{ fontSize: 'var(--text-xl)', color: 'var(--text-secondary)' }}>{subtitle}</p>}
@@ -61,6 +62,7 @@ export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta }: Her
             </div>
           )}
         </div>
+        <HeroGlobe />
       </div>
     </section>
   );
