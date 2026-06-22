@@ -78,8 +78,8 @@ Tokens/fonts/brand follow the **`track-any-device-ui-guidelines`** skill (Pakist
 Plus Jakarta Sans + DM Mono, warm sand neutrals, rounded everything, gentle motion). TAD-PAK styles
 are scoped under the `.tad` class (`src/styles/tad.css`); Tailwind v4 via `@tailwindcss/postcss`.
 
-> Legacy note: `@trackany-device/components` is still a transitional dependency in `package.json`
-> (+ `transpilePackages` in `next.config.ts`). It is being removed — do not build new UI on it.
+The legacy `@trackany-device/components` (ui-kit) dependency has been **fully removed** — build only
+on `@/components/{ui,tad}`. Device map-marker helpers live in `src/lib/map-markers.ts`.
 
 `'use client'` only where a component uses hooks / event handlers / browser APIs; keep pages and
 data-fetching layouts as Server Components.
