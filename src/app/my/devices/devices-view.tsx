@@ -10,7 +10,7 @@ import {
     deviceArrowUrl,
     arrowRotation,
     useArrow,
-} from '@trackany-device/components';
+} from '@/lib/map-markers';
 
 interface Props {
     devices:            Device[];
