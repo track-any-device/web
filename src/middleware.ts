@@ -5,7 +5,7 @@ const SESSION_COOKIE = 'tad_session'
 
 export function middleware(req: NextRequest) {
     if (!req.cookies.has(SESSION_COOKIE)) {
-        const url = new URL('/account', req.url)
+        const url = new URL('/login', req.url)
         url.searchParams.set('next', req.nextUrl.pathname)
         return NextResponse.redirect(url)
     }
