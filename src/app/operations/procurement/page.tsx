@@ -3,11 +3,13 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button, Input } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
+import { requirePortal } from '@/lib/portal-guard';
 import { DEVICES, type Device } from '@/lib/portal-data';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
 export default async function ProcurementPage() {
+  await requirePortal('procurement');
   const rows = await fetchPortal<Device[]>('/ops/devices', DEVICES);
   return (
     <>

@@ -85,3 +85,22 @@ export function eventLabel(t: string | null): string {
   if (!t) return '—';
   return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/* ── Per-portal access (operations) ───────────────────────────────────────
+   Each operations portal is gated to specific roles. Admin/Core can access all;
+   each operations role sees only its own portal. */
+export const PORTAL_ROLES: Record<string, Role[]> = {
+  support: ['admin', 'core'],
+  procurement: ['admin', 'core', 'procurement'],
+  workshop: ['admin', 'core', 'workshop'],
+  orders: ['admin', 'core', 'delivery_order'],
+};
+
+export function canAccessPortal(role: string, portal: string): boolean {
+  return (PORTAL_ROLES[portal] ?? []).includes(role as Role);
+}
+
+/** Operations portals (in nav order) the given role may access. */
+export function accessiblePortals(role: string): string[] {
+  return Object.keys(PORTAL_ROLES).filter((p) => canAccessPortal(role, p));
+}

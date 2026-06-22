@@ -3,11 +3,13 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
+import { requirePortal } from '@/lib/portal-guard';
 import { INCIDENTS, eventLabel, type Incident } from '@/lib/portal-data';
 
 const PRIORITY: Record<string, 'danger' | 'warning' | 'neutral'> = { critical: 'danger', high: 'warning', medium: 'neutral', low: 'neutral', info: 'neutral' };
 
 export default async function SupportPage() {
+  await requirePortal('support');
   const rows = await fetchPortal<Incident[]>('/ops/incidents', INCIDENTS);
   return (
     <>

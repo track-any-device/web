@@ -57,7 +57,7 @@ export function PortalSidebar({ nav, user }: { nav: PortalNavItem[]; user?: Port
   return (
     <aside className="tad-portal__sidebar">
       <div style={{ padding: '2px 8px 18px' }}>
-        <Link href="/" aria-label="TAD-PAK home"><Logo /></Link>
+        <Link href="/my" aria-label="TAD-PAK — my account"><Logo /></Link>
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
         {nav.map((item) => {
