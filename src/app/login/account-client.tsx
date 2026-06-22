@@ -2,6 +2,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Input, Button, OTPInput, Badge } from '@/components/ui';
+import { setAuth } from '@/lib/auth-store';
 
 /* SMS-OTP sign-in — posts to the BFF (/api/auth/otp/*) which talks to app and sets the
    httpOnly tad_session cookie. On success, lands the user in their portal. */
@@ -45,8 +46,12 @@ export function AccountClient() {
         setError(d?.errors?.otp?.[0] ?? d?.message ?? 'Invalid or expired code.');
         return;
       }
+      // Populate the client auth-store so the /my shell (useAuth/localStorage) recognises the
+      // session and its API calls carry the Bearer token. The httpOnly cookie is set by the BFF.
+      const data = await res.json().catch(() => ({}));
+      if (data?.token) setAuth(data.token, data.user);
       setStep('done');
-      router.push('/my');
+      window.location.assign('/my');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
   }
