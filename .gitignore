@@ -42,3 +42,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 package-lock.json
+
+# Co-located Sanity Studio (web/studio) — its own project; built & deployed separately
+studio/node_modules
+studio/dist
+studio/.sanity
