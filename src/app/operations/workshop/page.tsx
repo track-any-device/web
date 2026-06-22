@@ -3,9 +3,11 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
+import { requirePortal } from '@/lib/portal-guard';
 import { DEVICES, type Device } from '@/lib/portal-data';
 
 export default async function WorkshopPage() {
+  await requirePortal('workshop');
   const all = await fetchPortal<Device[]>('/ops/devices', DEVICES);
   const queue = all.filter((d) => !d.sim || d.status === 'pending');
   return (

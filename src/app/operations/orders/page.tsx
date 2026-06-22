@@ -3,12 +3,14 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
+import { requirePortal } from '@/lib/portal-guard';
 import { ORDERS, type DeliveryOrder } from '@/lib/portal-data';
 
 const STATUS: Record<string, 'warning' | 'brand' | 'success' | 'neutral'> = { pending: 'warning', confirmed: 'brand', delivered: 'success', cancelled: 'neutral' };
 const NEXT: Record<string, string | null> = { pending: 'Confirm', confirmed: 'Mark delivered', delivered: null, cancelled: null };
 
 export default async function OrdersPage() {
+  await requirePortal('orders');
   const rows = await fetchPortal<DeliveryOrder[]>('/ops/orders', ORDERS);
   return (
     <>
