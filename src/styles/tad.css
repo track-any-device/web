@@ -117,7 +117,7 @@
   font-family:var(--font-heading); font-weight:var(--weight-semibold);
   letter-spacing:var(--tracking-tight); line-height:var(--leading-tight); color:var(--text); margin:0;
 }
-.tad a { color:var(--brand); text-decoration:none; }
+.tad a:not(.tad-btn) { color:var(--brand); text-decoration:none; }
 .tad ::selection { background:color-mix(in srgb, var(--brand) 26%, transparent); }
 
 @media (prefers-reduced-motion: reduce) {
