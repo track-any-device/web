@@ -10,14 +10,14 @@ export default function MyShell({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (!loading && !token) {
-            window.location.href = '/api/auth/login';
+            window.location.href = '/login';
         }
     }, [loading, token]);
 
     useEffect(() => {
         function onUnauthorized() {
             clearAuth();
-            window.location.href = '/api/auth/login';
+            window.location.href = '/login';
         }
         window.addEventListener('tad:unauthorized', onUnauthorized);
         return () => window.removeEventListener('tad:unauthorized', onUnauthorized);

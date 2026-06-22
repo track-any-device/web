@@ -17,7 +17,7 @@ export default function BeatEditClient({ id }: { id: string }) {
 
     useEffect(() => {
         if (authLoading) return;
-        if (!token) { router.push('/api/auth/login'); return; }
+        if (!token) { router.push('/login'); return; }
 
         const api = new ApiClient(token);
         api.beat(Number(id))

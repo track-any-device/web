@@ -39,7 +39,7 @@ export default function ProfileClient() {
 
     useEffect(() => {
         if (authLoading) return;
-        if (!token) { router.push('/api/auth/login'); return; }
+        if (!token) { router.push('/login'); return; }
 
         const api = new ApiClient(token);
         Promise.allSettled([
