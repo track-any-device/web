@@ -1,0 +1,22 @@
+{
+  "name": "tad-studio",
+  "private": true,
+  "version": "0.0.0",
+  "description": "TAD-PAK Sanity Studio — catalog (DeviceType + Accessory) + CMS content",
+  "scripts": {
+    "dev": "sanity dev",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "schema:deploy": "sanity schema deploy"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanity": "^3.62.0",
+    "@sanity/vision": "^3.62.0",
+    "styled-components": "^6.1.13"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

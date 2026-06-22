@@ -101,7 +101,26 @@ src/
 ├── components/{ui,tad,docs}/ ← in-house design system
 ├── lib/                      ← auth.ts, api-client.ts, admin-api.ts, sanity.ts, catalog.ts, portal-data.ts
 └── styles/tad.css            ← TAD-PAK tokens/components (.tad scope)
+
+studio/                       ← Sanity Studio (co-located, versioned with the frontend)
 ```
+
+---
+
+## Sanity Studio (`web/studio/`)
+
+The Studio lives in this repo so its **schema** and the frontend that **consumes** it stay in sync.
+It is its **own** project (own `package.json`/lockfile) — **not** part of the Next build (excluded in
+`tsconfig.json`; `studio/{node_modules,dist,.sanity}` are gitignored). Editing a schema here and the
+matching GROQ query in `src/lib/` happens in one PR.
+
+Deploy is separate from the web deploy (it publishes to **tad-pak.sanity.studio**, not Cloudflare):
+```
+cd studio
+SANITY_AUTH_TOKEN=$SANITY_DEPLOY_TOKEN ./node_modules/.bin/sanity deploy   # direct binary, not `pnpm exec`
+```
+(`SANITY_DEPLOY_TOKEN` is in the untracked `.env.sanity`. The direct binary avoids pnpm 11's
+pre-run deps check, which exits 1 on the blocked esbuild build script.)
 
 ---
 
