@@ -23,7 +23,7 @@ export default function NavAuth() {
 
     if (!user) {
         return (
-            <a href="/api/auth/login"
+            <a href="/login"
                 className="px-4 py-1.5 rounded-md text-sm font-semibold text-white transition-all glow-blue"
                 style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
                 Get Started

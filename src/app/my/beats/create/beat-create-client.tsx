@@ -11,7 +11,7 @@ export default function BeatCreateClient() {
 
     useEffect(() => {
         if (!loading && !token) {
-            router.push('/api/auth/login');
+            router.push('/login');
         }
     }, [token, loading, router]);
 
