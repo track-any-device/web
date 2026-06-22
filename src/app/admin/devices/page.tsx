@@ -3,12 +3,12 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
-import { DEVICES, type Device } from '@/lib/portal-data';
+import { type Device } from '@/lib/portal-data';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
 export default async function AdminDevicesPage() {
-  const rows = await fetchPortal<Device[]>('/admin/devices', DEVICES);
+  const { data: rows, error } = await fetchPortal<Device>('/admin/devices');
   return (
     <>
       <PortalTopbar title="Devices" subtitle="Every device on the platform" right={<Button size="sm">Export</Button>} />
@@ -20,6 +20,7 @@ export default async function AdminDevicesPage() {
         ]} />
         {/* SIM is admin-only per the privacy rules — never shown in tenant/my portals. */}
         <DataTable<Device>
+          empty={error ?? 'No devices yet.'}
           rows={rows}
           columns={[
             { key: 'imei', header: 'IMEI', mono: true },
