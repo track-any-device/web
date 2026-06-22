@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
+import { HeartbeatCell } from '@/components/tad/heartbeat';
 import { Badge } from '@/components/ui';
 import { fetchPortalOne } from '@/lib/admin-api';
 import { type TenantDetail, type TenantDeviceRow } from '@/lib/portal-data';
@@ -57,6 +58,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
               { key: 'imei', header: 'IMEI / Broadcast ID', mono: true, render: (d) => d.imei ?? d.broadcastId ?? '—' },
               { key: 'model', header: 'Model', render: (d) => d.model ?? '—' },
               { key: 'status', header: 'Status', render: (d) => <Badge variant={DEVICE_STATUS[d.status ?? ''] ?? 'neutral'}>{d.status ?? 'unknown'}</Badge> },
+              { key: 'heartbeat', header: 'Heartbeat', render: (d) => <HeartbeatCell online={d.online} at={d.heartbeatAt} intervalS={d.heartbeatIntervalS} /> },
               { key: 'lastSeen', header: 'Last seen', render: (d) => d.lastSeen ?? '—' },
             ]}
           />

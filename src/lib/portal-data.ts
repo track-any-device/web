@@ -14,6 +14,7 @@ export const OPS_ROLES: Role[] = ['admin', 'core', 'procurement', 'workshop', 'd
 export interface Device {
   id: number | string; imei: string; model: string | null; sim: string | null;
   status: 'active' | 'blocked' | 'pending' | string; owner: string | null; lastSeen?: string | null;
+  heartbeatAt?: string | null; heartbeatIntervalS?: number | null; online?: boolean;
 }
 export interface Tenant {
   id: number | string; name: string; slug: string;
@@ -25,6 +26,7 @@ export interface Tenant {
 export interface TenantDeviceRow {
   id: number | string; imei: string | null; broadcastId: string | null;
   model: string | null; status: string | null; lastSeen: string | null;
+  heartbeatAt?: string | null; heartbeatIntervalS?: number | null; online?: boolean;
 }
 export interface TenantDetail extends Omit<Tenant, 'devices'> {
   deviceCount: number; devices: TenantDeviceRow[];

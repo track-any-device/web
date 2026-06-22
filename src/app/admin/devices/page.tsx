@@ -1,6 +1,7 @@
 import React from 'react';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
+import { HeartbeatCell } from '@/components/tad/heartbeat';
 import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
 import { type Device } from '@/lib/portal-data';
@@ -29,6 +30,7 @@ export default async function AdminDevicesPage() {
             { key: 'status', header: 'Status', render: (r) => <Badge variant={STATUS[r.status] ?? 'neutral'}>{r.status}</Badge> },
             { key: 'owner', header: 'Owner', render: (r) => r.owner ?? <span style={{ color: 'var(--text-muted)' }}>Unassigned</span> },
             { key: 'lastSeen', header: 'Last seen', render: (r) => r.lastSeen ?? '—' },
+            { key: 'heartbeat', header: 'Heartbeat', render: (r) => <HeartbeatCell online={r.online} at={r.heartbeatAt} intervalS={r.heartbeatIntervalS} /> },
             { key: 'act', header: '', align: 'right', render: () => <Button variant="ghost" size="sm">View</Button> },
           ]}
         />
