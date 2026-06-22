@@ -1,7 +1,7 @@
 'use client';
 
-import { Card } from '@trackany-device/components';
-import { cn } from '@trackany-device/components';
+import { Card } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import { ArrowRight, BookOpen, Building2, Code, Cpu, Radio, Wrench } from 'lucide-react';
 import Link from 'next/link';
 
