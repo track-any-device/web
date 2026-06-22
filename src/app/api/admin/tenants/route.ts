@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 
+export const runtime = 'edge'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https://api.track-any-device.com'
 
 /** BFF: create a tenant (Admin/Core). Proxies to app with the caller's Sanctum token.

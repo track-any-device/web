@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 
+export const runtime = 'edge'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https://api.track-any-device.com'
 
 /** BFF: rotate a tenant's access key (Admin/Core). Returns the new plain key once. */
