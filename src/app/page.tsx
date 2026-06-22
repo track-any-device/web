@@ -20,6 +20,7 @@ export default function TadHomePreview() {
   return (
     <SiteShell>
       <Hero
+        full
         eyebrow="Real-time GPS tracking · Pakistan"
         title="Always know where everything is."
         subtitle="Friendly, reliable GPS tracking for your car, bike, and team — get a ping the moment anything moves."

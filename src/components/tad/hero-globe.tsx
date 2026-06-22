@@ -7,7 +7,7 @@ import React, { useEffect, useRef } from 'react';
    2D-canvas dotted globe whose dots form continents (point-in-polygon land test), with city
    pins, orbiting satellites and signal arcs. Brand green, scroll-reactive. */
 
-export function HeroGlobe() {
+export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?: number; radiusFactor?: number } = {}) {
   const ref = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -70,8 +70,8 @@ export function HeroGlobe() {
       const w = canvas.width, hh = canvas.height;
       ctx.clearRect(0, 0, w, hh);
       const st = Math.min(1, (window.scrollY || 0) / ((window.innerHeight || 700) * 0.9));
-      const cx = w * (0.64 - st * 0.05), cy = hh * 0.5 + st * hh * 0.12;
-      const R = Math.min(w, hh) * 0.36 * (1 - st * 0.22);
+      const cx = w * (cxFactor - st * 0.05), cy = hh * 0.5 + st * hh * 0.12;
+      const R = Math.min(w, hh) * radiusFactor * (1 - st * 0.22);
       const Rg = R * 0.8;
       const rotY = t + 0.27 + st * 2.4, tilt = -0.42;
       const cosY = Math.cos(rotY), sinY = Math.sin(rotY), cosT = Math.cos(tilt), sinT = Math.sin(tilt);
@@ -127,7 +127,7 @@ export function HeroGlobe() {
     draw();
 
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
-  }, []);
+  }, [cxFactor, radiusFactor]);
 
   return <canvas ref={ref} className="tad-hero-globe" aria-hidden="true" />;
 }

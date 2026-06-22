@@ -37,9 +37,38 @@ export interface HeroProps {
   subtitle?: React.ReactNode;
   primaryCta?: { label: string; href: string };
   secondaryCta?: { label: string; href: string };
+  /** Full-bleed, full-height landing hero with an enlarged right-anchored globe (home page). */
+  full?: boolean;
 }
 
-export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta }: HeroProps) {
+export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full }: HeroProps) {
+  if (full) {
+    return (
+      <section
+        style={{
+          position: 'relative', minHeight: 'calc(100vh - var(--topbar-h))', overflow: 'hidden',
+          display: 'flex', alignItems: 'center',
+          background: 'radial-gradient(120% 95% at 74% 44%, var(--brand-subtle), var(--surface) 62%)',
+        }}
+      >
+        <HeroGlobe cxFactor={0.76} radiusFactor={0.48} />
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: '0 var(--space-8)' }}>
+          <div style={{ maxWidth: 560, display: 'grid', gap: 'var(--space-5)' }}>
+            {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
+            <h1 style={{ fontSize: 'var(--text-6xl)', lineHeight: 'var(--leading-tight)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{title}</h1>
+            {subtitle && <p style={{ fontSize: 'var(--text-xl)', color: 'var(--text-secondary)', maxWidth: 500 }}>{subtitle}</p>}
+            {(primaryCta || secondaryCta) && (
+              <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
+                {primaryCta && <Link href={primaryCta.href} className="tad-btn tad-btn--primary tad-btn--lg">{primaryCta.label}</Link>}
+                {secondaryCta && <Link href={secondaryCta.href} className="tad-btn tad-btn--secondary tad-btn--lg">{secondaryCta.label}</Link>}
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section style={{ padding: 'var(--space-6)' }}>
       <div
