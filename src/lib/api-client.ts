@@ -205,6 +205,12 @@ export class ApiClient {
         return this.get<Incident>(`/incidents/${id}`);
     }
 
+    /** Full incident detail: the incident attributes plus the captured trail, the
+     *  lifecycle timeline, and past occurrences of the same alert on the same device. */
+    async getIncident(id: number) {
+        return this.get<IncidentDetail>(`/incidents/${id}`);
+    }
+
     // ── Orders ───────────────────────────────────────────────────────────────
 
     async orders(params?: Record<string, string>) {
@@ -352,6 +358,42 @@ export interface Incident {
     resolved_at: string | null;
     device?: { id: number; name: string; imei: string };
     beat?: { id: number; name: string };
+}
+
+export interface IncidentLocation {
+    latitude: number | null;
+    longitude: number | null;
+    speed: number | null;
+    recorded_at: string | null;
+}
+
+export interface IncidentTimelineStage {
+    key: 'triggered' | 'acknowledged' | 'resolved';
+    label: string;
+    at: string;
+}
+
+export interface IncidentHistoryEntry {
+    id: number;
+    status: string;
+    priority: string;
+    triggeredAt: string | null;
+    resolvedAt: string | null;
+    lat: number | null;
+    lon: number | null;
+}
+
+/** The raw Eloquent incident merged with the three detail extras. Snake/camel mixed
+ *  intentionally — it mirrors the API payload exactly. */
+export interface IncidentDetail extends Incident {
+    latitude: number | null;
+    longitude: number | null;
+    acknowledged_at: string | null;
+    resolution_notes: string | null;
+    assignee?: { id: number; name: string } | null;
+    locations: IncidentLocation[];
+    timeline: IncidentTimelineStage[];
+    history: IncidentHistoryEntry[];
 }
 
 export interface Order {
