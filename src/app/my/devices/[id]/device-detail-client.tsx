@@ -252,7 +252,7 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
         if (!gmapRef.current) {
             gmapRef.current = new google.maps.Map(mapRef.current, {
                 center,
-                zoom: 15,
+                zoom: 17,
                 mapId: 'my-device-detail-map',
                 fullscreenControl: false,
                 streetViewControl: false,
@@ -263,10 +263,10 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
         }
         const map = gmapRef.current;
 
-        // Marker (status-coloured dot)
+        // Marker (small status-coloured dot)
         const dot = document.createElement('div');
         const color = STATUS_PIN[status];
-        dot.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)`;
+        dot.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)`;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AdvMarker = (google.maps as any).marker?.AdvancedMarkerElement;
         let marker: { setMap: (m: google.maps.Map | null) => void };
@@ -275,21 +275,17 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
         } else {
             marker = new google.maps.Marker({
                 position: center, map, title: device.name,
-                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 5, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
             }) as unknown as { setMap: (m: google.maps.Map | null) => void };
         }
 
-        // Trail polyline
+        // Trail polyline — keep the view close on the device (no fit-to-bounds, which zooms out).
         let line: google.maps.Polyline | null = null;
         if (trail.length >= 2) {
             line = new google.maps.Polyline({
                 path: trail, map, geodesic: true,
                 strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
             });
-            const bounds = new google.maps.LatLngBounds();
-            trail.forEach(p => bounds.extend(p));
-            bounds.extend(center);
-            map.fitBounds(bounds, 60);
         }
 
         return () => { marker.setMap(null); line?.setMap(null); };
