@@ -820,7 +820,7 @@ export default function DevicesView({
                                         </span>
                                         <div style={{ minWidth: 0 }}>
                                             <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
-                                                {incident.event_type.replace(/_/g, ' ')}
+                                                {incident.display_label ?? incident.event_type.replace(/_/g, ' ')}
                                             </div>
                                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                                                 {new Date(incident.triggered_at).toLocaleString()}

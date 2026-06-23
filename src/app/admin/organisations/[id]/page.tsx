@@ -35,8 +35,8 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
       <PortalTopbar title={t.name} subtitle={`Organisation · ${t.slug}`} />
       <div className="tad-portal__body" style={{ display: 'grid', gap: 16 }}>
         <StatRow stats={[
-          { label: 'Devices', value: t.deviceCount },
-          { label: 'Members', value: t.members },
+          { label: 'Devices', value: t.deviceCount ?? 0 },
+          { label: 'Members', value: t.members ?? 0 },
           { label: 'Connection key', value: t.hasKey ? 'Issued' : 'Not issued' },
           { label: 'Key last used', value: t.lastUsed ?? '—' },
         ]} />
@@ -52,7 +52,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, margin: '4px 2px 8px' }}>Devices</h2>
           <DataTable<TenantDeviceRow>
-            rows={t.devices}
+            rows={t.devices ?? []}
             empty={error ?? 'No devices assigned to this organisation yet.'}
             columns={[
               { key: 'imei', header: 'IMEI / Broadcast ID', mono: true, render: (d) => d.imei ?? d.broadcastId ?? '—' },

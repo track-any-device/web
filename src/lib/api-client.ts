@@ -353,6 +353,9 @@ export interface IncidentParams {
 export interface Incident {
     id: number;
     event_type: string;
+    /** Human label from the API — distinguishes an exclusion-zone breach from a normal beat exit
+     *  (both share event_type 'beat_violation'). Falls back to client humanization when absent. */
+    display_label?: string;
     status: string;
     priority: string;
     level: number;

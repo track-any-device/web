@@ -26,7 +26,7 @@ export default async function SupportPage() {
           columns={[
             { key: 'id', header: 'Incident', mono: true },
             { key: 'priority', header: 'Priority', render: (r) => <Badge variant={PRIORITY[r.priority ?? ''] ?? 'neutral'}>{r.priority ?? '—'}</Badge> },
-            { key: 'eventType', header: 'Event', render: (r) => eventLabel(r.eventType) },
+            { key: 'eventType', header: 'Event', render: (r) => r.label ?? eventLabel(r.eventType) },
             { key: 'device', header: 'Device IMEI', mono: true, render: (r) => r.device ?? '—' },
             { key: 'status', header: 'Status', render: (r) => r.status ?? '—' },
             { key: 'openedAt', header: 'Opened', render: (r) => r.openedAt ?? '—' },

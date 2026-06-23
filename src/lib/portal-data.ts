@@ -75,12 +75,15 @@ export interface AdminDeviceDetail {
   lastSeen: string | null; lastSeenAt: string | null;
   heartbeatAt: string | null; heartbeatIntervalS: number | null; online: boolean;
   createdAt: string | null;
-  incidents: { id: number | string; eventType: string | null; priority: string | null; status: string | null; triggeredAt: string | null }[];
+  incidents: { id: number | string; eventType: string | null; label?: string | null; priority: string | null; status: string | null; triggeredAt: string | null }[];
 }
 export interface Incident {
   id: number | string; eventType: string | null; priority: 'critical' | 'high' | 'medium' | 'low' | 'info' | string | null;
   status: 'open' | 'acknowledged' | 'resolved' | 'dismissed' | 'escalated' | string | null;
   device: string | null; openedAt: string | null;
+  /** Human label from the API — distinguishes an exclusion-zone breach from a normal beat exit
+     (both share eventType 'beat_violation'). Falls back to eventLabel(eventType) when absent. */
+  label?: string | null;
 }
 export interface DeliveryOrder {
   id: string; customer: string | null; phone: string | null; items: number;
