@@ -25,7 +25,7 @@ export default async function AdminIncidentsPage() {
           columns={[
             { key: 'id', header: 'Incident', mono: true },
             { key: 'priority', header: 'Priority', render: (r) => <Badge variant={PRIORITY[r.priority ?? ''] ?? 'neutral'}>{r.priority ?? '—'}</Badge> },
-            { key: 'eventType', header: 'Event', render: (r) => eventLabel(r.eventType) },
+            { key: 'eventType', header: 'Event', render: (r) => r.label ?? eventLabel(r.eventType) },
             { key: 'device', header: 'Device IMEI', mono: true, render: (r) => r.device ?? '—' },
             { key: 'status', header: 'Status', render: (r) => <Badge variant={STATUS[r.status ?? ''] ?? 'neutral'}>{r.status ?? '—'}</Badge> },
             { key: 'openedAt', header: 'Opened', render: (r) => r.openedAt ?? '—' },

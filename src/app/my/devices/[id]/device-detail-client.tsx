@@ -113,7 +113,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                     events.push({
                         id:    `inc-${i.id}`,
                         kind:  'incident',
-                        label: i.event_type.replace(/_/g, ' '),
+                        label: i.display_label ?? i.event_type.replace(/_/g, ' '),
                         at:    new Date(i.triggered_at).getTime(),
                         when:  fmtWhen(i.triggered_at),
                         href:  `/my/incidents/${i.id}`,

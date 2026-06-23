@@ -4,6 +4,9 @@ import React from 'react';
 
 type Incident = {
   eventType: string | null;
+  /** Human label from the API — distinguishes an exclusion-zone breach from a normal beat exit
+   *  (both share eventType 'beat_violation'). Falls back to the local label() map when absent. */
+  label?: string | null;
   priority: string | null;
   status: string | null;
   closed: boolean;
@@ -84,7 +87,7 @@ export function SilenceClient({ code }: { code: string }) {
               </span>
             </div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, margin: '0 0 2px', letterSpacing: '-0.02em' }}>
-              {label(incident.eventType)}
+              {incident.label ?? label(incident.eventType)}
             </h1>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', margin: 0 }}>
               {incident.device?.name ?? 'Your device'}

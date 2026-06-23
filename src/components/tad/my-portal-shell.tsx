@@ -24,8 +24,16 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
   const isOps = OPS_ROLES.includes(role as Role);
   const isAdmin = ADMIN_ROLES.includes(role as Role);
   // The devices/stream pages are full-bleed map apps — they manage their own height and must not
-  // sit inside the centered, padded content container the other /my pages use.
-  const fullBleed = pathname.startsWith('/my/devices') || pathname.startsWith('/my/stream');
+  // sit inside the centered, padded content container the other /my pages use. /my/trips and
+  // /my/beats render the SAME map app (DevicesView) on a different tab, so they must be full-bleed
+  // too — otherwise they'd get the container's padding + footer on top of DevicesView's own
+  // wrapper, breaking spacing symmetry with /my/devices. Match those two list routes exactly so the
+  // padded /my/beats sub-pages (create / [id] edit forms) keep the centered container.
+  const fullBleed =
+    pathname.startsWith('/my/devices') ||
+    pathname.startsWith('/my/stream') ||
+    pathname === '/my/trips' ||
+    pathname === '/my/beats';
 
   async function signOut() {
     try {

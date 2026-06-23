@@ -84,7 +84,7 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {d.incidents.map((i) => (
                 <Link key={i.id} href={`/admin/incidents?device=${d.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' }}>
-                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{i.eventType ?? 'Event'}</span>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>{i.label ?? i.eventType ?? 'Event'}</span>
                   <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
                     {i.priority && <Badge variant={i.priority === 'critical' ? 'danger' : 'neutral'}>{i.priority}</Badge>}
                     {i.status && <Badge variant={i.status === 'open' ? 'warning' : 'success'}>{i.status}</Badge>}

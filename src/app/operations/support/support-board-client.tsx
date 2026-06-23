@@ -187,7 +187,7 @@ function TicketCard({
       </div>
 
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-        {humanizeEvent(ticket.eventType)}
+        {ticket.label ?? humanizeEvent(ticket.eventType)}
       </div>
 
       {/* Device */}
@@ -369,7 +369,7 @@ function TicketModal({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Badge variant={priorityVariant(view.priority)}>{view.priority ?? 'normal'}</Badge>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800 }}>{humanizeEvent(view.eventType)}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800 }}>{view.label ?? humanizeEvent(view.eventType)}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Triggered {relativeTime(view.triggeredAt)}</div>
           </div>

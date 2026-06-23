@@ -102,7 +102,7 @@ export default function IncidentsClient() {
                                     )}
                                 </div>
                                 <p className="capitalize" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
-                                    {incident.device?.name ?? '—'} — {incident.event_type.replace(/_/g, ' ')}
+                                    {incident.device?.name ?? '—'} — {incident.display_label ?? incident.event_type.replace(/_/g, ' ')}
                                 </p>
                                 {incident.beat && (
                                     <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Beat: {incident.beat.name}</p>

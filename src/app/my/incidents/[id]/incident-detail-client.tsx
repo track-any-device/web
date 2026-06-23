@@ -146,7 +146,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                         <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
-                            {humanizeEventType(incident.event_type)}
+                            {incident.display_label ?? humanizeEventType(incident.event_type)}
                         </h1>
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />
                         <span className="capitalize px-2 py-0.5 rounded-full"
