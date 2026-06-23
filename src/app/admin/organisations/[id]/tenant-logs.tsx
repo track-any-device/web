@@ -55,8 +55,13 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
 
     const channelName = `private-tenant.${tenantId}.device-logs`;
     const channel = pusher.subscribe(channelName);
-    channel.bind('pusher:subscription_error', (status: number) =>
-      setError(`Could not subscribe to ${channelName} (auth ${status}).`));
+    // pusher-js passes an object ({status, error, ...}) here; pull out a readable code.
+    channel.bind('pusher:subscription_error', (e: unknown) => {
+      const code = typeof e === 'object' && e !== null
+        ? ((e as { status?: number }).status ?? (e as { error?: { data?: { code?: number } } }).error?.data?.code ?? '')
+        : e;
+      setError(`Could not subscribe to ${channelName}${code ? ` (auth ${code})` : ''}.`);
+    });
     channel.bind('device-log', (data: LogEvent) =>
       setEntries((prev) => [{ ...data, _id: seq.current++ }, ...prev].slice(0, 200)));
 
