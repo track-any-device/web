@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
 import { Badge, Card, Tabs, Button, Switch } from '@/components/ui';
@@ -757,7 +757,7 @@ export default function DevicesView({
                                         </button>
                                         <a href={`/my/beats/${beat.id}`} aria-label={`Edit ${beat.name}`} title="Edit / delete beat"
                                             style={{ flex: 'none', padding: '0 14px', alignSelf: 'stretch', display: 'inline-flex', alignItems: 'center', color: 'var(--text-subtle)' }}>
-                                            <ChevronRight width={16} height={16} />
+                                            <Pencil width={15} height={15} />
                                         </a>
                                     </div>
                                 );
