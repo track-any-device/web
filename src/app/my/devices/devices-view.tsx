@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2 } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
+import { Badge } from '@/components/ui';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
@@ -76,6 +77,50 @@ const STATUS_ARROW: Record<MyStatus, string> = {
     unavailable: '/map-arrows/map-arrow-red.png',
 };
 
+// ── Auto-detected trip (shape from ApiClient.deviceTrips) ──────────────────────
+type Trip = {
+    id:         number;
+    startedAt:  string | null;
+    endedAt:    string | null;
+    durationS:  number | null;
+    distanceM:  number;
+    distanceKm: number;
+    maxSpeed:   number | null;
+    points:     number;
+    start:      { lat: number; lng: number };
+    end:        { lat: number; lng: number } | null;
+};
+
+// Format a trip start time as "Today 08:42" / "Yesterday 18:10" / "Mon 06:05".
+function formatTripWhen(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    const today = new Date();
+    const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const dayDiff = Math.round((startOf(today) - startOf(d)) / 86_400_000);
+    if (dayDiff === 0) return `Today ${time}`;
+    if (dayDiff === 1) return `Yesterday ${time}`;
+    return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
+
+// Format a duration in seconds as "X min" or "Xh Ym".
+function formatTripDuration(s: number | null): string {
+    if (s == null || s < 0) return '—';
+    const mins = Math.round(s / 60);
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+// Compact coordinate label for a trip endpoint.
+function formatTripCoords(p: { lat: number; lng: number } | null): string {
+    if (!p) return 'In progress';
+    return `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
+}
+
 // Build the marker DOM. The element is re-created whenever the device updates (see the marker
 // sync effect), so the one-shot `tad-pin-ping` ring replays on every update; online devices also
 // carry a continuous `tad-pin-pulse` halo so a live device visibly breathes on the map.
@@ -140,6 +185,11 @@ export default function DevicesView({
     const [selectedBeat,    setSelectedBeat]    = useState<number | null>(null);
     const [mapsReady,       setMapsReady]       = useState(false);
     const [showImport,      setShowImport]      = useState(false);
+
+    // Right panel: Incidents | Trips
+    const [rightTab,        setRightTab]        = useState<'incidents' | 'trips'>('incidents');
+    const [trips,           setTrips]           = useState<Trip[]>([]);
+    const [tripsLoading,    setTripsLoading]    = useState(false);
 
     // Device drawer state
     const [drawerOpen,      setDrawerOpen]      = useState(false);
@@ -320,6 +370,18 @@ export default function DevicesView({
 
         return () => { cancelled = true; };
     }, [showTrail, selectedDev, devices, mapsReady, token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Load auto-detected trips for the selected device (right "Trips" tab) ──
+    useEffect(() => {
+        if (selectedDev == null) { setTrips([]); return; }
+        let cancelled = false;
+        setTripsLoading(true);
+        new ApiClient(token).deviceTrips(selectedDev)
+            .then(res => { if (!cancelled) setTrips(res.trips ?? []); })
+            .catch(() => { if (!cancelled) setTrips([]); })
+            .finally(() => { if (!cancelled) setTripsLoading(false); });
+        return () => { cancelled = true; };
+    }, [selectedDev, token]);
 
     // ── Create AdvancedMarkerElement with graceful fallback ───────────────────
     function createAdvancedMarker(
@@ -742,7 +804,7 @@ export default function DevicesView({
                         style={{
                             display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer',
                             background: 'var(--surface)', border: '1px solid var(--border)',
-                            borderRadius: 'var(--radius-full)', padding: '6px 12px',
+                            borderRadius: 'var(--radius-pill)', padding: '6px 12px',
                             boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-xs)',
                             fontWeight: 'var(--weight-medium)', color: selectedDev ? 'var(--text)' : 'var(--text-muted)',
                         }}>
@@ -756,10 +818,11 @@ export default function DevicesView({
                 {/* Live / connecting badge */}
                 {mapsReady && (
                     <div className="absolute bottom-4 left-4">
-                        <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                        <div className="flex items-center gap-1.5 px-2.5 py-1"
                             style={{
                                 fontSize: 'var(--text-xs)',
                                 fontWeight: 'var(--weight-medium)',
+                                borderRadius: 'var(--radius-pill)',
                                 boxShadow: 'var(--shadow-sm)',
                                 background: realtimeConnected ? 'var(--success-bg)' : 'var(--surface)',
                                 border: `1px solid ${realtimeConnected ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--border)'}`,
@@ -773,66 +836,138 @@ export default function DevicesView({
                 )}
             </div>
 
-            {/* ── RIGHT: Incidents panel ───────────────────────────────────── */}
+            {/* ── RIGHT: Incidents | Trips ─────────────────────────────────── */}
             <div className="w-72 shrink-0 flex flex-col"
                 style={{ borderLeft: '1px solid var(--border)', background: 'var(--surface)' }}>
-                <div className="shrink-0 px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <div className="flex items-center justify-between">
-                        <p className="uppercase"
-                            style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-secondary)' }}>
-                            Incidents
-                            {visibleIncidents.length > 0 && (
-                                <span className="ml-1.5" style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-regular)', color: 'var(--text-muted)' }}>({visibleIncidents.length})</span>
-                            )}
-                        </p>
-                        {(selectedDev || selectedBeat) && (
+
+                {/* Tab bar (mirrors the left-sidebar pattern) */}
+                <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border)' }}>
+                    {(['incidents', 'trips'] as const).map(tab => (
+                        <button key={tab} onClick={() => setRightTab(tab)}
+                            className="flex-1 py-2.5 transition-colors"
+                            style={{
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: rightTab === tab ? 'var(--weight-semibold)' : 'var(--weight-medium)',
+                                color: rightTab === tab ? 'var(--text)' : 'var(--text-muted)',
+                                borderBottom: `2px solid ${rightTab === tab ? 'var(--brand)' : 'transparent'}`,
+                            }}>
+                            {tab === 'incidents'
+                                ? `Incidents${visibleIncidents.length > 0 ? ` (${visibleIncidents.length})` : ''}`
+                                : `Trips${selectedDev && trips.length > 0 ? ` (${trips.length})` : ''}`}
+                        </button>
+                    ))}
+                </div>
+
+                {/* ── INCIDENTS ──────────────────────────────────────────── */}
+                <div className={`flex-1 flex flex-col min-h-0 ${rightTab !== 'incidents' ? 'hidden' : ''}`}>
+                    {(selectedDev || selectedBeat) && (
+                        <div className="shrink-0 px-4 py-2 flex items-center justify-between"
+                            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                Filtered by: {selectedDev
+                                    ? devices.find(d => d.id === selectedDev)?.name
+                                    : beats.find(b => b.id === selectedBeat)?.name}
+                            </p>
                             <button
                                 onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
+                                className="shrink-0 ml-2"
                                 style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)' }}>
                                 Show all
                             </button>
-                        )}
-                    </div>
-                    {(selectedDev || selectedBeat) && (
-                        <p className="mt-0.5" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                            Filtered by: {selectedDev
-                                ? devices.find(d => d.id === selectedDev)?.name
-                                : beats.find(b => b.id === selectedBeat)?.name}
-                        </p>
+                        </div>
                     )}
+                    <div className="flex-1 overflow-y-auto">
+                        {visibleIncidents.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
+                                <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents in the last 3 days.</p>
+                            </div>
+                        ) : visibleIncidents.map(incident => (
+                            <div key={incident.id}
+                                className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />
+                                    <span className="capitalize px-1.5 py-0.5 rounded-full"
+                                        style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', ...(PRIORITY_BADGE[incident.priority] ?? PRIORITY_BADGE.low) }}>
+                                        {incident.priority}
+                                    </span>
+                                    <span className="ml-auto capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.status}</span>
+                                </div>
+                                <p className="capitalize" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
+                                    {incident.event_type.replace(/_/g, ' ')}
+                                </p>
+                                {incident.device && (
+                                    <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.device.name}</p>
+                                )}
+                                {incident.beat && (
+                                    <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Beat: {incident.beat.name}</p>
+                                )}
+                                <p className="mt-1" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
+                                    {new Date(incident.triggered_at).toLocaleString()}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto">
-                    {visibleIncidents.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
-                            <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents in the last 3 days.</p>
+                {/* ── TRIPS — selected device's auto-detected trips ──────── */}
+                <div className={`flex-1 flex flex-col min-h-0 ${rightTab !== 'trips' ? 'hidden' : ''}`}>
+                    {selectedDev && (
+                        <div className="shrink-0 px-4 py-2 truncate"
+                            style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                            {devices.find(d => d.id === selectedDev)?.name}
                         </div>
-                    ) : visibleIncidents.map(incident => (
-                        <div key={incident.id}
-                            className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />
-                                <span className="capitalize px-1.5 py-0.5 rounded-full"
-                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', ...(PRIORITY_BADGE[incident.priority] ?? PRIORITY_BADGE.low) }}>
-                                    {incident.priority}
-                                </span>
-                                <span className="ml-auto capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.status}</span>
+                    )}
+                    <div className="flex-1 overflow-y-auto"
+                        style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: selectedDev && trips.length > 0 ? 14 : 0 }}>
+                        {selectedDev == null ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
+                                <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Select a device to see its trips.</p>
                             </div>
-                            <p className="capitalize" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
-                                {incident.event_type.replace(/_/g, ' ')}
-                            </p>
-                            {incident.device && (
-                                <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.device.name}</p>
-                            )}
-                            {incident.beat && (
-                                <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Beat: {incident.beat.name}</p>
-                            )}
-                            <p className="mt-1" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
-                                {new Date(incident.triggered_at).toLocaleString()}
-                            </p>
-                        </div>
-                    ))}
+                        ) : tripsLoading ? (
+                            <div className="flex-1 flex items-center justify-center p-6">
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
+                            </div>
+                        ) : trips.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
+                                <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips yet.</p>
+                            </div>
+                        ) : trips.map(trip => (
+                            <div key={trip.id}
+                                style={{ padding: 14, borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                                {/* Top row: timestamp + distance badge */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
+                                        {formatTripWhen(trip.startedAt)}
+                                    </span>
+                                    <span style={{ marginLeft: 'auto' }}>
+                                        <Badge variant="brand" mono>{trip.distanceKm} km</Badge>
+                                    </span>
+                                </div>
+                                {/* Body: timeline column + start/end + duration */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                        <span style={{ width: 9, height: 9, borderRadius: '50%', border: '2px solid var(--status-idle)' }} />
+                                        <span style={{ width: 2, height: 20, background: 'var(--border-strong)' }} />
+                                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--brand)' }} />
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0, lineHeight: 1.5 }}>
+                                        <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                            Start <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{formatTripCoords(trip.start)}</span>
+                                        </div>
+                                        <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                            End <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{formatTripCoords(trip.end)}</span>
+                                        </div>
+                                    </div>
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', flex: 'none' }}>
+                                        {formatTripDuration(trip.durationS)}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
 
