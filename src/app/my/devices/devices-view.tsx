@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
-import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
-import { Badge, Card, Button, Switch } from '@/components/ui';
+import type { Device, Incident, Beat } from '@/lib/api-client';
+import { Badge, Card, Button } from '@/components/ui';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
@@ -198,11 +198,6 @@ export default function DevicesView({
     // Left "Trips" tab: auto-detected trips for the selected device
     const [trips,           setTrips]           = useState<Trip[]>([]);
     const [tripsLoading,    setTripsLoading]    = useState(false);
-
-    // Notification prefs for the selected device — drives the right-side "Notify me on" card.
-    const [notifPrefs,      setNotifPrefs]      = useState<NotificationPreference[]>([]);
-    const [notifLoading,    setNotifLoading]    = useState(false);
-    const [notifSaving,     setNotifSaving]     = useState(false);
 
     const mapRef      = useRef<HTMLDivElement>(null);
     const gmapRef     = useRef<google.maps.Map | null>(null);
@@ -432,7 +427,8 @@ export default function DevicesView({
             const lng = Number(device.last_lon);
             if (!isNaN(lat) && !isNaN(lng)) {
                 m.panTo({ lat, lng });
-                if ((m.getZoom() ?? 10) < 13) setTimeout(() => m.setZoom(15), 250);
+                // Animate in close on the selected device.
+                if ((m.getZoom() ?? 10) < 16) setTimeout(() => m.setZoom(16), 220);
             }
         }
 
@@ -445,46 +441,6 @@ export default function DevicesView({
     const goToDevice = useCallback((id: number) => {
         router.push(`/my/devices/${id}`);
     }, [router]);
-
-    // ── Load notification prefs for the selected device ───────────────────────
-    // Drives the right-side "Notify me on" card. Full per-event management now lives
-    // on the device-details page; this card mirrors the selected device's SMS prefs.
-    useEffect(() => {
-        if (selectedDev == null) return;
-        if (notifPrefs.length > 0) return; // already loaded for this device
-        setNotifLoading(true);
-        const api = new ApiClient(token);
-        api.getNotificationPreferences(selectedDev)
-            .then(res => setNotifPrefs(res.data))
-            .catch(() => {})
-            .finally(() => setNotifLoading(false));
-    }, [selectedDev]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Reset prefs when the selected device changes
-    useEffect(() => { setNotifPrefs([]); }, [selectedDev]);
-
-    // ── Save notification preferences (right "Notify me on" card) ─────────────
-    async function saveNotifPrefs() {
-        if (selectedDev == null) return;
-        setNotifSaving(true);
-        try {
-            const api = new ApiClient(token);
-            await api.updateNotificationPreferences(
-                selectedDev,
-                notifPrefs.map(p => ({ event_type: p.event_type, sms_enabled: p.sms_enabled })),
-            );
-        } catch {
-            /* keep the UI as-is; the card is best-effort */
-        } finally {
-            setNotifSaving(false);
-        }
-    }
-
-    function toggleNotif(eventType: string) {
-        setNotifPrefs(prev => prev.map(p =>
-            p.event_type === eventType ? { ...p, sms_enabled: !p.sms_enabled } : p,
-        ));
-    }
 
     // Keep beatsRef current so polygon click listeners always see the latest beats
     useEffect(() => { beatsRef.current = beats; }, [beats]);
@@ -617,7 +573,7 @@ export default function DevicesView({
                                             borderLeft: `3px solid ${on ? 'var(--brand)' : 'transparent'}`,
                                             background: on ? 'var(--brand-subtle)' : 'transparent',
                                         }}>
-                                        <button onClick={() => setSelectedDev(device.id)}
+                                        <button onClick={() => selectDevice(device.id)}
                                             style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
                                             <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flex: 'none', overflow: 'hidden' }}>
                                                 {device.image_url
@@ -875,48 +831,6 @@ export default function DevicesView({
                                         </div>
                                     </div>
                                 ))}
-                            </div>
-                        )}
-                    </Card>
-
-                    {/* Notify me on — reflects the selected device's real SMS prefs.
-                        Push / email have no backend yet → disabled "coming soon". */}
-                    <Card title="Notify me on">
-                        {selectedDevice == null ? (
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Select an asset to manage its alerts.</p>
-                        ) : notifLoading ? (
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                {/* Push / Email: no backend channel yet */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: 0.55 }}>
-                                    <Switch label="Push notifications" disabled />
-                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: 0.55 }}>
-                                    <Switch label="Email" disabled />
-                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
-                                </div>
-                                {/* SMS: real per-event-type prefs (master toggle drives all) */}
-                                {notifPrefs.length === 0 ? (
-                                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                                        Open the device details to manage SMS alerts per incident type.
-                                    </p>
-                                ) : (
-                                    <>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                            {notifPrefs.map(pref => (
-                                                <Switch key={pref.event_type} label={pref.label}
-                                                    checked={pref.sms_enabled}
-                                                    onChange={() => toggleNotif(pref.event_type)} />
-                                            ))}
-                                        </div>
-                                        <button onClick={saveNotifPrefs} disabled={notifSaving}
-                                            className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block">
-                                            {notifSaving ? 'Saving…' : 'Save SMS alerts'}
-                                        </button>
-                                    </>
-                                )}
                             </div>
                         )}
                     </Card>
