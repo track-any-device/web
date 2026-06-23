@@ -1,15 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
+import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
-import { Badge, Card, Tabs, Button, Switch } from '@/components/ui';
+import { Badge, Card, Button, Switch } from '@/components/ui';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
     useArrow,
 } from '@/lib/map-markers';
+
+type DevicesTab = 'assets' | 'beats' | 'trips';
 
 interface Props {
     devices:            Device[];
@@ -18,7 +22,17 @@ interface Props {
     token:              string;
     realtimeConnected?: boolean;
     onRegisterClick:    () => void;
+    /** Which left-column tab is active. /my/devices → assets, /my/beats → beats, /my/trips → trips. */
+    initialTab?:        DevicesTab;
 }
+
+// The three left-column views are the SAME page on different routes. The pills are real
+// <Link>s so each tab has its own URL; the active one is derived from the current pathname.
+const TAB_LINKS: { value: DevicesTab; label: string; href: string }[] = [
+    { value: 'assets', label: 'Assets', href: '/my/devices' },
+    { value: 'beats',  label: 'Beats',  href: '/my/beats' },
+    { value: 'trips',  label: 'Trips',  href: '/my/trips' },
+];
 
 const MAPS_KEY    = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 const API_URL_PUB = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.track-any-device.com';
@@ -50,16 +64,6 @@ function getMyStatus(device: Device): MyStatus {
     if (mins <= 1440) return 'offline';
     return 'unavailable';
 }
-
-const STATUS_DOT: Record<MyStatus, string> = {
-    online: 'var(--success)', offline: 'var(--danger)', unavailable: 'var(--text-muted)',
-};
-const STATUS_TEXT: Record<MyStatus, string> = {
-    online: 'var(--success)', offline: 'var(--danger)', unavailable: 'var(--text-muted)',
-};
-const STATUS_LABEL: Record<MyStatus, string> = {
-    online: 'Online', offline: 'Offline', unavailable: 'Unavailable',
-};
 
 // Map-pin colour reflects the device's LIVE status (not battery): online = green, offline = red,
 // unavailable = sand. Concrete hex (matches --success / --danger / --text-muted) so it resolves
@@ -173,10 +177,19 @@ export default function DevicesView({
     token,
     realtimeConnected,
     onRegisterClick,
+    initialTab = 'assets',
 }: Props) {
+    const router   = useRouter();
+    const pathname = usePathname();
+    // Active tab follows the URL; fall back to the prop on first render.
+    const activeTab: DevicesTab =
+        pathname?.startsWith('/my/beats') ? 'beats'
+        : pathname?.startsWith('/my/trips') ? 'trips'
+        : pathname?.startsWith('/my/devices') ? 'assets'
+        : initialTab;
+
     const [devices,         setDevices]         = useState<Device[]>(incomingDevices);
     const [beats,           setBeats]           = useState<Beat[]>(initialBeats);
-    const [activeTab,       setActiveTab]       = useState<'assets' | 'beats' | 'trips'>('assets');
     const [selectedDev,     setSelectedDev]     = useState<number | null>(null);
     const [selectedBeat,    setSelectedBeat]    = useState<number | null>(null);
     const [mapsReady,       setMapsReady]       = useState(false);
@@ -186,18 +199,7 @@ export default function DevicesView({
     const [trips,           setTrips]           = useState<Trip[]>([]);
     const [tripsLoading,    setTripsLoading]    = useState(false);
 
-    // Device drawer state
-    const [drawerOpen,      setDrawerOpen]      = useState(false);
-    const [drawerDevice,    setDrawerDevice]    = useState<Device | null>(null);
-    const [editName,        setEditName]        = useState('');
-    const [editNotes,       setEditNotes]       = useState('');
-    const [editTab,         setEditTab]         = useState<'info' | 'notif'>('info');
-    const [saving,          setSaving]          = useState(false);
-    const [uploadingImage,  setUploadingImage]  = useState(false);
-    const [beatAssigning,   setBeatAssigning]   = useState(false);
-    const [unlinkConfirm,   setUnlinkConfirm]   = useState(false);
-    const [unlinking,       setUnlinking]       = useState(false);
-    const [drawerError,     setDrawerError]     = useState<string | null>(null);
+    // Notification prefs for the selected device — drives the right-side "Notify me on" card.
     const [notifPrefs,      setNotifPrefs]      = useState<NotificationPreference[]>([]);
     const [notifLoading,    setNotifLoading]    = useState(false);
     const [notifSaving,     setNotifSaving]     = useState(false);
@@ -255,7 +257,7 @@ export default function DevicesView({
             if (isNaN(lat) || isNaN(lng)) return;
 
             const marker = createAdvancedMarker(map, device, false);
-            marker.addListener?.('click', () => openDevice(device.id, map));
+            marker.addListener?.('click', () => selectDevice(device.id, map));
             markersRef.current.set(device.id, marker);
             bounds.extend({ lat, lng });
             hasBounds = true;
@@ -324,7 +326,7 @@ export default function DevicesView({
                 }
             } else if (!isNaN(lat) && !isNaN(lng)) {
                 const marker = createAdvancedMarker(map, device, isSelected);
-                marker.addListener?.('click', () => openDevice(device.id));
+                marker.addListener?.('click', () => selectDevice(device.id));
                 markersRef.current.set(device.id, marker);
                 markerSigRef.current.set(device.id, sig);
             }
@@ -418,8 +420,8 @@ export default function DevicesView({
         return mk as unknown as ReturnType<typeof markersRef.current.get> & object;
     }
 
-    // ── Open device detail drawer ─────────────────────────────────────────────
-    const openDevice = useCallback((id: number, map?: google.maps.Map) => {
+    // ── Select a device (highlight + pan map, no drawer) ──────────────────────
+    const selectDevice = useCallback((id: number, map?: google.maps.Map) => {
         const m      = map ?? gmapRef.current;
         const device = devices.find(d => d.id === id);
         if (!device) return;
@@ -436,93 +438,43 @@ export default function DevicesView({
 
         setSelectedDev(id);
         setSelectedBeat(null);
-        setDrawerDevice(device);
-        setEditName(device.name);
-        setEditNotes(device.notes ?? '');
-        setDrawerOpen(true);
-        setDrawerError(null);
-        setEditTab('info');
-        setUnlinkConfirm(false);
         document.getElementById(`device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, [devices]);
 
-    const closeDrawer = useCallback(() => {
-        setDrawerOpen(false);
-        setDrawerDevice(null);
-        setSelectedDev(null);
-    }, []);
+    // ── Navigate to the full device-details page ──────────────────────────────
+    const goToDevice = useCallback((id: number) => {
+        router.push(`/my/devices/${id}`);
+    }, [router]);
 
     // ── Load notification prefs for the selected device ───────────────────────
-    // Used by BOTH the drawer "Notifications" tab and the right-side "Notify me on"
-    // card. Loads as soon as an asset is selected (drawer open OR map/list select).
+    // Drives the right-side "Notify me on" card. Full per-event management now lives
+    // on the device-details page; this card mirrors the selected device's SMS prefs.
     useEffect(() => {
-        const id = drawerDevice?.id ?? selectedDev;
-        if (id == null) return;
+        if (selectedDev == null) return;
         if (notifPrefs.length > 0) return; // already loaded for this device
         setNotifLoading(true);
         const api = new ApiClient(token);
-        api.getNotificationPreferences(id)
+        api.getNotificationPreferences(selectedDev)
             .then(res => setNotifPrefs(res.data))
             .catch(() => {})
             .finally(() => setNotifLoading(false));
-    }, [editTab, drawerDevice, selectedDev]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [selectedDev]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Reset prefs when the selected device changes
-    useEffect(() => { setNotifPrefs([]); }, [drawerDevice?.id, selectedDev]);
+    useEffect(() => { setNotifPrefs([]); }, [selectedDev]);
 
-    // ── Save device name + notes ──────────────────────────────────────────────
-    async function saveDevice() {
-        if (!drawerDevice) return;
-        setSaving(true);
-        setDrawerError(null);
-        try {
-            const api     = new ApiClient(token);
-            const updated = await api.updateDevice(drawerDevice.id, {
-                name:  editName.trim() || drawerDevice.name,
-                notes: editNotes.trim() || null,
-            });
-            setDevices(prev => prev.map(d => d.id === updated.id ? { ...d, ...updated } : d));
-            setDrawerDevice(prev => prev ? { ...prev, ...updated } : prev);
-            markersRef.current.get(updated.id)?.setMap?.(null);
-        } catch {
-            setDrawerError('Failed to save. Please try again.');
-        } finally {
-            setSaving(false);
-        }
-    }
-
-    // ── Upload device image ───────────────────────────────────────────────────
-    async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0];
-        if (!file || !drawerDevice) return;
-        setUploadingImage(true);
-        setDrawerError(null);
-        try {
-            const api  = new ApiClient(token);
-            const res  = await api.uploadDeviceImage(drawerDevice.id, file);
-            const url  = res.image_url;
-            setDevices(prev => prev.map(d => d.id === drawerDevice.id ? { ...d, image_url: url } : d));
-            setDrawerDevice(prev => prev ? { ...prev, image_url: url } : prev);
-        } catch {
-            setDrawerError('Image upload failed.');
-        } finally {
-            setUploadingImage(false);
-            e.target.value = '';
-        }
-    }
-
-    // ── Save notification preferences ─────────────────────────────────────────
+    // ── Save notification preferences (right "Notify me on" card) ─────────────
     async function saveNotifPrefs() {
-        if (!drawerDevice) return;
+        if (selectedDev == null) return;
         setNotifSaving(true);
         try {
             const api = new ApiClient(token);
             await api.updateNotificationPreferences(
-                drawerDevice.id,
+                selectedDev,
                 notifPrefs.map(p => ({ event_type: p.event_type, sms_enabled: p.sms_enabled })),
             );
         } catch {
-            setDrawerError('Failed to save notification preferences.');
+            /* keep the UI as-is; the card is best-effort */
         } finally {
             setNotifSaving(false);
         }
@@ -582,45 +534,6 @@ export default function DevicesView({
         polysRef.current.forEach(poly => poly.setMap(showBeats ? map : null));
     }, [showBeats, mapsReady]);
 
-    // ── Beat operations ───────────────────────────────────────────────────────
-    async function assignBeat(deviceId: number, beatId: number) {
-        setBeatAssigning(true);
-        try {
-            const api   = new ApiClient(token);
-            const { beat } = await api.assignBeat(deviceId, beatId);
-            setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, current_beat: beat } : d));
-            setDrawerDevice(prev => prev?.id === deviceId ? { ...prev, current_beat: beat } : prev);
-        } finally { setBeatAssigning(false); }
-    }
-
-    async function unassignBeat(deviceId: number) {
-        setBeatAssigning(true);
-        try {
-            await new ApiClient(token).unassignBeat(deviceId);
-            setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, current_beat: null } : d));
-            setDrawerDevice(prev => prev?.id === deviceId ? { ...prev, current_beat: null } : prev);
-        } finally { setBeatAssigning(false); }
-    }
-
-    // ── Unlink device ─────────────────────────────────────────────────────────
-    async function unlinkDevice() {
-        if (!drawerDevice) return;
-        setUnlinking(true);
-        setDrawerError(null);
-        try {
-            await new ApiClient(token).unlinkDevice(drawerDevice.id);
-            setDevices(prev => prev.filter(d => d.id !== drawerDevice.id));
-            markersRef.current.get(drawerDevice.id)?.setMap?.(null);
-            markersRef.current.delete(drawerDevice.id);
-            closeDrawer();
-        } catch {
-            setDrawerError('Failed to unlink device. Please try again.');
-        } finally {
-            setUnlinking(false);
-            setUnlinkConfirm(false);
-        }
-    }
-
     // ── Reload beats (after import) ───────────────────────────────────────────
     function loadBeats() {
         new ApiClient(token).beats()
@@ -649,7 +562,6 @@ export default function DevicesView({
 
         setSelectedBeat(id);
         setSelectedDev(null);
-        setDrawerOpen(false);
         document.getElementById(`beat-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -671,12 +583,20 @@ export default function DevicesView({
                 {/* ── LEFT: Assets · Beats · Trips ─────────────────────────── */}
                 <Card flushBody>
                     <div style={{ padding: '12px 14px 0' }}>
-                        <Tabs variant="pill" value={activeTab} onChange={(v) => setActiveTab(v as typeof activeTab)}
-                            items={[
-                                { value: 'assets', label: 'Assets', count: devices.length },
-                                { value: 'beats',  label: 'Beats',  count: beats.length },
-                                { value: 'trips',  label: 'Trips' },
-                            ]} />
+                        {/* Pill tabs are real links — each view (Assets / Beats / Trips) is its own route. */}
+                        <div className="tad-tabs tad-tabs--pill" role="tablist">
+                            {TAB_LINKS.map(t => {
+                                const count = t.value === 'assets' ? devices.length : t.value === 'beats' ? beats.length : null;
+                                return (
+                                    <Link key={t.value} href={t.href} role="tab"
+                                        aria-selected={activeTab === t.value}
+                                        className="tad-tab" style={{ textDecoration: 'none' }}>
+                                        {t.label}
+                                        {count != null && <span className="tad-tab__count">{count}</span>}
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 14rem)', overflowY: 'auto' }}>
@@ -709,7 +629,7 @@ export default function DevicesView({
                                                 <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>{device.imei}</div>
                                             </div>
                                         </button>
-                                        <button onClick={() => openDevice(device.id)} aria-label="Details" title="Details"
+                                        <button onClick={() => goToDevice(device.id)} aria-label="Details" title="Details"
                                             style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-subtle)', padding: 4, flex: 'none' }}>
                                             <ChevronRight width={16} height={16} />
                                         </button>
@@ -885,7 +805,7 @@ export default function DevicesView({
                                         {selectedDevice.battery_percent}%
                                     </span>
                                 )}
-                                <Button size="sm" variant="secondary" onClick={() => openDevice(selectedDevice.id)}>Details</Button>
+                                <Button size="sm" variant="secondary" onClick={() => goToDevice(selectedDevice.id)}>Details</Button>
                             </div>
                         )}
 
@@ -1011,235 +931,6 @@ export default function DevicesView({
                 />
             )}
 
-            {/* ── Device detail drawer (slides over the right incidents panel) */}
-            {drawerOpen && (
-                <div className="fixed inset-0 z-40" onClick={closeDrawer} />
-            )}
-            <div className={`fixed top-16 right-0 bottom-0 z-50 w-80 flex flex-col transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
-                style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-xl)', borderLeft: '1px solid var(--border)' }}>
-                {drawerDevice && (
-                    <>
-                        {/* Drawer header */}
-                        <div className="shrink-0 px-4 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            {/* Device photo */}
-                            <label className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer group"
-                                style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}>
-                                {drawerDevice.image_url
-                                    ? <img src={drawerDevice.image_url} alt="" className="w-full h-full object-cover" />
-                                    : (drawerDevice.map_icon
-                                        ? <span className="text-2xl">{drawerDevice.map_icon}</span>
-                                        : <Smartphone className="w-5 h-5" />)}
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                                    style={{ background: 'rgba(0,0,0,0.4)' }}>
-                                    {uploadingImage
-                                        ? <span className="text-white" style={{ fontSize: 'var(--text-2xs)' }}>…</span>
-                                        : <Camera className="w-4 h-4 text-white" />}
-                                </div>
-                                <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-                            </label>
-                            <div className="flex-1 min-w-0">
-                                <p className="truncate leading-tight" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{drawerDevice.name}</p>
-                                <p className="truncate" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{drawerDevice.imei}</p>
-                            </div>
-                            <button onClick={closeDrawer} className="tad-iconbtn tad-iconbtn--sm shrink-0" aria-label="Close">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        {/* Drawer sub-tabs */}
-                        <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            {(['info', 'notif'] as const).map(t => (
-                                <button key={t} onClick={() => setEditTab(t)}
-                                    className="flex-1 py-2 transition-colors"
-                                    style={{
-                                        fontSize: 'var(--text-sm)',
-                                        fontWeight: editTab === t ? 'var(--weight-semibold)' : 'var(--weight-medium)',
-                                        color: editTab === t ? 'var(--text)' : 'var(--text-muted)',
-                                        borderBottom: `2px solid ${editTab === t ? 'var(--brand)' : 'transparent'}`,
-                                    }}>
-                                    {t === 'info' ? 'Info & edit' : 'Notifications'}
-                                </button>
-                            ))}
-                        </div>
-
-                        {drawerError && (
-                            <div className="mx-4 mt-3 rounded-lg px-3 py-2"
-                                style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
-                                {drawerError}
-                            </div>
-                        )}
-
-                        {/* Drawer body */}
-                        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-
-                            {editTab === 'info' && (
-                                <>
-                                    {/* Name */}
-                                    <div>
-                                        <label className="block uppercase mb-1" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Device name</label>
-                                        <div className="flex gap-2">
-                                            <input
-                                                value={editName}
-                                                onChange={e => setEditName(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') saveDevice(); }}
-                                                className="tad-input flex-1"
-                                                style={{ height: 34, fontSize: 'var(--text-sm)' }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Notes */}
-                                    <div>
-                                        <label className="block uppercase mb-1" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Assignee / notes</label>
-                                        <textarea
-                                            value={editNotes}
-                                            onChange={e => setEditNotes(e.target.value)}
-                                            rows={3}
-                                            placeholder="Add notes about this device or its assignee…"
-                                            className="tad-input w-full resize-none"
-                                            style={{ height: 'auto', padding: '8px 12px', fontSize: 'var(--text-sm)' }}
-                                        />
-                                    </div>
-
-                                    <button onClick={saveDevice} disabled={saving}
-                                        className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block">
-                                        {saving ? 'Saving…' : 'Save changes'}
-                                    </button>
-
-                                    {/* Beat assignment */}
-                                    <div>
-                                        <p className="uppercase mb-2" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Beat (geofence)</p>
-                                        {drawerDevice.current_beat ? (
-                                            <div className="flex items-center gap-2 mb-2 rounded-lg px-3 py-2" style={{ border: '1px solid var(--border)' }}>
-                                                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: drawerDevice.current_beat.color }} />
-                                                <span className="flex-1 truncate" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{drawerDevice.current_beat.name}</span>
-                                                <button onClick={() => unassignBeat(drawerDevice.id)} disabled={beatAssigning}
-                                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)', opacity: beatAssigning ? 0.4 : 1 }}>
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <p className="mb-2" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Not assigned to any beat.</p>
-                                        )}
-                                        {beats.length > 0 && (
-                                            <select
-                                                value={drawerDevice.current_beat?.id ?? ''}
-                                                onChange={e => { const id = Number(e.target.value); if (id) assignBeat(drawerDevice.id, id); }}
-                                                disabled={beatAssigning}
-                                                className="tad-select tad-select--sm w-full">
-                                                <option value="">{beatAssigning ? 'Saving…' : '— Assign beat —'}</option>
-                                                {beats.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                            </select>
-                                        )}
-                                    </div>
-
-                                    {/* Status + location */}
-                                    <div className="rounded-xl px-3 py-2.5 space-y-1.5" style={{ background: 'var(--surface-sunken)' }}>
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full" style={{ background: STATUS_DOT[getMyStatus(drawerDevice)] }} />
-                                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: STATUS_TEXT[getMyStatus(drawerDevice)] }}>{STATUS_LABEL[getMyStatus(drawerDevice)]}</span>
-                                            {drawerDevice.battery_percent != null && (
-                                                <span className="ml-auto inline-flex items-center gap-1"
-                                                    style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: drawerDevice.battery_percent < 20 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                                                    {drawerDevice.battery_percent < 20
-                                                        ? <BatteryLow className="w-3.5 h-3.5" />
-                                                        : <Battery className="w-3.5 h-3.5" />}
-                                                    {drawerDevice.battery_percent}%
-                                                </span>
-                                            )}
-                                        </div>
-                                        {drawerDevice.last_seen_at && (
-                                            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                                                Last seen {new Date(drawerDevice.last_seen_at).toLocaleString()}
-                                            </p>
-                                        )}
-                                        {drawerDevice.last_lat != null && (
-                                            <p style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-                                                {Number(drawerDevice.last_lat).toFixed(6)}, {Number(drawerDevice.last_lon).toFixed(6)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {drawerDevice.device_type && (
-                                        <div className="rounded-xl px-3 py-2.5" style={{ background: 'var(--surface-sunken)' }}>
-                                            <p className="uppercase mb-0.5" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Device type</p>
-                                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{drawerDevice.device_type.name}</p>
-                                        </div>
-                                    )}
-
-                                    {/* Unlink device */}
-                                    <div className="pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                                        {unlinkConfirm ? (
-                                            <div className="rounded-xl px-3 py-3 space-y-2"
-                                                style={{ background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
-                                                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)' }}>Remove this device from your account?</p>
-                                                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>You can re-register it later using the device ID.</p>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => setUnlinkConfirm(false)}
-                                                        className="tad-btn tad-btn--secondary tad-btn--sm flex-1">
-                                                        Cancel
-                                                    </button>
-                                                    <button onClick={unlinkDevice} disabled={unlinking}
-                                                        className="tad-btn tad-btn--danger tad-btn--sm flex-1">
-                                                        {unlinking ? 'Removing…' : 'Yes, remove'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <button onClick={() => setUnlinkConfirm(true)}
-                                                className="w-full py-1.5 rounded-pill transition-colors"
-                                                style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)', borderRadius: 'var(--radius-pill)' }}>
-                                                Unlink device
-                                            </button>
-                                        )}
-                                    </div>
-                                </>
-                            )}
-
-                            {editTab === 'notif' && (
-                                <>
-                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                        Toggle SMS alerts per incident type. Turning one off silences it for 24 hours.
-                                    </p>
-                                    {notifLoading ? (
-                                        <div className="py-4 text-center" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>
-                                    ) : (
-                                        <>
-                                            <div className="space-y-1">
-                                                {notifPrefs.map(pref => {
-                                                    const isDisabledUntil = pref.sms_disabled_until && new Date(pref.sms_disabled_until) > new Date();
-                                                    return (
-                                                        <button key={pref.event_type}
-                                                            onClick={() => toggleNotif(pref.event_type)}
-                                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left"
-                                                            style={{
-                                                                border: '1px solid var(--border)',
-                                                                background: pref.sms_enabled ? 'var(--surface)' : 'var(--surface-sunken)',
-                                                                opacity: pref.sms_enabled ? 1 : 0.6,
-                                                            }}>
-                                                            {pref.sms_enabled
-                                                                ? <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--brand)' }} />
-                                                                : <BellOff className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
-                                                            <span className="flex-1" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{pref.label}</span>
-                                                            {isDisabledUntil && (
-                                                                <span className="shrink-0" style={{ fontSize: '9px', color: 'var(--warning)' }}>24h off</span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                            <button onClick={saveNotifPrefs} disabled={notifSaving}
-                                                className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block mt-2">
-                                                {notifSaving ? 'Saving…' : 'Save preferences'}
-                                            </button>
-                                        </>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </>
-                )}
-            </div>
         </div>
     );
 }

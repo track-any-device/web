@@ -129,6 +129,24 @@ export class ApiClient {
         return this.patch<Device>(`/devices/${id}`, data);
     }
 
+    // ── Capabilities / commands / tracking mode ──────────────────────────────
+    // Capabilities, commands and tracking modes are entirely driven by the device
+    // type — never hardcode the lists in the UI.
+
+    async deviceCapabilities(id: number) {
+        return this.get<DeviceCapabilities>(`/devices/${id}/capabilities`);
+    }
+
+    async sendDeviceCommand(id: number, command: string) {
+        return this.post<{ message: string; commandId: number | string; status: string }>(
+            `/devices/${id}/command`, { command },
+        );
+    }
+
+    async setTrackingMode(id: number, mode: string) {
+        return this.post<{ message?: string; mode?: string }>(`/devices/${id}/tracking-mode`, { mode });
+    }
+
     async unlinkDevice(id: number): Promise<void> {
         await this.delete(`/devices/${id}`);
     }
@@ -286,6 +304,26 @@ export interface RegisterDeviceResult {
     device_id?: number;
     name?: string;
     imei?: string;
+}
+
+export interface DeviceCommand {
+    key: string;
+    label: string;
+    danger?: boolean;
+}
+
+export interface DeviceTrackingMode {
+    key: string;
+    label: string;
+    interval: number;
+}
+
+export interface DeviceCapabilities {
+    deviceId: string;
+    commands: DeviceCommand[];
+    trackingModes: DeviceTrackingMode[];
+    notificationEvents: string[];
+    trackingMode: string;
 }
 
 export interface NotificationPreference {

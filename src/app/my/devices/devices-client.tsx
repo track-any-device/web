@@ -8,7 +8,9 @@ import type { Device, Incident, Beat } from '@/lib/api-client';
 import DevicesView from './devices-view';
 import RegisterDeviceModal from './register-device-modal';
 
-export default function DevicesClient() {
+type DevicesTab = 'assets' | 'beats' | 'trips';
+
+export default function DevicesClient({ initialTab = 'assets' }: { initialTab?: DevicesTab }) {
     const { token, user } = useAuth();
     const userId = String(user?.id ?? user?.sub ?? '0');
 
@@ -56,6 +58,7 @@ export default function DevicesClient() {
                 token={token!}
                 realtimeConnected={connected}
                 onRegisterClick={() => setShowRegister(true)}
+                initialTab={initialTab}
             />
             {showRegister && token && (
                 <RegisterDeviceModal
