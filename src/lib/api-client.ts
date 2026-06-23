@@ -121,6 +121,10 @@ export class ApiClient {
         return this.get<{ deviceId: string; hours: number; count: number; points: Array<{ lat: number; lng: number; t: string | null; speed: number | null }> }>(`/devices/${id}/trail`, { hours: String(hours) });
     }
 
+    async deviceTrips(id: number) {
+        return this.get<{ deviceId: string; count: number; trips: Array<{ id: number; startedAt: string | null; endedAt: string | null; durationS: number | null; distanceM: number; distanceKm: number; maxSpeed: number | null; points: number; start: { lat: number; lng: number }; end: { lat: number; lng: number } | null }> }>(`/devices/${id}/trips`);
+    }
+
     async updateDevice(id: number, data: UpdateDeviceData) {
         return this.patch<Device>(`/devices/${id}`, data);
     }
