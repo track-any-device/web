@@ -23,6 +23,9 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
   React.useEffect(() => { setRole(String(getAuthUser()?.role ?? '')); }, []);
   const isOps = OPS_ROLES.includes(role as Role);
   const isAdmin = ADMIN_ROLES.includes(role as Role);
+  // The devices/stream pages are full-bleed map apps — they manage their own height and must not
+  // sit inside the centered, padded content container the other /my pages use.
+  const fullBleed = pathname.startsWith('/my/devices') || pathname.startsWith('/my/stream');
 
   async function signOut() {
     try {
@@ -60,18 +63,22 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main style={{ flex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: 'var(--space-8) var(--space-6)' }}>
+      <main
+        style={fullBleed
+          ? { flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
+          : { flex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: 'var(--space-8) var(--space-6)' }}
+      >
         {children}
       </main>
 
-      <footer className="tad-footer">
+      {!fullBleed && <footer className="tad-footer">
         <div className="tad-footer__inner">
           <div className="tad-footer__legal">
             <span>© {new Date().getFullYear()} TAD-PAK GPS</span>
             <span className="tad-data">Cash on delivery · PKR · Pakistan</span>
           </div>
         </div>
-      </footer>
+      </footer>}
     </div>
   );
 }
