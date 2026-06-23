@@ -162,6 +162,8 @@ export default function DevicesView({
     const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; position?: { lat: number; lng: number } }>>(new Map());
     const markerSigRef = useRef<Map<number, string>>(new Map());
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
+    const trailRef    = useRef<google.maps.Polyline | null>(null);
+    const [showTrail, setShowTrail] = useState(false);
     const beatsRef    = useRef<Beat[]>(initialBeats);
 
     // ── Filtered incidents ────────────────────────────────────────────────────
@@ -289,6 +291,35 @@ export default function DevicesView({
             }
         });
     }, [devices, selectedDev, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Trail: draw the selected device's recent path when "Show trail" is on ──
+    useEffect(() => {
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+
+        const clear = () => { trailRef.current?.setMap(null); trailRef.current = null; };
+
+        if (!showTrail || !selectedDev) { clear(); return; }
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await new ApiClient(token).deviceTrail(selectedDev, 24);
+                if (cancelled) return;
+                const path = res.points
+                    .filter(p => p.lat != null && p.lng != null)
+                    .map(p => ({ lat: p.lat, lng: p.lng }));
+                clear();
+                if (path.length < 2) return;
+                trailRef.current = new google.maps.Polyline({
+                    path, map, geodesic: true,
+                    strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
+                });
+            } catch { /* trail unavailable — leave the map as-is */ }
+        })();
+
+        return () => { cancelled = true; };
+    }, [showTrail, selectedDev, devices, mapsReady, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Create AdvancedMarkerElement with graceful fallback ───────────────────
     function createAdvancedMarker(
@@ -703,6 +734,24 @@ export default function DevicesView({
                         </div>
                     </div>
                 ) : <div ref={mapRef} className="w-full h-full" />}
+
+                {/* Show-trail toggle — draws the selected device's recent path */}
+                {mapsReady && (
+                    <label className="absolute top-4 left-4"
+                        title={selectedDev ? 'Show this device’s recent path' : 'Select a device to show its trail'}
+                        style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                            background: 'var(--surface)', border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-full)', padding: '6px 12px',
+                            boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-xs)',
+                            fontWeight: 'var(--weight-medium)', color: selectedDev ? 'var(--text)' : 'var(--text-muted)',
+                        }}>
+                        <input type="checkbox" checked={showTrail} disabled={!selectedDev}
+                            onChange={(e) => setShowTrail(e.target.checked)}
+                            style={{ accentColor: 'var(--brand)', width: 14, height: 14, cursor: selectedDev ? 'pointer' : 'not-allowed' }} />
+                        Show trail
+                    </label>
+                )}
 
                 {/* Live / connecting badge */}
                 {mapsReady && (
