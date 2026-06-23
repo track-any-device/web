@@ -161,6 +161,12 @@ export class ApiClient {
         await this.delete(`/devices/${deviceId}/beat`);
     }
 
+    /** Move an owned device into one of the user's organisations. The user loses personal
+     *  tracking of it afterwards — it becomes visible only inside that tenant. */
+    async assignDeviceTenant(deviceId: number, tenantId: number) {
+        return this.post<AssignTenantResult>(`/devices/${deviceId}/assign-tenant`, { tenant_id: tenantId });
+    }
+
     // ── Notification Preferences ─────────────────────────────────────────────
 
     async getNotificationPreferences(deviceId: number) {
@@ -383,4 +389,10 @@ export interface UpdateProfileData {
     name?: string;
     phone?: string;
     timezone?: string;
+}
+
+export interface AssignTenantResult {
+    message: string;
+    deviceId: number;
+    tenant: { id: number; name: string };
 }

@@ -15,6 +15,17 @@ export interface Device {
   id: number | string; imei: string; model: string | null; sim: string | null;
   status: 'active' | 'blocked' | 'pending' | string; owner: string | null; lastSeen?: string | null;
   heartbeatAt?: string | null; heartbeatIntervalS?: number | null; online?: boolean;
+  // present on /ops/devices
+  broadcastId?: string | null; deviceTypeId?: number | string | null; gsm?: string | null;
+  tenant?: { id: number | string; name: string; isDefault?: boolean } | null;
+}
+
+/** /api/ops/device-types row (Procurement add-device picker). */
+export interface OpsDeviceType { id: number | string; name: string; slug: string }
+
+/** /api/ops/pending-broadcasts row — auto-registered, broadcast-only devices awaiting a match. */
+export interface PendingBroadcast {
+  id: number | string; broadcastId: string | null; model: string | null; lastSeen: string | null;
 }
 export interface Tenant {
   id: number | string; name: string; slug: string;

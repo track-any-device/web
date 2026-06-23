@@ -1,40 +1,26 @@
 import React from 'react';
 import { PortalTopbar } from '@/components/tad/portal-shell';
-import { DataTable, StatRow } from '@/components/tad/data-table';
-import { Badge, Button } from '@/components/ui';
+import { StatRow } from '@/components/tad/data-table';
 import { fetchPortal } from '@/lib/admin-api';
 import { requirePortal } from '@/lib/portal-guard';
 import { type Device } from '@/lib/portal-data';
+import { WorkshopClient } from './workshop-client';
 
 export default async function WorkshopPage() {
   await requirePortal('workshop');
   const { data: all, error } = await fetchPortal<Device>('/ops/devices');
-  const queue = all.filter((d) => !d.sim || d.status === 'pending');
+  // Provisioning queue: devices still on the default tenant, or not yet provisioned (no SIM / pending).
+  const queue = all.filter((d) => d.tenant?.isDefault || !d.sim || d.status === 'pending');
   return (
     <>
-      <PortalTopbar title="Workshop — SIM & configuration" subtitle="Assign SIMs and push device configuration" />
+      <PortalTopbar title="Workshop — SIM & configuration" subtitle="Provision SIMs, set the broadcast id, and onboard the live device" />
       <div className="tad-portal__body">
         <StatRow stats={[
           { label: 'Awaiting SIM', value: all.filter((d) => !d.sim).length },
           { label: 'In queue', value: queue.length },
           { label: 'Configured', value: all.filter((d) => d.sim && d.status === 'active').length },
         ]} />
-        <DataTable<Device>
-          rows={queue}
-          empty={error ?? 'No devices in the workshop queue.'}
-          columns={[
-            { key: 'imei', header: 'IMEI', mono: true },
-            { key: 'model', header: 'Model', render: (r) => r.model ?? '—' },
-            { key: 'sim', header: 'SIM', mono: true, render: (r) => r.sim ?? <Badge variant="warning">No SIM</Badge> },
-            { key: 'status', header: 'Status', render: (r) => <Badge variant={r.status === 'pending' ? 'warning' : 'success'}>{r.status}</Badge> },
-            { key: 'act', header: '', align: 'right', render: (r) => (
-              <span style={{ display: 'inline-flex', gap: 8 }}>
-                {!r.sim && <Button variant="secondary" size="sm">Assign SIM</Button>}
-                <Button size="sm">Configure</Button>
-              </span>
-            ) },
-          ]}
-        />
+        <WorkshopClient queue={queue} loadError={error} />
       </div>
     </>
   );
