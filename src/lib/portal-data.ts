@@ -75,6 +75,20 @@ export interface DeliveryOrder {
   total?: number | null; currency?: string | null; placedAt: string | null;
 }
 
+/** /api/admin/sms/outgoing row — a queued/sent outbound SMS. */
+export interface OutgoingSmsRow {
+  id: number | string; to: string; message: string;
+  status: 'pending' | 'sent' | 'failed' | string;
+  attempts: number; source: string;
+  sentAt: string | null; error: string | null; createdAt: string;
+}
+
+/** /api/admin/sms/incoming row — an inbound SMS received by the gateway. */
+export interface IncomingSmsRow {
+  id: number | string; from: string; message: string; source: string;
+  receivedAt: string; processedAt: string | null; error: string | null;
+}
+
 export function eventLabel(t: string | null): string {
   if (!t) return '—';
   return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
