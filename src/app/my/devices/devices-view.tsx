@@ -6,8 +6,6 @@ import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
-    devicePinColor,
-    deviceArrowUrl,
     arrowRotation,
     useArrow,
 } from '@/lib/map-markers';
@@ -66,53 +64,65 @@ const STATUS_LABEL: Record<MyStatus, string> = {
     online: 'Online', offline: 'Offline', unavailable: 'Unavailable',
 };
 
-// Build a DOM element for the custom marker using the package's helpers
-function makeMarkerElement(device: Device): HTMLElement {
-    const signal = device.battery_percent;  // proxy until we have network signal field
+// Map-pin colour reflects the device's LIVE status (not battery): online = green, offline = red,
+// unavailable = sand. Concrete hex (matches --success / --danger / --text-muted) so it resolves
+// even if Google reparents the marker content outside the .tad scope.
+const STATUS_PIN: Record<MyStatus, string> = {
+    online: '#1F9462', offline: '#F0463C', unavailable: '#8A7E6C',
+};
+const STATUS_ARROW: Record<MyStatus, string> = {
+    online: '/map-arrows/map-arrow-green.png',
+    offline: '/map-arrows/map-arrow-red.png',
+    unavailable: '/map-arrows/map-arrow-red.png',
+};
+
+// Build the marker DOM. The element is re-created whenever the device updates (see the marker
+// sync effect), so the one-shot `tad-pin-ping` ring replays on every update; online devices also
+// carry a continuous `tad-pin-pulse` halo so a live device visibly breathes on the map.
+function makeMarkerElement(device: Device, selected = false): HTMLElement {
+    const status  = getMyStatus(device);
+    const color   = STATUS_PIN[status];
     // @ts-expect-error heading not yet in Device type — will be null
     const heading: number | null = (device as { heading?: number }).heading ?? null;
+    const arrow   = useArrow(heading);
+    const dotSize = selected ? PIN_SIZE + 8 : PIN_SIZE;
+    const box     = arrow ? ARROW_SIZE : dotSize;
+    const ring    = arrow ? Math.round(ARROW_SIZE * 0.55) : dotSize;
 
-    if (useArrow(heading)) {
-        const img        = document.createElement('img');
-        img.src          = deviceArrowUrl(signal);
-        img.width        = ARROW_SIZE;
-        img.height       = ARROW_SIZE;
-        img.title        = device.name;
-        img.style.display        = 'block';
-        img.style.transformOrigin = 'center center';
-        img.style.transform      = arrowRotation(heading);
-        img.style.filter         = 'drop-shadow(0 1px 2px rgba(0,0,0,.4))';
-        return img;
+    const wrap = document.createElement('div');
+    wrap.title = device.name;
+    wrap.style.cssText = `position:relative;display:flex;align-items:center;justify-content:center;width:${box}px;height:${box}px;cursor:pointer`;
+
+    // one-shot ping (replays on each re-create == each update)
+    const ping = document.createElement('div');
+    ping.style.cssText = `position:absolute;left:50%;top:50%;width:${ring}px;height:${ring}px;margin:${-ring / 2}px 0 0 ${-ring / 2}px;border-radius:50%;border:2px solid ${color};animation:tad-pin-ping .9s ease-out;pointer-events:none`;
+    wrap.appendChild(ping);
+
+    // continuous live pulse for online devices
+    if (status === 'online') {
+        const halo = document.createElement('div');
+        halo.style.cssText = `position:absolute;left:50%;top:50%;width:${ring}px;height:${ring}px;margin:${-ring / 2}px 0 0 ${-ring / 2}px;border-radius:50%;background:${color};opacity:.4;animation:tad-pin-pulse 1.8s ease-out infinite;pointer-events:none`;
+        wrap.appendChild(halo);
     }
 
-    const div   = document.createElement('div');
-    const color = devicePinColor(signal);
-    div.title   = device.name;
-    div.style.cssText = [
-        `width:${PIN_SIZE}px`,
-        `height:${PIN_SIZE}px`,
-        `border-radius:50%`,
-        `background:${color}`,
-        `border:2.5px solid #fff`,
-        `box-shadow:0 1px 4px rgba(0,0,0,.35)`,
-        `cursor:pointer`,
-    ].join(';');
-    return div;
+    if (arrow) {
+        const img = document.createElement('img');
+        img.src = STATUS_ARROW[status];
+        img.width = ARROW_SIZE;
+        img.height = ARROW_SIZE;
+        img.style.cssText = `position:relative;display:block;transform-origin:center center;transform:${arrowRotation(heading)};filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))`;
+        wrap.appendChild(img);
+    } else {
+        const dot = document.createElement('div');
+        dot.style.cssText = `position:relative;width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:${selected ? 3 : 2.5}px solid #fff;box-shadow:${selected ? `0 0 0 2px ${color}, ` : ''}0 1px 4px rgba(0,0,0,.35)`;
+        wrap.appendChild(dot);
+    }
+
+    return wrap;
 }
 
 function makeSelectedMarkerElement(device: Device): HTMLElement {
-    const el    = makeMarkerElement(device);
-    const color = devicePinColor(device.battery_percent);
-    // @ts-expect-error heading proxy
-    const heading: number | null = (device as { heading?: number }).heading ?? null;
-
-    if (!useArrow(heading)) {
-        el.style.width       = `${PIN_SIZE + 8}px`;
-        el.style.height      = `${PIN_SIZE + 8}px`;
-        el.style.border      = `3px solid #fff`;
-        el.style.boxShadow   = `0 0 0 2px ${color}, 0 2px 8px rgba(0,0,0,.4)`;
-    }
-    return el;
+    return makeMarkerElement(device, true);
 }
 
 export default function DevicesView({
@@ -150,6 +160,7 @@ export default function DevicesView({
     const mapRef      = useRef<HTMLDivElement>(null);
     const gmapRef     = useRef<google.maps.Map | null>(null);
     const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; position?: { lat: number; lng: number } }>>(new Map());
+    const markerSigRef = useRef<Map<number, string>>(new Map());
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
     const beatsRef    = useRef<Beat[]>(initialBeats);
 
@@ -245,20 +256,28 @@ export default function DevicesView({
             const isSelected = selectedDev === device.id;
             const existing   = markersRef.current.get(device.id);
 
+            // Only re-create the marker content when something actually changed (position, last
+            // seen, battery, or selection). That keeps the ping animation meaningful — it fires on
+            // a real update, not for every marker whenever any device changes.
+            const sig = `${lat}|${lng}|${device.last_seen_at ?? ''}|${device.battery_percent ?? ''}|${isSelected ? 1 : 0}`;
+
             if (existing) {
-                // Re-create content element to reflect updated signal/heading
-                if ('content' in existing) {
-                    (existing as { content: HTMLElement }).content = isSelected
-                        ? makeSelectedMarkerElement(device)
-                        : makeMarkerElement(device);
-                }
-                if (!isNaN(lat) && !isNaN(lng) && 'position' in existing) {
-                    (existing as { position: { lat: number; lng: number } }).position = { lat, lng };
+                if (markerSigRef.current.get(device.id) !== sig) {
+                    if ('content' in existing) {
+                        (existing as { content: HTMLElement }).content = isSelected
+                            ? makeSelectedMarkerElement(device)
+                            : makeMarkerElement(device);
+                    }
+                    if (!isNaN(lat) && !isNaN(lng) && 'position' in existing) {
+                        (existing as { position: { lat: number; lng: number } }).position = { lat, lng };
+                    }
+                    markerSigRef.current.set(device.id, sig);
                 }
             } else if (!isNaN(lat) && !isNaN(lng)) {
                 const marker = createAdvancedMarker(map, device, isSelected);
                 marker.addListener?.('click', () => openDevice(device.id));
                 markersRef.current.set(device.id, marker);
+                markerSigRef.current.set(device.id, sig);
             }
 
             // Follow selected device — pan when it moves outside the visible area
@@ -291,7 +310,7 @@ export default function DevicesView({
         }
 
         // Fallback to legacy Marker
-        const color = devicePinColor(device.battery_percent);
+        const color = STATUS_PIN[getMyStatus(device)];
         const mk    = new google.maps.Marker({
             position: { lat, lng },
             map,
@@ -558,7 +577,8 @@ export default function DevicesView({
                 </div>
 
                 {/* Devices list */}
-                <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'devices' ? 'hidden' : ''}`}>
+                <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'devices' ? 'hidden' : ''}`}
+                    style={{ gap: 8, padding: devices.length === 0 ? 0 : 10 }}>
                     {devices.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
                             <Smartphone className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
@@ -574,52 +594,40 @@ export default function DevicesView({
                         return (
                             <button key={device.id} id={`device-${device.id}`}
                                 onClick={() => openDevice(device.id)}
-                                className="w-full text-left px-3 py-2.5 transition-colors"
                                 style={{
-                                    borderBottom: '1px solid var(--border-subtle)',
-                                    borderLeft: `2px solid ${isSel ? 'var(--brand)' : 'transparent'}`,
-                                    background: isSel ? 'var(--brand-subtle)' : 'transparent',
+                                    display: 'flex', alignItems: 'center', gap: 12, padding: 12, width: '100%',
+                                    textAlign: 'left', cursor: 'pointer', borderRadius: 'var(--radius-lg)',
+                                    border: `1px solid ${isSel ? 'var(--brand)' : 'var(--border)'}`,
+                                    background: isSel ? 'var(--brand-subtle)' : 'var(--surface)',
+                                    transition: 'border-color .15s, background .15s',
                                 }}>
-                                <div className="flex items-center gap-2">
-                                    {/* Device image or icon */}
-                                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
-                                        style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}>
-                                        {device.image_url
-                                            ? <img src={device.image_url} alt="" className="w-full h-full object-cover" />
-                                            : (device.map_icon
-                                                ? <span className="text-lg">{device.map_icon}</span>
-                                                : <Smartphone className="w-4 h-4" />)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="truncate" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{device.name}</p>
-                                        <p className="truncate" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{device.imei}</p>
-                                    </div>
-                                    {activeIncCount > 0 && (
-                                        <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center"
-                                            style={{ background: 'var(--danger)', color: '#fff', fontSize: '9px', fontWeight: 'var(--weight-bold)', fontFamily: 'var(--font-mono)' }}>
-                                            {activeIncCount > 9 ? '9+' : activeIncCount}
-                                        </span>
-                                    )}
+                                {/* Icon tile (device image or fallback) */}
+                                <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
+                                    {device.image_url
+                                        ? <img src={device.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        : <Smartphone width={20} height={20} />}
                                 </div>
-                                <div className="flex items-center gap-2 mt-1.5 pl-10">
-                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_DOT[st] }} />
-                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: STATUS_TEXT[st] }}>
-                                        {STATUS_LABEL[st]}
+                                {/* Name + identity */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="truncate" style={{ fontSize: 15, fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{device.name}</div>
+                                    <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{device.imei}</div>
+                                </div>
+                                {/* Status + secondary metric */}
+                                <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                        {activeIncCount > 0 && (
+                                            <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 'var(--weight-bold)', fontFamily: 'var(--font-mono)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {activeIncCount > 9 ? '9+' : activeIncCount}
+                                            </span>
+                                        )}
+                                        <span title={STATUS_LABEL[st]} style={{ width: 9, height: 9, borderRadius: 999, flex: 'none', background: STATUS_DOT[st], boxShadow: st === 'online' ? `0 0 0 3px color-mix(in srgb, ${STATUS_DOT[st]} 22%, transparent)` : 'none' }} />
                                     </span>
-                                    {device.battery_percent != null && (
-                                        <span className="ml-auto inline-flex items-center gap-1"
-                                            style={{
-                                                fontSize: 'var(--text-xs)',
-                                                fontFamily: 'var(--font-mono)',
-                                                fontWeight: device.battery_percent < 20 ? 'var(--weight-semibold)' : 'var(--weight-regular)',
-                                                color: device.battery_percent < 20 ? 'var(--danger)' : 'var(--text-muted)',
-                                            }}>
-                                            {device.battery_percent < 20
-                                                ? <BatteryLow className="w-3.5 h-3.5" />
-                                                : <Battery className="w-3.5 h-3.5" />}
+                                    {device.battery_percent != null
+                                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 12, color: device.battery_percent < 20 ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                                            {device.battery_percent < 20 ? <BatteryLow width={13} height={13} /> : <Battery width={13} height={13} />}
                                             {device.battery_percent}%
-                                        </span>
-                                    )}
+                                          </span>
+                                        : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{STATUS_LABEL[st]}</span>}
                                 </div>
                             </button>
                         );

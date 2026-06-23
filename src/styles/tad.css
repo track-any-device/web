@@ -137,6 +137,9 @@
 @keyframes tad-flash { 0%{opacity:1;transform:scale(0.35);} 55%{opacity:0.6;} 100%{opacity:0;transform:scale(2.8);} }
 @keyframes tad-mpulse { 0%{transform:scale(.4);opacity:.32;} 100%{transform:scale(1.5);opacity:0;} }
 @keyframes tad-btn-spin { to{transform:rotate(360deg);} }
+/* Device map pins: one-shot ring on every update, + a continuous live breathe for online devices. */
+@keyframes tad-pin-ping { from{transform:scale(.6);opacity:.9;} to{transform:scale(3);opacity:0;} }
+@keyframes tad-pin-pulse { 0%{transform:scale(.8);opacity:.5;} 70%{transform:scale(2.4);opacity:0;} 100%{transform:scale(2.4);opacity:0;} }
 
 /* ---------- COMPONENTS ---------- */
 /* Button */
