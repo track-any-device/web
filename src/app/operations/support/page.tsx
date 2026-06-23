@@ -1,38 +1,18 @@
 import React from 'react';
 import { PortalTopbar } from '@/components/tad/portal-shell';
-import { DataTable, StatRow } from '@/components/tad/data-table';
-import { Badge, Button } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
 import { requirePortal } from '@/lib/portal-guard';
-import { eventLabel, type Incident } from '@/lib/portal-data';
-
-const PRIORITY: Record<string, 'danger' | 'warning' | 'neutral'> = { critical: 'danger', high: 'warning', medium: 'neutral', low: 'neutral', info: 'neutral' };
+import { type SupportTicket } from '@/lib/portal-data';
+import { SupportBoard } from './support-board-client';
 
 export default async function SupportPage() {
   await requirePortal('support');
-  const { data: rows, error } = await fetchPortal<Incident>('/ops/incidents');
+  const { data: tickets, error } = await fetchPortal<SupportTicket>('/ops/support/tickets');
   return (
     <>
-      <PortalTopbar title="Support — Incident watch" subtitle="Live incidents across all customers" />
+      <PortalTopbar title="Support — Ticket board" subtitle="Triage incident tickets across all customers" />
       <div className="tad-portal__body">
-        <StatRow stats={[
-          { label: 'Open incidents', value: rows.filter((i) => i.status !== 'resolved').length },
-          { label: 'Critical', value: rows.filter((i) => i.priority === 'critical').length },
-          { label: 'Resolved', value: rows.filter((i) => i.status === 'resolved').length },
-        ]} />
-        <DataTable<Incident>
-          empty={error ?? 'No incidents.'}
-          rows={rows}
-          columns={[
-            { key: 'id', header: 'Incident', mono: true },
-            { key: 'priority', header: 'Priority', render: (r) => <Badge variant={PRIORITY[r.priority ?? ''] ?? 'neutral'}>{r.priority ?? '—'}</Badge> },
-            { key: 'eventType', header: 'Event', render: (r) => eventLabel(r.eventType) },
-            { key: 'device', header: 'Device IMEI', mono: true, render: (r) => r.device ?? '—' },
-            { key: 'status', header: 'Status', render: (r) => r.status ?? '—' },
-            { key: 'openedAt', header: 'Opened', render: (r) => r.openedAt ?? '—' },
-            { key: 'act', header: '', align: 'right', render: () => <Button variant="ghost" size="sm">Call customer</Button> },
-          ]}
-        />
+        <SupportBoard initial={tickets} loadError={error} />
       </div>
     </>
   );
