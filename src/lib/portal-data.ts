@@ -49,6 +49,19 @@ export interface PortalUser {
 export interface DeviceType {
   id: number | string; name: string; slug: string; originalModel: string | null; pricePkr: number | null; active: boolean;
   deviceCount?: number;
+  exclusionExempt?: boolean;
+}
+
+/** /api/admin/exclusion-beats row — a global no-go geofence. Every device is restricted
+   by these unless its device type is exempt. */
+export interface ExclusionBeat {
+  id: number | string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  geoFenceType: string | null;
+  coordinates: { lat: number; lng: number }[];
+  createdAt: string | null;
 }
 
 /** /api/admin/devices/{id} — full device view for the admin detail page. */
