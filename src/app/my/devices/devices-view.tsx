@@ -738,21 +738,28 @@ export default function DevicesView({
                                 const on = selectedBeat === beat.id;
                                 const assigned = devices.find(d => d.current_beat?.id === beat.id);
                                 return (
-                                    <button key={beat.id} id={`beat-${beat.id}`} onClick={() => focusBeat(beat.id)}
+                                    <div key={beat.id} id={`beat-${beat.id}`}
                                         style={{
-                                            display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
-                                            padding: '13px 16px', borderBottom: '1px solid var(--border-subtle)',
+                                            display: 'flex', alignItems: 'center',
+                                            borderBottom: '1px solid var(--border-subtle)',
                                             borderLeft: `3px solid ${on ? 'var(--brand)' : 'transparent'}`,
                                             background: on ? 'var(--brand-subtle)' : 'transparent',
                                         }}>
-                                        <div className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{beat.name}</div>
-                                        <div className="truncate" style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>
-                                            {beat.status}{beat.coordinates?.length > 0 ? ` · ${beat.coordinates.length} pts` : ''}
-                                        </div>
-                                        {assigned && (
-                                            <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>{assigned.name}</div>
-                                        )}
-                                    </button>
+                                        <button onClick={() => focusBeat(beat.id)}
+                                            style={{ flex: 1, minWidth: 0, textAlign: 'left', cursor: 'pointer', padding: '13px 16px', background: 'transparent', border: 'none' }}>
+                                            <div className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{beat.name}</div>
+                                            <div className="truncate" style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>
+                                                {beat.status}{beat.coordinates?.length > 0 ? ` · ${beat.coordinates.length} pts` : ''}
+                                            </div>
+                                            {assigned && (
+                                                <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>{assigned.name}</div>
+                                            )}
+                                        </button>
+                                        <a href={`/my/beats/${beat.id}`} aria-label={`Edit ${beat.name}`} title="Edit / delete beat"
+                                            style={{ flex: 'none', padding: '0 14px', alignSelf: 'stretch', display: 'inline-flex', alignItems: 'center', color: 'var(--text-subtle)' }}>
+                                            <ChevronRight width={16} height={16} />
+                                        </a>
+                                    </div>
                                 );
                             })
                         )}

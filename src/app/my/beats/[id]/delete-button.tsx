@@ -12,6 +12,7 @@ export default function DeleteBeatButton({ beatId, token }: { beatId: number; to
     const [devices,  setDevices]  = useState<Device[]>([]);
     const [loading,  setLoading]  = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [error,    setError]    = useState<string | null>(null);
 
     async function openConfirm() {
         setOpen(true);
@@ -28,13 +29,15 @@ export default function DeleteBeatButton({ beatId, token }: { beatId: number; to
 
     async function handleDelete() {
         setDeleting(true);
+        setError(null);
         try {
             await new ApiClient(token).deleteBeat(beatId);
-            router.push('/my/beats');
+            router.push('/my/devices');
             router.refresh();
-        } finally {
+        } catch (e) {
+            // Keep the dialog open and surface the failure instead of silently closing.
+            setError(e instanceof Error ? e.message : 'Could not delete the beat. Please try again.');
             setDeleting(false);
-            setOpen(false);
         }
     }
 
@@ -74,6 +77,9 @@ export default function DeleteBeatButton({ beatId, token }: { beatId: number; to
                                 </div>
                             ) : (
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>No devices are currently assigned to this beat.</p>
+                            )}
+                            {error && (
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--danger)' }}>{error}</p>
                             )}
                         </div>
 
