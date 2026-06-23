@@ -255,7 +255,7 @@ export interface Device {
     last_lat: number | null;
     last_lon: number | null;
     battery_percent: number | null;
-    last_signal_at: string | null;
+    last_seen_at: string | null;
     current_beat: { id: number; name: string; color: string } | null;
     device_type?: { id: number; name: string; slug: string; image?: string };
     tenant?: { id: number; name: string; slug: string };

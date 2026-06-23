@@ -14,7 +14,7 @@ interface DeviceUpdatedPayload {
     last_lat?: number | null;
     last_lon?: number | null;
     battery_level?: number | null;   // server key
-    last_signal_at?: string | null;
+    last_seen_at?: string | null;
 }
 
 interface SignalPayload {
@@ -111,7 +111,7 @@ export function useRealtimeDevices(
                         last_lon:        data.lng,
                         battery_percent: data.battery ?? existing.battery_percent,
                         status:          data.is_online ? 'active' : 'offline',
-                        last_signal_at:  data.last_seen_at,
+                        last_seen_at:    data.last_seen_at,
                     },
                 };
             });

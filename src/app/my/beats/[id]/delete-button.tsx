@@ -40,50 +40,48 @@ export default function DeleteBeatButton({ beatId, token }: { beatId: number; to
 
     return (
         <>
-            <button onClick={openConfirm}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+            <button onClick={openConfirm} className="tad-btn tad-btn--sm shrink-0"
+                style={{ color: 'var(--danger)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)', background: 'transparent' }}>
                 Delete
             </button>
 
             {open && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(20,16,8,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="tad-card tad-card--raised w-full max-w-md" style={{ boxShadow: 'var(--shadow-xl)' }}>
 
-                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Delete beat?</h2>
-                            <p className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</p>
+                        <div className="tad-card__header" style={{ display: 'block' }}>
+                            <h2 className="tad-card__title">Delete beat?</h2>
+                            <p className="mt-0.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>This action cannot be undone.</p>
                         </div>
 
-                        <div className="px-6 py-4 space-y-3">
+                        <div className="tad-card__body space-y-3">
                             {loading ? (
-                                <p className="text-sm text-gray-400">Checking assigned devices…</p>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Checking assigned devices…</p>
                             ) : devices.length > 0 ? (
                                 <div>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                    <p className="mb-2" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                                         The following {devices.length === 1 ? 'device is' : `${devices.length} devices are`} currently assigned to this beat and will be unassigned:
                                     </p>
                                     <ul className="space-y-1.5 max-h-48 overflow-y-auto">
                                         {devices.map(d => (
-                                            <li key={d.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                                <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-                                                <span className="font-medium text-gray-800 dark:text-gray-200">{d.name}</span>
-                                                <span className="text-xs text-gray-400">{d.imei}</span>
+                                            <li key={d.id} className="flex items-center gap-2" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--brand)' }} />
+                                                <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{d.name}</span>
+                                                <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{d.imei}</span>
                                             </li>
                                         ))}
                                     </ul>
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-600 dark:text-gray-400">No devices are currently assigned to this beat.</p>
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>No devices are currently assigned to this beat.</p>
                             )}
                         </div>
 
-                        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                            <button onClick={() => setOpen(false)}
-                                className="px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        <div className="tad-card__footer flex items-center justify-end gap-3">
+                            <button onClick={() => setOpen(false)} className="tad-btn tad-btn--secondary tad-btn--sm">
                                 Cancel
                             </button>
-                            <button onClick={handleDelete} disabled={deleting || loading}
-                                className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                            <button onClick={handleDelete} disabled={deleting || loading} className="tad-btn tad-btn--danger tad-btn--sm">
                                 {deleting ? 'Deleting…' : 'Yes, delete beat'}
                             </button>
                         </div>

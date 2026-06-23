@@ -2,16 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Package, Plug, Radio } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiClient } from '@/lib/api-client';
 import type { Order } from '@/lib/api-client';
 
-const STATUS_BADGE: Record<string, string> = {
-    pending:    'bg-yellow-100 text-yellow-700',
-    confirmed:  'bg-blue-100 text-blue-700',
-    shipped:    'bg-indigo-100 text-indigo-700',
-    delivered:  'bg-green-100 text-green-700',
-    cancelled:  'bg-red-100 text-red-700',
+const STATUS_BADGE: Record<string, { background: string; color: string }> = {
+    pending:    { background: 'var(--warning-bg)', color: 'var(--warning)' },
+    confirmed:  { background: 'var(--brand-subtle)', color: 'var(--brand-on-subtle)' },
+    shipped:    { background: 'var(--accent-subtle)', color: 'var(--accent)' },
+    delivered:  { background: 'var(--success-bg)', color: 'var(--success)' },
+    cancelled:  { background: 'var(--danger-bg)', color: 'var(--danger)' },
+};
+
+const STATUS_DOT: Record<string, string> = {
+    pending:   'var(--warning)',
+    confirmed: 'var(--brand)',
+    shipped:   'var(--accent)',
+    delivered: 'var(--success)',
+    cancelled: 'var(--danger)',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -46,15 +55,16 @@ export default function OrdersClient() {
             .finally(() => setLoading(false));
     }, [token, statusFilter]);
 
-    if (loading) return <div className="p-8 text-sm text-gray-400">Loading...</div>;
+    if (loading) return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
 
     return (
         <div className="p-8 space-y-6">
 
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    My Orders ({total})
+                <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                    My orders
+                    <span className="ml-2" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-regular)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>({total})</span>
                 </h1>
                 {/* Status filter */}
                 <div className="flex flex-wrap gap-2">
@@ -67,11 +77,7 @@ export default function OrdersClient() {
                     ].map(([label, status]) => (
                         <a key={label}
                             href={status ? `/my/orders?status=${status}` : '/my/orders'}
-                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-                                statusFilter === status
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
-                            }`}>
+                            className={`tad-btn tad-btn--sm ${statusFilter === status ? 'tad-btn--primary' : 'tad-btn--secondary'}`}>
                             {label}
                         </a>
                     ))}
@@ -80,12 +86,13 @@ export default function OrdersClient() {
 
             {/* Orders list */}
             {orders.length === 0 ? (
-                <div className="text-center py-24 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                    <p className="text-4xl mb-3">📦</p>
-                    <p className="text-base font-medium text-gray-400">No orders yet</p>
-                    <p className="text-sm text-gray-500 mt-1">
+                <div className="flex flex-col items-center justify-center text-center py-24 gap-2 rounded-xl"
+                    style={{ border: '1px dashed var(--border-strong)' }}>
+                    <Package className="w-9 h-9" style={{ color: 'var(--text-subtle)' }} />
+                    <p style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>No orders yet</p>
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                         Visit the{' '}
-                        <a href="/shop" className="text-blue-600 hover:underline">Shop</a>
+                        <a href="/shop" style={{ color: 'var(--brand)', fontWeight: 'var(--weight-medium)' }}>shop</a>
                         {' '}to browse available devices and accessories.
                     </p>
                 </div>
@@ -93,49 +100,59 @@ export default function OrdersClient() {
                 <div className="space-y-4">
                     {orders.map(order => (
                         <div key={order.id}
-                            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            className="rounded-xl overflow-hidden"
+                            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
 
                             {/* Order header */}
-                            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between flex-wrap gap-3">
+                            <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3"
+                                style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                                 <div className="flex items-center gap-3">
-                                    <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white">
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
                                         #{order.order_number}
                                     </span>
-                                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${STATUS_BADGE[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full"
+                                        style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', ...(STATUS_BADGE[order.status] ?? { background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }) }}>
+                                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_DOT[order.status] ?? 'var(--text-muted)' }} />
                                         {STATUS_LABEL[order.status] ?? order.status}
                                     </span>
                                     {order.tracking_number && (
-                                        <span className="text-xs text-gray-400 font-mono">
+                                        <span style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                                             Tracking: {order.tracking_number}
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-4">
                                     {order.total_usd != null && (
-                                        <span className="font-bold text-blue-600">${order.total_usd.toFixed(2)}</span>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-bold)', color: 'var(--brand)' }}>${order.total_usd.toFixed(2)}</span>
                                     )}
                                     {order.total_pkr != null && (
-                                        <span className="text-gray-400 text-xs">PKR {order.total_pkr.toLocaleString()}</span>
+                                        <span style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>PKR {order.total_pkr.toLocaleString()}</span>
                                     )}
                                 </div>
                             </div>
 
                             {/* Order items */}
                             {order.items?.length > 0 && (
-                                <ul className="divide-y divide-gray-50 dark:divide-gray-750">
-                                    {order.items.map(item => (
-                                        <li key={item.id} className="px-5 py-3 flex items-center justify-between text-sm">
+                                <ul>
+                                    {order.items.map((item, idx) => (
+                                        <li key={item.id} className="px-5 py-3 flex items-center justify-between"
+                                            style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-lg">{item.product_type === 'accessory' ? '🔌' : '📡'}</span>
+                                                <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                                    style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}>
+                                                    {item.product_type === 'accessory'
+                                                        ? <Plug className="w-4 h-4" />
+                                                        : <Radio className="w-4 h-4" />}
+                                                </span>
                                                 <div>
-                                                    <p className="text-gray-800 dark:text-gray-200 font-medium">{item.product_name}</p>
-                                                    <p className="text-xs text-gray-400 capitalize">{item.product_type}</p>
+                                                    <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{item.product_name}</p>
+                                                    <p className="capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{item.product_type}</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-gray-600 dark:text-gray-400 text-xs">Qty: {item.quantity}</p>
+                                                <p style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>Qty: {item.quantity}</p>
                                                 {item.unit_price_usd != null && (
-                                                    <p className="text-gray-500 text-xs">${item.unit_price_usd} each</p>
+                                                    <p style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>${item.unit_price_usd} each</p>
                                                 )}
                                             </div>
                                         </li>
@@ -144,13 +161,14 @@ export default function OrdersClient() {
                             )}
 
                             {/* Order footer */}
-                            <div className="px-5 py-2.5 bg-gray-50 dark:bg-gray-900 flex items-center gap-4 text-xs text-gray-400 flex-wrap">
-                                <span>Placed {new Date(order.created_at).toLocaleDateString()}</span>
+                            <div className="px-5 py-2.5 flex items-center gap-4 flex-wrap"
+                                style={{ background: 'var(--surface-sunken)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                <span style={{ fontFamily: 'var(--font-mono)' }}>Placed {new Date(order.created_at).toLocaleDateString()}</span>
                                 {order.shipped_at && (
-                                    <span>Shipped {new Date(order.shipped_at).toLocaleDateString()}</span>
+                                    <span style={{ fontFamily: 'var(--font-mono)' }}>Shipped {new Date(order.shipped_at).toLocaleDateString()}</span>
                                 )}
                                 {order.delivered_at && (
-                                    <span className="text-green-600 font-medium">
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 'var(--weight-medium)', color: 'var(--success)' }}>
                                         Delivered {new Date(order.delivered_at).toLocaleDateString()}
                                     </span>
                                 )}
