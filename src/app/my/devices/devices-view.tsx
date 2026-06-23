@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
-import { Badge } from '@/components/ui';
+import { Badge, Card, Tabs, Button, Switch } from '@/components/ui';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
@@ -39,10 +39,6 @@ const INCIDENT_STATUS_DOT: Record<string, string> = {
     escalated:    'var(--warning)',
     resolved:     'var(--success)',
     closed:       'var(--text-muted)',
-};
-
-const BEAT_STATUS_DOT: Record<string, string> = {
-    active: 'var(--success)', inactive: 'var(--text-muted)', draft: 'var(--warning)',
 };
 
 type MyStatus = 'online' | 'offline' | 'unavailable';
@@ -180,14 +176,13 @@ export default function DevicesView({
 }: Props) {
     const [devices,         setDevices]         = useState<Device[]>(incomingDevices);
     const [beats,           setBeats]           = useState<Beat[]>(initialBeats);
-    const [activeTab,       setActiveTab]       = useState<'devices' | 'beats'>('devices');
+    const [activeTab,       setActiveTab]       = useState<'assets' | 'beats' | 'trips'>('assets');
     const [selectedDev,     setSelectedDev]     = useState<number | null>(null);
     const [selectedBeat,    setSelectedBeat]    = useState<number | null>(null);
     const [mapsReady,       setMapsReady]       = useState(false);
     const [showImport,      setShowImport]      = useState(false);
 
-    // Right panel: Incidents | Trips
-    const [rightTab,        setRightTab]        = useState<'incidents' | 'trips'>('incidents');
+    // Left "Trips" tab: auto-detected trips for the selected device
     const [trips,           setTrips]           = useState<Trip[]>([]);
     const [tripsLoading,    setTripsLoading]    = useState(false);
 
@@ -213,7 +208,9 @@ export default function DevicesView({
     const markerSigRef = useRef<Map<number, string>>(new Map());
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
     const trailRef    = useRef<google.maps.Polyline | null>(null);
-    const [showTrail, setShowTrail] = useState(false);
+    const [showTrail,  setShowTrail]  = useState(false);
+    const [trailEmpty, setTrailEmpty] = useState(false);
+    const [showBeats,  setShowBeats]  = useState(true);
     const beatsRef    = useRef<Beat[]>(initialBeats);
 
     // ── Filtered incidents ────────────────────────────────────────────────────
@@ -349,7 +346,7 @@ export default function DevicesView({
 
         const clear = () => { trailRef.current?.setMap(null); trailRef.current = null; };
 
-        if (!showTrail || !selectedDev) { clear(); return; }
+        if (!showTrail || !selectedDev) { clear(); setTrailEmpty(false); return; }
 
         let cancelled = false;
         (async () => {
@@ -360,16 +357,17 @@ export default function DevicesView({
                     .filter(p => p.lat != null && p.lng != null)
                     .map(p => ({ lat: p.lat, lng: p.lng }));
                 clear();
-                if (path.length < 2) return;
+                if (path.length < 2) { setTrailEmpty(true); return; }
+                setTrailEmpty(false);
                 trailRef.current = new google.maps.Polyline({
-                    path, map, geodesic: true,
+                    path, map: gmapRef.current, geodesic: true,
                     strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
                 });
             } catch { /* trail unavailable — leave the map as-is */ }
         })();
 
         return () => { cancelled = true; };
-    }, [showTrail, selectedDev, devices, mapsReady, token]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [showTrail, selectedDev, mapsReady, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Load auto-detected trips for the selected device (right "Trips" tab) ──
     useEffect(() => {
@@ -454,20 +452,23 @@ export default function DevicesView({
         setSelectedDev(null);
     }, []);
 
-    // ── Load notification prefs when switching to notif tab ───────────────────
+    // ── Load notification prefs for the selected device ───────────────────────
+    // Used by BOTH the drawer "Notifications" tab and the right-side "Notify me on"
+    // card. Loads as soon as an asset is selected (drawer open OR map/list select).
     useEffect(() => {
-        if (editTab !== 'notif' || !drawerDevice) return;
+        const id = drawerDevice?.id ?? selectedDev;
+        if (id == null) return;
         if (notifPrefs.length > 0) return; // already loaded for this device
         setNotifLoading(true);
         const api = new ApiClient(token);
-        api.getNotificationPreferences(drawerDevice.id)
+        api.getNotificationPreferences(id)
             .then(res => setNotifPrefs(res.data))
             .catch(() => {})
             .finally(() => setNotifLoading(false));
-    }, [editTab, drawerDevice]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [editTab, drawerDevice, selectedDev]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Reset prefs when device changes
-    useEffect(() => { setNotifPrefs([]); }, [drawerDevice?.id]);
+    // Reset prefs when the selected device changes
+    useEffect(() => { setNotifPrefs([]); }, [drawerDevice?.id, selectedDev]);
 
     // ── Save device name + notes ──────────────────────────────────────────────
     async function saveDevice() {
@@ -551,7 +552,7 @@ export default function DevicesView({
             }
         });
 
-        // Add polygons for newly added beats
+        // Add polygons for newly added beats (respect the current show/hide toggle)
         const newBeats = beats.filter(b => !polysRef.current.has(b.id) && (b.coordinates?.length ?? 0) > 0);
         newBeats.forEach(beat => {
             const poly = new google.maps.Polygon({
@@ -560,7 +561,7 @@ export default function DevicesView({
                 fillOpacity:  0.15,
                 strokeColor:  beat.color ?? '#01411C',
                 strokeWeight: 2,
-                map,
+                map:          showBeats ? map : null,
             });
             polysRef.current.set(beat.id, poly);
             poly.addListener('click', () => focusBeat(beat.id));
@@ -573,6 +574,13 @@ export default function DevicesView({
             map.fitBounds(bounds, 80);
         }
     }, [beats, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Show / hide beat polygons (does not rebuild them, just toggles visibility) ──
+    useEffect(() => {
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+        polysRef.current.forEach(poly => poly.setMap(showBeats ? map : null));
+    }, [showBeats, mapsReady]);
 
     // ── Beat operations ───────────────────────────────────────────────────────
     async function assignBeat(deviceId: number, beatId: number) {
@@ -645,329 +653,346 @@ export default function DevicesView({
         document.getElementById(`beat-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // ── Derived view data (presentation only) ────────────────────────────────
+    const selectedDevice  = selectedDev != null ? devices.find(d => d.id === selectedDev) ?? null : null;
+    // "New" = still-active incidents (open / acknowledged / escalated) across the visible set.
+    const newIncidentCount = visibleIncidents.filter(i =>
+        ['open', 'acknowledged', 'escalated'].includes(i.status)).length;
+
     return (
-        <div className="mx-auto flex w-full max-w-[1600px] h-[calc(100vh-4rem)] overflow-hidden"
-            style={{ background: 'var(--bg)' }}>
+        <div className="mx-auto w-full max-w-[1240px] px-7 py-6" style={{ background: 'var(--bg)' }}>
 
-            {/* ── LEFT: Devices / Beats tabs ──────────────────────────────── */}
-            <div className="w-64 shrink-0 flex flex-col"
-                style={{ borderRight: '1px solid var(--border)', background: 'var(--surface)' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 16px', color: 'var(--text)' }}>
+                My things
+            </h1>
 
-                {/* Tab bar */}
-                <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border)' }}>
-                    {(['devices', 'beats'] as const).map(tab => (
-                        <button key={tab} onClick={() => setActiveTab(tab)}
-                            className="flex-1 py-2.5 transition-colors"
-                            style={{
-                                fontSize: 'var(--text-sm)',
-                                fontWeight: activeTab === tab ? 'var(--weight-semibold)' : 'var(--weight-medium)',
-                                color: activeTab === tab ? 'var(--text)' : 'var(--text-muted)',
-                                borderBottom: `2px solid ${activeTab === tab ? 'var(--brand)' : 'transparent'}`,
-                            }}>
-                            {tab === 'devices' ? `Devices (${devices.length})` : `Beats (${beats.length})`}
-                        </button>
-                    ))}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '320px minmax(0,1fr) 300px', gap: 16, alignItems: 'start' }}>
 
-                {/* Devices list */}
-                <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'devices' ? 'hidden' : ''}`}
-                    style={{ gap: 8, padding: devices.length === 0 ? 0 : 10 }}>
-                    {devices.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
-                            <Smartphone className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No devices yet.</p>
-                        </div>
-                    ) : devices.map(device => {
-                        const st    = getMyStatus(device);
-                        const isSel = selectedDev === device.id;
-                        const activeIncCount = incidents.filter(i =>
-                            i.device?.id === device.id && ['open','acknowledged','escalated'].includes(i.status)
-                        ).length;
-
-                        return (
-                            <button key={device.id} id={`device-${device.id}`}
-                                onClick={() => openDevice(device.id)}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 12, padding: 12, width: '100%',
-                                    textAlign: 'left', cursor: 'pointer', borderRadius: 'var(--radius-lg)',
-                                    border: `1px solid ${isSel ? 'var(--brand)' : 'var(--border)'}`,
-                                    background: isSel ? 'var(--brand-subtle)' : 'var(--surface)',
-                                    transition: 'border-color .15s, background .15s',
-                                }}>
-                                {/* Icon tile (device image or fallback) */}
-                                <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
-                                    {device.image_url
-                                        ? <img src={device.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        : <Smartphone width={20} height={20} />}
-                                </div>
-                                {/* Name + identity */}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="truncate" style={{ fontSize: 15, fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{device.name}</div>
-                                    <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{device.imei}</div>
-                                </div>
-                                {/* Status + secondary metric */}
-                                <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                        {activeIncCount > 0 && (
-                                            <span style={{ minWidth: 16, height: 16, padding: '0 4px', borderRadius: 999, background: 'var(--danger)', color: '#fff', fontSize: 9, fontWeight: 'var(--weight-bold)', fontFamily: 'var(--font-mono)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {activeIncCount > 9 ? '9+' : activeIncCount}
-                                            </span>
-                                        )}
-                                        <span title={STATUS_LABEL[st]} style={{ width: 9, height: 9, borderRadius: 999, flex: 'none', background: STATUS_DOT[st], boxShadow: st === 'online' ? `0 0 0 3px color-mix(in srgb, ${STATUS_DOT[st]} 22%, transparent)` : 'none' }} />
-                                    </span>
-                                    {device.battery_percent != null
-                                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontFamily: 'var(--font-mono)', fontSize: 12, color: device.battery_percent < 20 ? 'var(--danger)' : 'var(--text-secondary)' }}>
-                                            {device.battery_percent < 20 ? <BatteryLow width={13} height={13} /> : <Battery width={13} height={13} />}
-                                            {device.battery_percent}%
-                                          </span>
-                                        : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{STATUS_LABEL[st]}</span>}
-                                </div>
-                            </button>
-                        );
-                    })}
-
-                    {/* Register device button at bottom */}
-                    <div className="mt-auto p-3 shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                        <button onClick={onRegisterClick}
-                            className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
-                            <Plus className="w-3.5 h-3.5" />
-                            Register device
-                        </button>
+                {/* ── LEFT: Assets · Beats · Trips ─────────────────────────── */}
+                <Card flushBody>
+                    <div style={{ padding: '12px 14px 0' }}>
+                        <Tabs variant="pill" value={activeTab} onChange={(v) => setActiveTab(v as typeof activeTab)}
+                            items={[
+                                { value: 'assets', label: 'Assets', count: devices.length },
+                                { value: 'beats',  label: 'Beats',  count: beats.length },
+                                { value: 'trips',  label: 'Trips' },
+                            ]} />
                     </div>
-                </div>
 
-                {/* Beats list */}
-                <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'beats' ? 'hidden' : ''}`}>
-                    {beats.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
-                            <MapPin className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No beats yet.</p>
-                        </div>
-                    ) : beats.map(beat => (
-                        <button key={beat.id} id={`beat-${beat.id}`}
-                            onClick={() => focusBeat(beat.id)}
-                            className="w-full text-left px-3 py-2.5 transition-colors"
-                            style={{
-                                borderBottom: '1px solid var(--border-subtle)',
-                                borderLeft: `2px solid ${selectedBeat === beat.id ? 'var(--brand)' : 'transparent'}`,
-                                background: selectedBeat === beat.id ? 'var(--brand-subtle)' : 'transparent',
-                            }}>
-                            <div className="flex items-center gap-2.5">
-                                <span className="shrink-0 w-3 h-3 rounded-sm mt-0.5" style={{ background: beat.color ?? 'var(--brand)' }} />
-                                <div className="flex-1 min-w-0">
-                                    <p className="truncate leading-tight" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{beat.name}</p>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: BEAT_STATUS_DOT[beat.status] ?? 'var(--text-muted)' }} />
-                                        <span className="capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{beat.status}</span>
-                                        {beat.coordinates?.length > 0 && (
-                                            <span className="ml-auto" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{beat.coordinates.length} pts</span>
+                    <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 14rem)', overflowY: 'auto' }}>
+
+                        {/* ── ASSETS ──────────────────────────────────────── */}
+                        {activeTab === 'assets' && (
+                            devices.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center text-center" style={{ padding: 24, gap: 8 }}>
+                                    <Smartphone className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No assets yet.</p>
+                                </div>
+                            ) : devices.map(device => {
+                                const on = selectedDev === device.id;
+                                return (
+                                    <div key={device.id} id={`device-${device.id}`}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 11, padding: '12px 16px',
+                                            borderLeft: `3px solid ${on ? 'var(--brand)' : 'transparent'}`,
+                                            background: on ? 'var(--brand-subtle)' : 'transparent',
+                                        }}>
+                                        <button onClick={() => setSelectedDev(device.id)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                                            <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flex: 'none', overflow: 'hidden' }}>
+                                                {device.image_url
+                                                    ? <img src={device.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    : <Smartphone width={18} height={18} />}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{device.name}</div>
+                                                <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>{device.imei}</div>
+                                            </div>
+                                        </button>
+                                        <button onClick={() => openDevice(device.id)} aria-label="Details" title="Details"
+                                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-subtle)', padding: 4, flex: 'none' }}>
+                                            <ChevronRight width={16} height={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })
+                        )}
+
+                        {activeTab === 'assets' && (
+                            <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                                <button onClick={onRegisterClick} className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Register device
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ── BEATS ───────────────────────────────────────── */}
+                        {activeTab === 'beats' && (
+                            beats.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center text-center" style={{ padding: 24, gap: 8 }}>
+                                    <MapPin className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No beats yet.</p>
+                                </div>
+                            ) : beats.map(beat => {
+                                const on = selectedBeat === beat.id;
+                                const assigned = devices.find(d => d.current_beat?.id === beat.id);
+                                return (
+                                    <button key={beat.id} id={`beat-${beat.id}`} onClick={() => focusBeat(beat.id)}
+                                        style={{
+                                            display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                                            padding: '13px 16px', borderBottom: '1px solid var(--border-subtle)',
+                                            borderLeft: `3px solid ${on ? 'var(--brand)' : 'transparent'}`,
+                                            background: on ? 'var(--brand-subtle)' : 'transparent',
+                                        }}>
+                                        <div className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{beat.name}</div>
+                                        <div className="truncate" style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, textTransform: 'capitalize' }}>
+                                            {beat.status}{beat.coordinates?.length > 0 ? ` · ${beat.coordinates.length} pts` : ''}
+                                        </div>
+                                        {assigned && (
+                                            <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>{assigned.name}</div>
                                         )}
+                                    </button>
+                                );
+                            })
+                        )}
+
+                        {activeTab === 'beats' && (
+                            <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <a href="/my/beats/create" className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Create beat
+                                </a>
+                                <button onClick={() => setShowImport(true)} className="tad-btn tad-btn--ghost tad-btn--sm tad-btn--block">
+                                    <Upload className="w-3.5 h-3.5" />
+                                    Import KML / KMZ
+                                </button>
+                            </div>
+                        )}
+
+                        {/* ── TRIPS — selected device's auto-detected trips ── */}
+                        {activeTab === 'trips' && (
+                            selectedDev == null ? (
+                                <div className="flex flex-col items-center justify-center text-center" style={{ padding: 24, gap: 8 }}>
+                                    <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Select an asset to see its trips.</p>
+                                </div>
+                            ) : tripsLoading ? (
+                                <div className="flex items-center justify-center" style={{ padding: 24 }}>
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
+                                </div>
+                            ) : trips.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center text-center" style={{ padding: 24, gap: 8 }}>
+                                    <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips yet.</p>
+                                </div>
+                            ) : trips.map(trip => (
+                                <div key={trip.id} style={{ padding: '13px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                                        <span className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
+                                            {formatTripCoords(trip.start)} → {formatTripCoords(trip.end)}
+                                        </span>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--brand)', flex: 'none' }}>{trip.distanceKm} km</span>
+                                    </div>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {formatTripWhen(trip.startedAt)} · {formatTripDuration(trip.durationS)}
                                     </div>
                                 </div>
+                            ))
+                        )}
+                    </div>
+                </Card>
+
+                {/* ── CENTER: Live Map ─────────────────────────────────────── */}
+                <Card flushBody style={{ overflow: 'hidden' }}>
+                    <div style={{ height: 460, position: 'relative' }}>
+                        {!MAPS_KEY ? (
+                            <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
+                                <div className="flex flex-col items-center gap-3">
+                                    <MapPin className="w-9 h-9" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                                        Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the map.
+                                    </p>
+                                </div>
                             </div>
-                        </button>
-                    ))}
+                        ) : <div ref={mapRef} className="w-full h-full" />}
 
-                    <div className="mt-auto p-3 shrink-0 space-y-1.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                        <a href="/my/beats/create"
-                            className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
-                            <Plus className="w-3.5 h-3.5" />
-                            Create beat
-                        </a>
-                        <button onClick={() => setShowImport(true)}
-                            className="tad-btn tad-btn--ghost tad-btn--sm tad-btn--block">
-                            <Upload className="w-3.5 h-3.5" />
-                            Import KML / KMZ
-                        </button>
+                        {/* Map toggles: Show trail + Beats */}
+                        {mapsReady && (
+                            <div className="absolute top-4 left-4" style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <label
+                                        title={selectedDev ? 'Show this device’s recent path' : 'Select a device to show its trail'}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 8, cursor: selectedDev ? 'pointer' : 'not-allowed',
+                                            background: 'var(--surface)', border: '1px solid var(--border)',
+                                            borderRadius: 'var(--radius-pill)', padding: '6px 12px',
+                                            boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-xs)',
+                                            fontWeight: 'var(--weight-medium)', color: selectedDev ? 'var(--text)' : 'var(--text-muted)',
+                                        }}>
+                                        <input type="checkbox" checked={showTrail} disabled={!selectedDev}
+                                            onChange={(e) => setShowTrail(e.target.checked)}
+                                            style={{ accentColor: 'var(--brand)', width: 14, height: 14, cursor: selectedDev ? 'pointer' : 'not-allowed' }} />
+                                        Show trail
+                                    </label>
+                                    <label
+                                        title="Show / hide beat zones"
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                                            background: 'var(--surface)', border: '1px solid var(--border)',
+                                            borderRadius: 'var(--radius-pill)', padding: '6px 12px',
+                                            boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-xs)',
+                                            fontWeight: 'var(--weight-medium)', color: 'var(--text)',
+                                        }}>
+                                        <input type="checkbox" checked={showBeats}
+                                            onChange={(e) => setShowBeats(e.target.checked)}
+                                            style={{ accentColor: 'var(--brand)', width: 14, height: 14, cursor: 'pointer' }} />
+                                        Beats
+                                    </label>
+                                </div>
+                                {showTrail && selectedDev && trailEmpty && (
+                                    <span style={{
+                                        background: 'var(--surface)', border: '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-pill)', padding: '5px 11px',
+                                        boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)',
+                                    }}>
+                                        No recent trail for this device yet.
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Floating selected-device card */}
+                        {mapsReady && selectedDevice && (
+                            <div style={{ position: 'absolute', left: 16, right: 16, bottom: 16, background: 'var(--surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div className="truncate" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{selectedDevice.name}</div>
+                                    <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)' }}>
+                                        {selectedDevice.last_lat != null && selectedDevice.last_lon != null
+                                            ? `${Number(selectedDevice.last_lat).toFixed(4)}, ${Number(selectedDevice.last_lon).toFixed(4)}`
+                                            : 'No location yet'}
+                                    </div>
+                                </div>
+                                {selectedDevice.battery_percent != null && (
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text)', flex: 'none' }}>
+                                        {selectedDevice.battery_percent}%
+                                    </span>
+                                )}
+                                <Button size="sm" variant="secondary" onClick={() => openDevice(selectedDevice.id)}>Details</Button>
+                            </div>
+                        )}
+
+                        {/* Live / connecting badge */}
+                        {mapsReady && (
+                            <div className="absolute bottom-4 left-4" style={{ zIndex: 1 }}>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1"
+                                    style={{
+                                        fontSize: 'var(--text-xs)',
+                                        fontWeight: 'var(--weight-medium)',
+                                        borderRadius: 'var(--radius-pill)',
+                                        boxShadow: 'var(--shadow-sm)',
+                                        background: realtimeConnected ? 'var(--success-bg)' : 'var(--surface)',
+                                        border: `1px solid ${realtimeConnected ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--border)'}`,
+                                        color: realtimeConnected ? 'var(--success)' : 'var(--text-muted)',
+                                    }}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'animate-pulse' : ''}`}
+                                        style={{ background: realtimeConnected ? 'var(--success)' : 'var(--text-muted)' }} />
+                                    {realtimeConnected ? 'Live' : 'Connecting…'}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
-            </div>
+                </Card>
 
-            {/* ── CENTER: Live Map ─────────────────────────────────────────── */}
-            <div className="flex-1 relative min-w-0">
-                {!MAPS_KEY ? (
-                    <div className="h-full flex items-center justify-center p-8 text-center"
-                        style={{ background: 'var(--bg-sunken)' }}>
-                        <div className="flex flex-col items-center gap-3">
-                            <MapPin className="w-9 h-9" style={{ color: 'var(--text-subtle)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-                                Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the map.
-                            </p>
-                        </div>
-                    </div>
-                ) : <div ref={mapRef} className="w-full h-full" />}
+                {/* ── RIGHT: Incidents & alerts + Notify me on ─────────────── */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Show-trail toggle — draws the selected device's recent path */}
-                {mapsReady && (
-                    <label className="absolute top-4 left-4"
-                        title={selectedDev ? 'Show this device’s recent path' : 'Select a device to show its trail'}
-                        style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer',
-                            background: 'var(--surface)', border: '1px solid var(--border)',
-                            borderRadius: 'var(--radius-pill)', padding: '6px 12px',
-                            boxShadow: 'var(--shadow-sm)', fontSize: 'var(--text-xs)',
-                            fontWeight: 'var(--weight-medium)', color: selectedDev ? 'var(--text)' : 'var(--text-muted)',
-                        }}>
-                        <input type="checkbox" checked={showTrail} disabled={!selectedDev}
-                            onChange={(e) => setShowTrail(e.target.checked)}
-                            style={{ accentColor: 'var(--brand)', width: 14, height: 14, cursor: selectedDev ? 'pointer' : 'not-allowed' }} />
-                        Show trail
-                    </label>
-                )}
-
-                {/* Live / connecting badge */}
-                {mapsReady && (
-                    <div className="absolute bottom-4 left-4">
-                        <div className="flex items-center gap-1.5 px-2.5 py-1"
-                            style={{
-                                fontSize: 'var(--text-xs)',
-                                fontWeight: 'var(--weight-medium)',
-                                borderRadius: 'var(--radius-pill)',
-                                boxShadow: 'var(--shadow-sm)',
-                                background: realtimeConnected ? 'var(--success-bg)' : 'var(--surface)',
-                                border: `1px solid ${realtimeConnected ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--border)'}`,
-                                color: realtimeConnected ? 'var(--success)' : 'var(--text-muted)',
-                            }}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'animate-pulse' : ''}`}
-                                style={{ background: realtimeConnected ? 'var(--success)' : 'var(--text-muted)' }} />
-                            {realtimeConnected ? 'Live' : 'Connecting…'}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ── RIGHT: Incidents | Trips ─────────────────────────────────── */}
-            <div className="w-72 shrink-0 flex flex-col"
-                style={{ borderLeft: '1px solid var(--border)', background: 'var(--surface)' }}>
-
-                {/* Tab bar (mirrors the left-sidebar pattern) */}
-                <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border)' }}>
-                    {(['incidents', 'trips'] as const).map(tab => (
-                        <button key={tab} onClick={() => setRightTab(tab)}
-                            className="flex-1 py-2.5 transition-colors"
-                            style={{
-                                fontSize: 'var(--text-sm)',
-                                fontWeight: rightTab === tab ? 'var(--weight-semibold)' : 'var(--weight-medium)',
-                                color: rightTab === tab ? 'var(--text)' : 'var(--text-muted)',
-                                borderBottom: `2px solid ${rightTab === tab ? 'var(--brand)' : 'transparent'}`,
-                            }}>
-                            {tab === 'incidents'
-                                ? `Incidents${visibleIncidents.length > 0 ? ` (${visibleIncidents.length})` : ''}`
-                                : `Trips${selectedDev && trips.length > 0 ? ` (${trips.length})` : ''}`}
-                        </button>
-                    ))}
-                </div>
-
-                {/* ── INCIDENTS ──────────────────────────────────────────── */}
-                <div className={`flex-1 flex flex-col min-h-0 ${rightTab !== 'incidents' ? 'hidden' : ''}`}>
-                    {(selectedDev || selectedBeat) && (
-                        <div className="shrink-0 px-4 py-2 flex items-center justify-between"
-                            style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                            <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                                Filtered by: {selectedDev
-                                    ? devices.find(d => d.id === selectedDev)?.name
-                                    : beats.find(b => b.id === selectedBeat)?.name}
-                            </p>
-                            <button
-                                onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
-                                className="shrink-0 ml-2"
-                                style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)' }}>
-                                Show all
-                            </button>
-                        </div>
-                    )}
-                    <div className="flex-1 overflow-y-auto">
+                    {/* Incidents & alerts */}
+                    <Card title="Incidents & alerts"
+                        action={newIncidentCount > 0 ? <Badge variant="danger">{newIncidentCount} new</Badge> : undefined}>
+                        {(selectedDev || selectedBeat) && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                <span className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                    Filtered by: {selectedDev
+                                        ? devices.find(d => d.id === selectedDev)?.name
+                                        : beats.find(b => b.id === selectedBeat)?.name}
+                                </span>
+                                <button onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
+                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', flex: 'none', marginLeft: 8 }}>
+                                    Show all
+                                </button>
+                            </div>
+                        )}
                         {visibleIncidents.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
+                            <div className="flex flex-col items-center justify-center text-center" style={{ padding: 18, gap: 8 }}>
                                 <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents in the last 3 days.</p>
                             </div>
-                        ) : visibleIncidents.map(incident => (
-                            <div key={incident.id}
-                                className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />
-                                    <span className="capitalize px-1.5 py-0.5 rounded-full"
-                                        style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', ...(PRIORITY_BADGE[incident.priority] ?? PRIORITY_BADGE.low) }}>
-                                        {incident.priority}
-                                    </span>
-                                    <span className="ml-auto capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.status}</span>
-                                </div>
-                                <p className="capitalize" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
-                                    {incident.event_type.replace(/_/g, ' ')}
-                                </p>
-                                {incident.device && (
-                                    <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.device.name}</p>
-                                )}
-                                {incident.beat && (
-                                    <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Beat: {incident.beat.name}</p>
-                                )}
-                                <p className="mt-1" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
-                                    {new Date(incident.triggered_at).toLocaleString()}
-                                </p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {visibleIncidents.map(incident => (
+                                    <div key={incident.id} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+                                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)', flex: 'none' }}>
+                                            <AlertTriangle width={15} height={15} />
+                                        </span>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
+                                                {incident.event_type.replace(/_/g, ' ')}
+                                            </div>
+                                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                {new Date(incident.triggered_at).toLocaleString()}
+                                            </div>
+                                            {incident.device && (
+                                                <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        )}
+                    </Card>
 
-                {/* ── TRIPS — selected device's auto-detected trips ──────── */}
-                <div className={`flex-1 flex flex-col min-h-0 ${rightTab !== 'trips' ? 'hidden' : ''}`}>
-                    {selectedDev && (
-                        <div className="shrink-0 px-4 py-2 truncate"
-                            style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                            {devices.find(d => d.id === selectedDev)?.name}
-                        </div>
-                    )}
-                    <div className="flex-1 overflow-y-auto"
-                        style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: selectedDev && trips.length > 0 ? 14 : 0 }}>
-                        {selectedDev == null ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
-                                <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Select a device to see its trips.</p>
-                            </div>
-                        ) : tripsLoading ? (
-                            <div className="flex-1 flex items-center justify-center p-6">
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
-                            </div>
-                        ) : trips.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
-                                <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips yet.</p>
-                            </div>
-                        ) : trips.map(trip => (
-                            <div key={trip.id}
-                                style={{ padding: 14, borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                                {/* Top row: timestamp + distance badge */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>
-                                        {formatTripWhen(trip.startedAt)}
-                                    </span>
-                                    <span style={{ marginLeft: 'auto' }}>
-                                        <Badge variant="brand" mono>{trip.distanceKm} km</Badge>
-                                    </span>
+                    {/* Notify me on — reflects the selected device's real SMS prefs.
+                        Push / email have no backend yet → disabled "coming soon". */}
+                    <Card title="Notify me on">
+                        {selectedDevice == null ? (
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Select an asset to manage its alerts.</p>
+                        ) : notifLoading ? (
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                {/* Push / Email: no backend channel yet */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: 0.55 }}>
+                                    <Switch label="Push notifications" disabled />
+                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
                                 </div>
-                                {/* Body: timeline column + start/end + duration */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                        <span style={{ width: 9, height: 9, borderRadius: '50%', border: '2px solid var(--status-idle)' }} />
-                                        <span style={{ width: 2, height: 20, background: 'var(--border-strong)' }} />
-                                        <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--brand)' }} />
-                                    </div>
-                                    <div style={{ flex: 1, minWidth: 0, lineHeight: 1.5 }}>
-                                        <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                                            Start <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{formatTripCoords(trip.start)}</span>
-                                        </div>
-                                        <div className="truncate" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                                            End <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{formatTripCoords(trip.end)}</span>
-                                        </div>
-                                    </div>
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', flex: 'none' }}>
-                                        {formatTripDuration(trip.durationS)}
-                                    </span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: 0.55 }}>
+                                    <Switch label="Email" disabled />
+                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
                                 </div>
+                                {/* SMS: real per-event-type prefs (master toggle drives all) */}
+                                {notifPrefs.length === 0 ? (
+                                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                        Open the device details to manage SMS alerts per incident type.
+                                    </p>
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {notifPrefs.map(pref => (
+                                                <Switch key={pref.event_type} label={pref.label}
+                                                    checked={pref.sms_enabled}
+                                                    onChange={() => toggleNotif(pref.event_type)} />
+                                            ))}
+                                        </div>
+                                        <button onClick={saveNotifPrefs} disabled={notifSaving}
+                                            className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block">
+                                            {notifSaving ? 'Saving…' : 'Save SMS alerts'}
+                                        </button>
+                                    </>
+                                )}
                             </div>
-                        ))}
-                    </div>
+                        )}
+                    </Card>
                 </div>
             </div>
 
