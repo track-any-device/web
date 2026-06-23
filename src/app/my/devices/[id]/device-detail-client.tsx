@@ -13,7 +13,7 @@ import type {
     Device, Incident, Beat, NotificationPreference,
     DeviceCapabilities, DeviceCommand, DeviceTrackingMode,
 } from '@/lib/api-client';
-import { Card, Button, Switch } from '@/components/ui';
+import { Card, Button, Switch, Input } from '@/components/ui';
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -216,6 +216,9 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                     current={capabilities.trackingMode}
                 />
             )}
+
+            {/* 5 ── Notifications (per-device SMS alerts + thresholds) */}
+            <NotificationsCard token={token!} deviceId={deviceId} />
 
             {/* Manage — all the real actions that used to live in the drawer */}
             <ManageCard
@@ -510,7 +513,131 @@ function TrackingModeCard({ token, deviceId, modes, current }: { token: string; 
     );
 }
 
-// ── Manage — rename/notes, image, beat, notifications, move-to-org, unlink ──────
+// ── 5. Notifications — per-device SMS alerts + thresholds ──────────────────────
+// Field unit is inferred from the event type: overspeed thresholds are km/h,
+// low_battery thresholds are %. Both are driven entirely by threshold_fields.
+function thresholdUnit(eventType: string): string {
+    if (eventType === 'overspeed')   return 'km/h';
+    if (eventType === 'low_battery') return '%';
+    return '';
+}
+
+function thresholdFieldLabel(field: string, eventType: string): string {
+    const name = field.charAt(0).toUpperCase() + field.slice(1);
+    const unit = thresholdUnit(eventType);
+    return unit ? `${name} (${unit})` : name;
+}
+
+function NotificationsCard({ token, deviceId }: { token: string; deviceId: number }) {
+    const [prefs, setPrefs]     = useState<NotificationPreference[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving]   = useState(false);
+    const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        new ApiClient(token).getNotificationPreferences(deviceId)
+            .then(res => { if (!cancelled) setPrefs(res.data); })
+            .catch(() => { /* leave prefs empty → empty state */ })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [token, deviceId]);
+
+    function toggle(eventType: string) {
+        setFeedback(null);
+        setPrefs(prev => prev.map(p => p.event_type === eventType ? { ...p, sms_enabled: !p.sms_enabled } : p));
+    }
+
+    function setThreshold(eventType: string, field: string, raw: string) {
+        setFeedback(null);
+        const value = raw === '' ? NaN : Number(raw);
+        setPrefs(prev => prev.map(p => {
+            if (p.event_type !== eventType) return p;
+            const next = { ...(p.thresholds ?? {}) };
+            if (Number.isNaN(value)) delete next[field];
+            else next[field] = value;
+            return { ...p, thresholds: next };
+        }));
+    }
+
+    async function save() {
+        setSaving(true); setFeedback(null);
+        try {
+            await new ApiClient(token).updateNotificationPreferences(deviceId, prefs.map(p => ({
+                event_type:  p.event_type,
+                sms_enabled: p.sms_enabled,
+                ...(p.threshold_fields.length > 0 ? { thresholds: p.thresholds ?? {} } : {}),
+            })));
+            setFeedback({ ok: true, msg: 'Notification settings saved.' });
+        } catch {
+            setFeedback({ ok: false, msg: 'Could not save notification settings.' });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <Card title="Notifications">
+            {loading ? (
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
+            ) : prefs.length === 0 ? (
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No alert types for this device.</p>
+            ) : (
+                <>
+                    <p className="mb-3" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        Choose which incidents send you an SMS, and set the thresholds that trigger them.
+                    </p>
+                    <div className="space-y-3">
+                        {prefs.map(pref => {
+                            const offUntil = pref.sms_disabled_until && new Date(pref.sms_disabled_until) > new Date();
+                            const showThresholds = pref.threshold_fields.length > 0 && pref.sms_enabled;
+                            return (
+                                <div key={pref.event_type} className="px-3 py-2.5 rounded-xl"
+                                    style={{ border: '1px solid var(--border)', background: pref.sms_enabled ? 'var(--surface)' : 'var(--surface-sunken)' }}>
+                                    <div className="flex items-center gap-3">
+                                        {pref.sms_enabled
+                                            ? <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--brand)' }} />
+                                            : <BellOff className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
+                                        <span className="flex-1" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{pref.label}</span>
+                                        {offUntil && <span className="shrink-0" style={{ fontSize: '9px', color: 'var(--warning)' }}>24h off</span>}
+                                        <Switch checked={pref.sms_enabled} onChange={() => toggle(pref.event_type)} />
+                                    </div>
+                                    {showThresholds && (
+                                        <div className="mt-3 flex flex-wrap gap-3">
+                                            {pref.threshold_fields.map(field => (
+                                                <Input
+                                                    key={field}
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    label={thresholdFieldLabel(field, pref.event_type)}
+                                                    value={pref.thresholds?.[field] ?? ''}
+                                                    onChange={e => setThreshold(pref.event_type, field, e.target.value)}
+                                                    className="flex-1"
+                                                    style={{ minWidth: 120 }}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-4 flex items-center gap-3">
+                        <Button size="sm" onClick={save} loading={saving}>Save notifications</Button>
+                        {feedback && (
+                            <span style={{ fontSize: 'var(--text-xs)', color: feedback.ok ? 'var(--brand)' : 'var(--danger)' }}>
+                                {feedback.msg}
+                            </span>
+                        )}
+                    </div>
+                </>
+            )}
+        </Card>
+    );
+}
+
+// ── Manage — rename/notes, image, beat, move-to-org, unlink ─────────────────────
 function ManageCard({
     token, device, onDeviceChange, onUnlinked,
 }: {
@@ -534,11 +661,6 @@ function ManageCard({
     const [beats, setBeats]                 = useState<Beat[]>([]);
     const [beatBusy, setBeatBusy]           = useState(false);
 
-    // notifications
-    const [prefs, setPrefs]         = useState<NotificationPreference[]>([]);
-    const [prefsLoading, setPrefsLoading] = useState(true);
-    const [prefsSaving, setPrefsSaving]   = useState(false);
-
     // move to org
     const [tenants, setTenants]       = useState<{ id: number; name: string }[]>([]);
     const [moveOpen, setMoveOpen]     = useState(false);
@@ -554,18 +676,16 @@ function ManageCard({
 
     useEffect(() => {
         let cancelled = false;
-        Promise.allSettled([api().beats(), api().getNotificationPreferences(device.id), api().tenants()])
-            .then(([b, p, t]) => {
+        Promise.allSettled([api().beats(), api().tenants()])
+            .then(([b, t]) => {
                 if (cancelled) return;
                 if (b.status === 'fulfilled') setBeats(b.value.data);
-                if (p.status === 'fulfilled') setPrefs(p.value.data);
                 if (t.status === 'fulfilled') {
                     const list = t.value.map(x => ({ id: x.id, name: x.name }));
                     setTenants(list);
                     if (list[0]) setMoveTenantId(String(list[0].id));
                 }
-            })
-            .finally(() => { if (!cancelled) setPrefsLoading(false); });
+            });
         return () => { cancelled = true; };
     }, [api, device.id]);
 
@@ -618,19 +738,6 @@ function ManageCard({
         } catch {
             setError('Could not remove the beat.');
         } finally { setBeatBusy(false); }
-    }
-
-    function togglePref(eventType: string) {
-        setPrefs(prev => prev.map(p => p.event_type === eventType ? { ...p, sms_enabled: !p.sms_enabled } : p));
-    }
-
-    async function savePrefs() {
-        setPrefsSaving(true); setError(null);
-        try {
-            await api().updateNotificationPreferences(device.id, prefs.map(p => ({ event_type: p.event_type, sms_enabled: p.sms_enabled })));
-        } catch {
-            setError('Failed to save notification preferences.');
-        } finally { setPrefsSaving(false); }
     }
 
     async function confirmMove() {
@@ -726,56 +833,6 @@ function ManageCard({
                             <option value="">{beatBusy ? 'Saving…' : '— Assign beat —'}</option>
                             {beats.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
-                    )}
-                </div>
-
-                {/* Notification preferences (filtered to this device type's events server-side) */}
-                <div className="pt-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                    <p className="uppercase mb-2" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>SMS alerts</p>
-                    {prefsLoading ? (
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</p>
-                    ) : prefs.length === 0 ? (
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No alert types for this device.</p>
-                    ) : (
-                        <>
-                            <p className="mb-2" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                                Toggle SMS alerts per incident type. Turning one off silences it for 24 hours.
-                            </p>
-                            <div className="space-y-1">
-                                {prefs.map(pref => {
-                                    const offUntil = pref.sms_disabled_until && new Date(pref.sms_disabled_until) > new Date();
-                                    return (
-                                        <button key={pref.event_type} onClick={() => togglePref(pref.event_type)}
-                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left"
-                                            style={{
-                                                border: '1px solid var(--border)',
-                                                background: pref.sms_enabled ? 'var(--surface)' : 'var(--surface-sunken)',
-                                                opacity: pref.sms_enabled ? 1 : 0.6,
-                                            }}>
-                                            {pref.sms_enabled
-                                                ? <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--brand)' }} />
-                                                : <BellOff className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
-                                            <span className="flex-1" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{pref.label}</span>
-                                            {offUntil && <span className="shrink-0" style={{ fontSize: '9px', color: 'var(--warning)' }}>24h off</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            {/* Push / email have no backend channel yet */}
-                            <div className="mt-3 space-y-2">
-                                <div className="flex items-center justify-between gap-10" style={{ opacity: 0.55 }}>
-                                    <Switch label="Push notifications" disabled />
-                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
-                                </div>
-                                <div className="flex items-center justify-between gap-10" style={{ opacity: 0.55 }}>
-                                    <Switch label="Email" disabled />
-                                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', flex: 'none' }}>Coming soon</span>
-                                </div>
-                            </div>
-                            <button onClick={savePrefs} disabled={prefsSaving} className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block mt-3">
-                                {prefsSaving ? 'Saving…' : 'Save SMS alerts'}
-                            </button>
-                        </>
                     )}
                 </div>
 

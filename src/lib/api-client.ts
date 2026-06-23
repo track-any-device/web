@@ -191,7 +191,7 @@ export class ApiClient {
         return this.get<{ data: NotificationPreference[] }>(`/devices/${deviceId}/notification-preferences`);
     }
 
-    async updateNotificationPreferences(deviceId: number, preferences: Array<{ event_type: string; sms_enabled: boolean }>) {
+    async updateNotificationPreferences(deviceId: number, preferences: Array<{ event_type: string; sms_enabled: boolean; thresholds?: Record<string, number> }>) {
         return this.put<{ message: string }>(`/devices/${deviceId}/notification-preferences`, { preferences });
     }
 
@@ -337,6 +337,8 @@ export interface NotificationPreference {
     label: string;
     sms_enabled: boolean;
     sms_disabled_until: string | null;
+    threshold_fields: string[];
+    thresholds: Record<string, number> | null;
 }
 
 export interface IncidentParams {
