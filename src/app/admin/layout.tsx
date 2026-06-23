@@ -11,6 +11,7 @@ const ADMIN_NAV: PortalNavItem[] = [
   { href: '/admin/devices', label: 'Devices', icon: 'cpu' },
   { href: '/admin/device-types', label: 'Device types', icon: 'tag' },
   { href: '/admin/incidents', label: 'Incidents', icon: 'alert' },
+  { href: '/admin/sms', label: 'SMS', icon: 'message' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
