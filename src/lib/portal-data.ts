@@ -48,6 +48,21 @@ export interface PortalUser {
 }
 export interface DeviceType {
   id: number | string; name: string; slug: string; originalModel: string | null; pricePkr: number | null; active: boolean;
+  deviceCount?: number;
+}
+
+/** /api/admin/devices/{id} — full device view for the admin detail page. */
+export interface AdminDeviceDetail {
+  id: number | string; name: string | null; imei: string | null; sim: string | null; gsm: string | null;
+  broadcastId: string | null; apnSettings: unknown; status: string | null;
+  model: string | null; deviceTypeSlug: string | null;
+  owner: { id: number | string; name: string; email: string } | null;
+  tenant: { id: number | string; name: string; slug: string } | null;
+  lastLat: number | null; lastLon: number | null; battery: number | null;
+  lastSeen: string | null; lastSeenAt: string | null;
+  heartbeatAt: string | null; heartbeatIntervalS: number | null; online: boolean;
+  createdAt: string | null;
+  incidents: { id: number | string; eventType: string | null; priority: string | null; status: string | null; triggeredAt: string | null }[];
 }
 export interface Incident {
   id: number | string; eventType: string | null; priority: 'critical' | 'high' | 'medium' | 'low' | 'info' | string | null;
