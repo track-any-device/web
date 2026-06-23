@@ -85,6 +85,33 @@ export interface Incident {
      (both share eventType 'beat_violation'). Falls back to eventLabel(eventType) when absent. */
   label?: string | null;
 }
+/** /api/ops/support/tickets/{id}/comments row — one note on a support ticket. */
+export interface SupportTicketComment {
+  id: number | string; body: string; user: string | null; at: string | null;
+}
+
+/** /api/ops/support/tickets row — a support ticket raised from an incident.
+   `status` drives the Kanban column it appears in. `comments` is present only on the detail GET. */
+export interface SupportTicket {
+  id: number | string;
+  status: 'open' | 'in_progress' | 'scheduled' | 'closed' | string;
+  incidentId: number | string | null;
+  eventType: string | null;
+  label?: string | null;
+  priority: 'critical' | 'high' | 'medium' | 'low' | 'info' | string | null;
+  incidentStatus: string | null;
+  triggeredAt: string | null;
+  lat: number | null;
+  lng: number | null;
+  device: { id: number | string; name: string | null; imei: string | null } | null;
+  customer: { name: string | null; phone: string | null } | null;
+  assignee: { id: number | string; name: string | null } | null;
+  commentsCount: number;
+  scheduledFor: string | null;
+  createdAt: string | null;
+  comments?: SupportTicketComment[];
+}
+
 export interface DeliveryOrder {
   id: string; customer: string | null; phone: string | null; items: number;
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled' | string | null;
