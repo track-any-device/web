@@ -5,8 +5,8 @@ import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button, Card, Input, Switch } from '@/components/ui';
 import { type DeviceType } from '@/lib/portal-data';
 
-type Draft = { name: string; original_model: string; price_pkr: string; is_active: boolean };
-const EMPTY: Draft = { name: '', original_model: '', price_pkr: '', is_active: true };
+type Draft = { name: string; original_model: string; price_pkr: string; is_active: boolean; exclusion_exempt: boolean };
+const EMPTY: Draft = { name: '', original_model: '', price_pkr: '', is_active: true, exclusion_exempt: false };
 
 export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[]; loadError: string | null }) {
   const [rows, setRows] = React.useState<DeviceType[]>(initial);
@@ -19,7 +19,7 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
   function openCreate() { setEditing(null); setDraft(EMPTY); setError(null); setShowForm(true); }
   function openEdit(t: DeviceType) {
     setEditing(t);
-    setDraft({ name: t.name, original_model: t.originalModel ?? '', price_pkr: t.pricePkr != null ? String(t.pricePkr) : '', is_active: t.active });
+    setDraft({ name: t.name, original_model: t.originalModel ?? '', price_pkr: t.pricePkr != null ? String(t.pricePkr) : '', is_active: t.active, exclusion_exempt: !!t.exclusionExempt });
     setError(null); setShowForm(true);
   }
 
@@ -31,6 +31,7 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
       original_model: draft.original_model.trim() || null,
       price_pkr: draft.price_pkr.trim() ? Number(draft.price_pkr) : null,
       is_active: draft.is_active,
+      exclusion_exempt: draft.exclusion_exempt,
     };
     try {
       const url = editing ? `/api/admin/device-types/${editing.id}` : '/api/admin/device-types';
@@ -88,6 +89,7 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
               <Input label="Price (PKR)" type="number" value={draft.price_pkr} onChange={(e) => setDraft({ ...draft, price_pkr: e.target.value })} placeholder="4999" />
             </div>
             <Switch label="Active" checked={draft.is_active} onChange={() => setDraft({ ...draft, is_active: !draft.is_active })} />
+            <Switch label="Exempt from exclusion zones" checked={draft.exclusion_exempt} onChange={() => setDraft({ ...draft, exclusion_exempt: !draft.exclusion_exempt })} />
             <Button type="submit" loading={busy} disabled={busy}>{editing ? 'Save' : 'Create'}</Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>Cancel</Button>
           </form>
@@ -105,6 +107,7 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
           { key: 'pricePkr', header: 'Price', align: 'right', mono: true, render: (r) => (r.pricePkr != null ? `Rs ${Number(r.pricePkr).toLocaleString()}` : '—') },
           { key: 'deviceCount', header: 'Devices', align: 'center', render: (r) => r.deviceCount ?? 0 },
           { key: 'active', header: 'Status', render: (r) => <Badge variant={r.active ? 'success' : 'neutral'}>{r.active ? 'Active' : 'Hidden'}</Badge> },
+          { key: 'exclusionExempt', header: 'Exclusion', render: (r) => <Badge variant={r.exclusionExempt ? 'neutral' : 'brand'}>{r.exclusionExempt ? 'Exempt' : 'Restricted'}</Badge> },
           { key: 'act', header: '', align: 'right', render: (r) => (
             <span style={{ display: 'inline-flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Edit</Button>

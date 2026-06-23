@@ -45,7 +45,11 @@ type TimelineEvent = {
     label: string;
     at:    number;        // epoch ms for sorting
     when:  string;        // formatted display
+    href?: string;        // incidents link to their detail page
 };
+
+// A trail point with the fields needed for the activity + battery graphs.
+type TrailPoint = { lat: number; lng: number; t: string | null; speed: number | null; battery: number | null };
 
 function fmtWhen(iso: string | null): string {
     if (!iso) return '—';
@@ -60,7 +64,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
     const [device,       setDevice]       = useState<Device | null>(null);
     const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
-    const [trail,        setTrail]        = useState<Array<{ lat: number; lng: number }>>([]);
+    const [trail,        setTrail]        = useState<TrailPoint[]>([]);
     const [timeline,     setTimeline]     = useState<TimelineEvent[]>([]);
     const [loading,      setLoading]      = useState(true);
     const [loadError,    setLoadError]    = useState<string | null>(null);
@@ -89,7 +93,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
             if (tr.status === 'fulfilled') {
                 setTrail(tr.value.points
                     .filter(p => p.lat != null && p.lng != null)
-                    .map(p => ({ lat: p.lat, lng: p.lng })));
+                    .map(p => ({ lat: p.lat, lng: p.lng, t: p.t, speed: p.speed, battery: p.battery ?? null })));
             }
 
             // Merge trips (Departed/Arrived) + incidents into one chronological timeline.
@@ -112,6 +116,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                         label: i.event_type.replace(/_/g, ' '),
                         at:    new Date(i.triggered_at).getTime(),
                         when:  fmtWhen(i.triggered_at),
+                        href:  `/my/incidents/${i.id}`,
                     });
                 });
             }
@@ -148,7 +153,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
         : 'No location yet';
 
     return (
-        <div className="mx-auto max-w-3xl px-6 py-8 space-y-5">
+        <div className="mx-auto max-w-3xl px-6 py-8 space-y-4">
 
             {/* Back link */}
             <Link href="/my/devices" className="inline-flex items-center gap-1"
@@ -181,6 +186,9 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
             {/* 1 ── Live location */}
             <LiveLocationCard device={device} trail={trail} status={status} />
+
+            {/* 1b ── Activity + battery graphs */}
+            <ActivityCard trail={trail} />
 
             {/* 2 ── Trip timeline */}
             <Card title="Trip timeline">
@@ -319,6 +327,14 @@ function TimelineRow({ event, last }: { event: TimelineEvent; last: boolean }) {
             ? <Navigation width={14} height={14} />
             : <MapPin width={14} height={14} />;
     const iconColor = event.kind === 'incident' ? 'var(--danger)' : 'var(--brand)';
+    const body = (
+        <div style={{ paddingBottom: last ? 0 : 16, minWidth: 0 }}>
+            <div className="capitalize" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>
+                {event.label}{event.href && <ChevronLeft width={13} height={13} style={{ transform: 'rotate(180deg)', verticalAlign: 'middle', marginLeft: 2, opacity: 0.5 }} />}
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{event.when}</div>
+        </div>
+    );
     return (
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', alignSelf: 'stretch' }}>
@@ -327,11 +343,63 @@ function TimelineRow({ event, last }: { event: TimelineEvent; last: boolean }) {
                 </span>
                 {!last && <span style={{ flex: 1, width: 2, background: 'var(--border-subtle)', minHeight: 14, marginTop: 2 }} />}
             </div>
-            <div style={{ paddingBottom: last ? 0 : 16, minWidth: 0 }}>
-                <div className="capitalize" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{event.label}</div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{event.when}</div>
-            </div>
+            {event.href
+                ? <Link href={event.href} style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>{body}</Link>
+                : body}
         </div>
+    );
+}
+
+// ── Inline sparkline + activity/battery card ─────────────────────────────────────
+function SparkLine({ values, color, unit, label, format }: { values: Array<number | null>; color: string; unit: string; label: string; format?: (n: number) => string }) {
+    const pts = values.map((v, i) => ({ v, i })).filter((p): p is { v: number; i: number } => p.v != null);
+    const W = 240, H = 56, pad = 4;
+    const fmt = format ?? ((n: number) => `${Math.round(n)}`);
+
+    let chart: React.ReactNode;
+    if (pts.length < 2) {
+        chart = <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Not enough data yet.</p>;
+    } else {
+        const xs = values.length - 1;
+        const min = Math.min(...pts.map(p => p.v));
+        const max = Math.max(...pts.map(p => p.v));
+        const range = max - min || 1;
+        const x = (i: number) => pad + (i / xs) * (W - 2 * pad);
+        const y = (v: number) => pad + (1 - (v - min) / range) * (H - 2 * pad);
+        const line = pts.map((p, k) => `${k === 0 ? 'M' : 'L'}${x(p.i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+        const area = `${line} L${x(pts[pts.length - 1].i).toFixed(1)},${H - pad} L${x(pts[0].i).toFixed(1)},${H - pad} Z`;
+        chart = (
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: 'block' }}>
+                <path d={area} fill={color} opacity="0.10" />
+                <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+        );
+    }
+
+    return (
+        <div style={{ flex: 1, minWidth: 150 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <span style={{ fontSize: 'var(--text-2xs)', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-subtle)' }}>{label}</span>
+                {pts.length >= 1 && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>{fmt(pts[pts.length - 1].v)}{unit}</span>}
+            </div>
+            {chart}
+        </div>
+    );
+}
+
+function ActivityCard({ trail }: { trail: TrailPoint[] }) {
+    const ordered = [...trail].sort((a, b) => (a.t ? new Date(a.t).getTime() : 0) - (b.t ? new Date(b.t).getTime() : 0));
+    const speeds = ordered.map(p => p.speed);
+    const batteries = ordered.map(p => p.battery);
+    if (!speeds.some(v => v != null) && !batteries.some(v => v != null)) return null;
+    return (
+        <Card title="Activity & battery">
+            <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginBottom: 12 }}>Last 24 hours</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <SparkLine values={speeds} color="var(--brand)" unit=" km/h" label="Activity (speed)" />
+                <SparkLine values={batteries} color="#1F9462" unit="%" label="Battery" />
+            </div>
+        </Card>
     );
 }
 

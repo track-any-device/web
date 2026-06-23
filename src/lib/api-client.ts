@@ -118,7 +118,7 @@ export class ApiClient {
     }
 
     async deviceTrail(id: number, hours = 12) {
-        return this.get<{ deviceId: string; hours: number; count: number; points: Array<{ lat: number; lng: number; t: string | null; speed: number | null }> }>(`/devices/${id}/trail`, { hours: String(hours) });
+        return this.get<{ deviceId: string; hours: number; count: number; points: Array<{ lat: number; lng: number; t: string | null; speed: number | null; battery: number | null }> }>(`/devices/${id}/trail`, { hours: String(hours) });
     }
 
     async deviceTrips(id: number) {
