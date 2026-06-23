@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Pencil, Check, Bell, BellOff, Plus, Camera } from 'lucide-react';
+import { X, Bell, BellOff, Plus, Camera, Smartphone, MapPin, BatteryLow, Battery, Upload, CheckCircle2 } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat, NotificationPreference } from '@/lib/api-client';
 import ImportBeatsModal from '../beats/import-beats-modal';
@@ -27,37 +27,40 @@ const API_URL_PUB = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.track-any-de
 const ARROW_SIZE = 32;
 const PIN_SIZE   = 18;
 
-const PRIORITY_BADGE: Record<string, string> = {
-    critical: 'bg-red-100 text-red-700',
-    high:     'bg-orange-100 text-orange-700',
-    medium:   'bg-yellow-100 text-yellow-700',
-    low:      'bg-gray-100 text-gray-600',
+const PRIORITY_BADGE: Record<string, { background: string; color: string }> = {
+    critical: { background: 'var(--danger-bg)',  color: 'var(--danger)' },
+    high:     { background: 'var(--warning-bg)', color: 'var(--warning)' },
+    medium:   { background: 'var(--warning-bg)', color: 'var(--warning)' },
+    low:      { background: 'var(--surface-sunken)', color: 'var(--text-secondary)' },
 };
 
 const INCIDENT_STATUS_DOT: Record<string, string> = {
-    open:         'bg-red-500',
-    acknowledged: 'bg-orange-400',
-    escalated:    'bg-purple-500',
-    resolved:     'bg-green-500',
-    closed:       'bg-gray-400',
+    open:         'var(--danger)',
+    acknowledged: 'var(--warning)',
+    escalated:    'var(--warning)',
+    resolved:     'var(--success)',
+    closed:       'var(--text-muted)',
 };
 
 const BEAT_STATUS_DOT: Record<string, string> = {
-    active: 'bg-green-500', inactive: 'bg-gray-400', draft: 'bg-yellow-400',
+    active: 'var(--success)', inactive: 'var(--text-muted)', draft: 'var(--warning)',
 };
 
 type MyStatus = 'online' | 'offline' | 'unavailable';
 
 function getMyStatus(device: Device): MyStatus {
-    if (!device.last_signal_at) return 'unavailable';
-    const mins = (Date.now() - new Date(device.last_signal_at).getTime()) / 60_000;
+    if (!device.last_seen_at) return 'unavailable';
+    const mins = (Date.now() - new Date(device.last_seen_at).getTime()) / 60_000;
     if (mins <= 30)   return 'online';
     if (mins <= 1440) return 'offline';
     return 'unavailable';
 }
 
 const STATUS_DOT: Record<MyStatus, string> = {
-    online: 'bg-green-500', offline: 'bg-red-500', unavailable: 'bg-gray-400',
+    online: 'var(--success)', offline: 'var(--danger)', unavailable: 'var(--text-muted)',
+};
+const STATUS_TEXT: Record<MyStatus, string> = {
+    online: 'var(--success)', offline: 'var(--danger)', unavailable: 'var(--text-muted)',
 };
 const STATUS_LABEL: Record<MyStatus, string> = {
     online: 'Online', offline: 'Offline', unavailable: 'Unavailable',
@@ -203,9 +206,9 @@ export default function DevicesView({
             if (!beat.coordinates?.length) return;
             const poly = new google.maps.Polygon({
                 paths:        beat.coordinates,
-                fillColor:    beat.color ?? '#2563eb',
+                fillColor:    beat.color ?? '#01411C',
                 fillOpacity:  0.15,
-                strokeColor:  beat.color ?? '#2563eb',
+                strokeColor:  beat.color ?? '#01411C',
                 strokeWeight: 2,
                 map,
             });
@@ -441,9 +444,9 @@ export default function DevicesView({
         newBeats.forEach(beat => {
             const poly = new google.maps.Polygon({
                 paths:        beat.coordinates,
-                fillColor:    beat.color ?? '#2563eb',
+                fillColor:    beat.color ?? '#01411C',
                 fillOpacity:  0.15,
-                strokeColor:  beat.color ?? '#2563eb',
+                strokeColor:  beat.color ?? '#01411C',
                 strokeWeight: 2,
                 map,
             });
@@ -510,7 +513,7 @@ export default function DevicesView({
         const currentBeats = beatsRef.current;
         polysRef.current.forEach((p, pid) => {
             const b = currentBeats.find(x => x.id === pid);
-            p.setOptions({ fillOpacity: 0.15, strokeWeight: 2, strokeColor: b?.color ?? '#2563eb', fillColor: b?.color ?? '#2563eb', zIndex: 1 });
+            p.setOptions({ fillOpacity: 0.15, strokeWeight: 2, strokeColor: b?.color ?? '#01411C', fillColor: b?.color ?? '#01411C', zIndex: 1 });
         });
         const poly = polysRef.current.get(id);
         if (poly) poly.setOptions({ fillOpacity: 0.35, strokeWeight: 3, zIndex: 10 });
@@ -531,19 +534,24 @@ export default function DevicesView({
     }
 
     return (
-        <div className="mx-auto flex w-full max-w-[1600px] h-[calc(100vh-4rem)] overflow-hidden">
+        <div className="mx-auto flex w-full max-w-[1600px] h-[calc(100vh-4rem)] overflow-hidden"
+            style={{ background: 'var(--bg)' }}>
 
             {/* ── LEFT: Devices / Beats tabs ──────────────────────────────── */}
-            <div className="w-64 shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="w-64 shrink-0 flex flex-col"
+                style={{ borderRight: '1px solid var(--border)', background: 'var(--surface)' }}>
 
                 {/* Tab bar */}
-                <div className="shrink-0 flex border-b border-gray-200 dark:border-gray-800">
+                <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border)' }}>
                     {(['devices', 'beats'] as const).map(tab => (
                         <button key={tab} onClick={() => setActiveTab(tab)}
-                            className={`flex-1 py-2.5 text-xs font-semibold transition-colors border-b-2
-                                ${activeTab === tab
-                                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-200'}`}>
+                            className="flex-1 py-2.5 transition-colors"
+                            style={{
+                                fontSize: 'var(--text-sm)',
+                                fontWeight: activeTab === tab ? 'var(--weight-semibold)' : 'var(--weight-medium)',
+                                color: activeTab === tab ? 'var(--text)' : 'var(--text-muted)',
+                                borderBottom: `2px solid ${activeTab === tab ? 'var(--brand)' : 'transparent'}`,
+                            }}>
                             {tab === 'devices' ? `Devices (${devices.length})` : `Beats (${beats.length})`}
                         </button>
                     ))}
@@ -552,9 +560,9 @@ export default function DevicesView({
                 {/* Devices list */}
                 <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'devices' ? 'hidden' : ''}`}>
                     {devices.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                            <p className="text-2xl mb-2">📡</p>
-                            <p className="text-xs text-gray-400 mb-3">No devices yet.</p>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
+                            <Smartphone className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No devices yet.</p>
                         </div>
                     ) : devices.map(device => {
                         const st    = getMyStatus(device);
@@ -566,35 +574,50 @@ export default function DevicesView({
                         return (
                             <button key={device.id} id={`device-${device.id}`}
                                 onClick={() => openDevice(device.id)}
-                                className={`w-full text-left px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 transition-all border-l-2
-                                    ${isSel
-                                        ? 'bg-blue-50 dark:bg-blue-900/20 border-l-blue-500'
-                                        : 'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                                className="w-full text-left px-3 py-2.5 transition-colors"
+                                style={{
+                                    borderBottom: '1px solid var(--border-subtle)',
+                                    borderLeft: `2px solid ${isSel ? 'var(--brand)' : 'transparent'}`,
+                                    background: isSel ? 'var(--brand-subtle)' : 'transparent',
+                                }}>
                                 <div className="flex items-center gap-2">
                                     {/* Device image or icon */}
-                                    <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 shrink-0 flex items-center justify-center text-lg">
+                                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                                        style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}>
                                         {device.image_url
                                             ? <img src={device.image_url} alt="" className="w-full h-full object-cover" />
-                                            : (device.map_icon ?? '📡')}
+                                            : (device.map_icon
+                                                ? <span className="text-lg">{device.map_icon}</span>
+                                                : <Smartphone className="w-4 h-4" />)}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{device.name}</p>
-                                        <p className="text-[10px] font-mono text-gray-300 dark:text-gray-600 truncate">{device.imei}</p>
+                                        <p className="truncate" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{device.name}</p>
+                                        <p className="truncate" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{device.imei}</p>
                                     </div>
                                     {activeIncCount > 0 && (
-                                        <span className="shrink-0 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                                        <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center"
+                                            style={{ background: 'var(--danger)', color: '#fff', fontSize: '9px', fontWeight: 'var(--weight-bold)', fontFamily: 'var(--font-mono)' }}>
                                             {activeIncCount > 9 ? '9+' : activeIncCount}
                                         </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2 mt-1.5 pl-10">
-                                    <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[st]}`} />
-                                    <span className={`text-xs font-medium ${st === 'online' ? 'text-green-600' : st === 'offline' ? 'text-red-500' : 'text-gray-400'}`}>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: STATUS_DOT[st] }} />
+                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: STATUS_TEXT[st] }}>
                                         {STATUS_LABEL[st]}
                                     </span>
                                     {device.battery_percent != null && (
-                                        <span className={`text-xs ml-auto ${device.battery_percent < 20 ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-                                            🔋{device.battery_percent}%
+                                        <span className="ml-auto inline-flex items-center gap-1"
+                                            style={{
+                                                fontSize: 'var(--text-xs)',
+                                                fontFamily: 'var(--font-mono)',
+                                                fontWeight: device.battery_percent < 20 ? 'var(--weight-semibold)' : 'var(--weight-regular)',
+                                                color: device.battery_percent < 20 ? 'var(--danger)' : 'var(--text-muted)',
+                                            }}>
+                                            {device.battery_percent < 20
+                                                ? <BatteryLow className="w-3.5 h-3.5" />
+                                                : <Battery className="w-3.5 h-3.5" />}
+                                            {device.battery_percent}%
                                         </span>
                                     )}
                                 </div>
@@ -603,11 +626,11 @@ export default function DevicesView({
                     })}
 
                     {/* Register device button at bottom */}
-                    <div className="mt-auto p-3 border-t border-gray-100 dark:border-gray-800 shrink-0">
+                    <div className="mt-auto p-3 shrink-0" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <button onClick={onRegisterClick}
-                            className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 py-2 rounded-lg border border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                            className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
                             <Plus className="w-3.5 h-3.5" />
-                            Register Device
+                            Register device
                         </button>
                     </div>
                 </div>
@@ -615,26 +638,28 @@ export default function DevicesView({
                 {/* Beats list */}
                 <div className={`flex-1 overflow-y-auto flex flex-col ${activeTab !== 'beats' ? 'hidden' : ''}`}>
                     {beats.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                            <p className="text-2xl mb-2">📍</p>
-                            <p className="text-xs text-gray-400 mb-3">No beats yet.</p>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-2">
+                            <MapPin className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No beats yet.</p>
                         </div>
                     ) : beats.map(beat => (
                         <button key={beat.id} id={`beat-${beat.id}`}
                             onClick={() => focusBeat(beat.id)}
-                            className={`w-full text-left px-3 py-2.5 border-b border-gray-100 dark:border-gray-800 transition-all border-l-2
-                                ${selectedBeat === beat.id
-                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-l-blue-500'
-                                    : 'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                            className="w-full text-left px-3 py-2.5 transition-colors"
+                            style={{
+                                borderBottom: '1px solid var(--border-subtle)',
+                                borderLeft: `2px solid ${selectedBeat === beat.id ? 'var(--brand)' : 'transparent'}`,
+                                background: selectedBeat === beat.id ? 'var(--brand-subtle)' : 'transparent',
+                            }}>
                             <div className="flex items-center gap-2.5">
-                                <span className="shrink-0 w-3 h-3 rounded-sm mt-0.5" style={{ background: beat.color ?? '#2563eb' }} />
+                                <span className="shrink-0 w-3 h-3 rounded-sm mt-0.5" style={{ background: beat.color ?? 'var(--brand)' }} />
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-semibold text-gray-900 dark:text-white truncate leading-tight">{beat.name}</p>
+                                    <p className="truncate leading-tight" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{beat.name}</p>
                                     <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className={`w-1.5 h-1.5 rounded-full ${BEAT_STATUS_DOT[beat.status] ?? 'bg-gray-400'}`} />
-                                        <span className="text-[10px] text-gray-400 capitalize">{beat.status}</span>
+                                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: BEAT_STATUS_DOT[beat.status] ?? 'var(--text-muted)' }} />
+                                        <span className="capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{beat.status}</span>
                                         {beat.coordinates?.length > 0 && (
-                                            <span className="text-[10px] text-gray-300 ml-auto">{beat.coordinates.length} pts</span>
+                                            <span className="ml-auto" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{beat.coordinates.length} pts</span>
                                         )}
                                     </div>
                                 </div>
@@ -642,17 +667,15 @@ export default function DevicesView({
                         </button>
                     ))}
 
-                    <div className="mt-auto p-3 border-t border-gray-100 dark:border-gray-800 shrink-0 space-y-1.5">
+                    <div className="mt-auto p-3 shrink-0 space-y-1.5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <a href="/my/beats/create"
-                            className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-blue-600 hover:text-blue-700 py-2 rounded-lg border border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                            className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
                             <Plus className="w-3.5 h-3.5" />
-                            Create Beat
+                            Create beat
                         </a>
                         <button onClick={() => setShowImport(true)}
-                            className="w-full flex items-center justify-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 py-2 rounded-lg border border-blue-200 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            className="tad-btn tad-btn--ghost tad-btn--sm tad-btn--block">
+                            <Upload className="w-3.5 h-3.5" />
                             Import KML / KMZ
                         </button>
                     </div>
@@ -662,11 +685,12 @@ export default function DevicesView({
             {/* ── CENTER: Live Map ─────────────────────────────────────────── */}
             <div className="flex-1 relative min-w-0">
                 {!MAPS_KEY ? (
-                    <div className="h-full flex items-center justify-center p-8 text-center">
-                        <div>
-                            <p className="text-4xl mb-3">🗺️</p>
-                            <p className="text-sm text-gray-500">
-                                Set <code className="bg-gray-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the map.
+                    <div className="h-full flex items-center justify-center p-8 text-center"
+                        style={{ background: 'var(--bg-sunken)' }}>
+                        <div className="flex flex-col items-center gap-3">
+                            <MapPin className="w-9 h-9" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                                Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the map.
                             </p>
                         </div>
                     </div>
@@ -675,11 +699,17 @@ export default function DevicesView({
                 {/* Live / connecting badge */}
                 {mapsReady && (
                     <div className="absolute bottom-4 left-4">
-                        <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium shadow border
-                            ${realtimeConnected
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-400'
-                                : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-800 dark:border-gray-700'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                        <div className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                            style={{
+                                fontSize: 'var(--text-xs)',
+                                fontWeight: 'var(--weight-medium)',
+                                boxShadow: 'var(--shadow-sm)',
+                                background: realtimeConnected ? 'var(--success-bg)' : 'var(--surface)',
+                                border: `1px solid ${realtimeConnected ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--border)'}`,
+                                color: realtimeConnected ? 'var(--success)' : 'var(--text-muted)',
+                            }}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'animate-pulse' : ''}`}
+                                style={{ background: realtimeConnected ? 'var(--success)' : 'var(--text-muted)' }} />
                             {realtimeConnected ? 'Live' : 'Connecting…'}
                         </div>
                     </div>
@@ -687,25 +717,27 @@ export default function DevicesView({
             </div>
 
             {/* ── RIGHT: Incidents panel ───────────────────────────────────── */}
-            <div className="w-72 shrink-0 flex flex-col border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <div className="shrink-0 px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <div className="w-72 shrink-0 flex flex-col"
+                style={{ borderLeft: '1px solid var(--border)', background: 'var(--surface)' }}>
+                <div className="shrink-0 px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                     <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                        <p className="uppercase"
+                            style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-secondary)' }}>
                             Incidents
                             {visibleIncidents.length > 0 && (
-                                <span className="ml-1.5 text-[10px] font-normal text-gray-400">({visibleIncidents.length})</span>
+                                <span className="ml-1.5" style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-regular)', color: 'var(--text-muted)' }}>({visibleIncidents.length})</span>
                             )}
                         </p>
                         {(selectedDev || selectedBeat) && (
                             <button
                                 onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
-                                className="text-[10px] text-blue-500 hover:text-blue-700 font-medium">
+                                style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)' }}>
                                 Show all
                             </button>
                         )}
                     </div>
                     {(selectedDev || selectedBeat) && (
-                        <p className="text-[10px] text-gray-400 mt-0.5">
+                        <p className="mt-0.5" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                             Filtered by: {selectedDev
                                 ? devices.find(d => d.id === selectedDev)?.name
                                 : beats.find(b => b.id === selectedBeat)?.name}
@@ -715,30 +747,31 @@ export default function DevicesView({
 
                 <div className="flex-1 overflow-y-auto">
                     {visibleIncidents.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-6">
-                            <p className="text-2xl mb-2">✅</p>
-                            <p className="text-xs text-gray-400">No incidents in the last 3 days.</p>
+                        <div className="flex flex-col items-center justify-center h-full text-center p-6 gap-2">
+                            <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents in the last 3 days.</p>
                         </div>
                     ) : visibleIncidents.map(incident => (
                         <div key={incident.id}
-                            className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+                            className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                             <div className="flex items-center gap-2 mb-1">
-                                <span className={`w-2 h-2 rounded-full shrink-0 ${INCIDENT_STATUS_DOT[incident.status] ?? 'bg-gray-400'}`} />
-                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${PRIORITY_BADGE[incident.priority] ?? PRIORITY_BADGE.low}`}>
+                                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />
+                                <span className="capitalize px-1.5 py-0.5 rounded-full"
+                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', ...(PRIORITY_BADGE[incident.priority] ?? PRIORITY_BADGE.low) }}>
                                     {incident.priority}
                                 </span>
-                                <span className="text-[10px] text-gray-400 ml-auto capitalize">{incident.status}</span>
+                                <span className="ml-auto capitalize" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.status}</span>
                             </div>
-                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200 capitalize">
+                            <p className="capitalize" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>
                                 {incident.event_type.replace(/_/g, ' ')}
                             </p>
                             {incident.device && (
-                                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{incident.device.name}</p>
+                                <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{incident.device.name}</p>
                             )}
                             {incident.beat && (
-                                <p className="text-[10px] text-gray-400 truncate">Beat: {incident.beat.name}</p>
+                                <p className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Beat: {incident.beat.name}</p>
                             )}
-                            <p className="text-[10px] text-gray-300 dark:text-gray-600 mt-1">
+                            <p className="mt-1" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
                                 {new Date(incident.triggered_at).toLocaleString()}
                             </p>
                         </div>
@@ -758,47 +791,56 @@ export default function DevicesView({
             {drawerOpen && (
                 <div className="fixed inset-0 z-40" onClick={closeDrawer} />
             )}
-            <div className={`fixed top-16 right-0 bottom-0 z-50 w-80 bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-800 flex flex-col transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`fixed top-16 right-0 bottom-0 z-50 w-80 flex flex-col transition-transform duration-300 ease-in-out ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+                style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-xl)', borderLeft: '1px solid var(--border)' }}>
                 {drawerDevice && (
                     <>
                         {/* Drawer header */}
-                        <div className="shrink-0 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                        <div className="shrink-0 px-4 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                             {/* Device photo */}
-                            <label className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-2xl cursor-pointer group">
+                            <label className="relative shrink-0 w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer group"
+                                style={{ background: 'var(--surface-sunken)', color: 'var(--text-muted)' }}>
                                 {drawerDevice.image_url
                                     ? <img src={drawerDevice.image_url} alt="" className="w-full h-full object-cover" />
-                                    : (drawerDevice.map_icon ?? '📡')}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    : (drawerDevice.map_icon
+                                        ? <span className="text-2xl">{drawerDevice.map_icon}</span>
+                                        : <Smartphone className="w-5 h-5" />)}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                    style={{ background: 'rgba(0,0,0,0.4)' }}>
                                     {uploadingImage
-                                        ? <span className="text-white text-[10px]">…</span>
+                                        ? <span className="text-white" style={{ fontSize: 'var(--text-2xs)' }}>…</span>
                                         : <Camera className="w-4 h-4 text-white" />}
                                 </div>
                                 <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
                             </label>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate leading-tight">{drawerDevice.name}</p>
-                                <p className="text-[10px] text-gray-400 font-mono truncate">{drawerDevice.imei}</p>
+                                <p className="truncate leading-tight" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>{drawerDevice.name}</p>
+                                <p className="truncate" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{drawerDevice.imei}</p>
                             </div>
-                            <button onClick={closeDrawer} className="shrink-0 text-gray-400 hover:text-gray-600 p-1">
+                            <button onClick={closeDrawer} className="tad-iconbtn tad-iconbtn--sm shrink-0" aria-label="Close">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         {/* Drawer sub-tabs */}
-                        <div className="shrink-0 flex border-b border-gray-100 dark:border-gray-800">
+                        <div className="shrink-0 flex" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                             {(['info', 'notif'] as const).map(t => (
                                 <button key={t} onClick={() => setEditTab(t)}
-                                    className={`flex-1 py-2 text-xs font-semibold transition-colors border-b-2
-                                        ${editTab === t
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-                                    {t === 'info' ? 'Info & Edit' : 'Notifications'}
+                                    className="flex-1 py-2 transition-colors"
+                                    style={{
+                                        fontSize: 'var(--text-sm)',
+                                        fontWeight: editTab === t ? 'var(--weight-semibold)' : 'var(--weight-medium)',
+                                        color: editTab === t ? 'var(--text)' : 'var(--text-muted)',
+                                        borderBottom: `2px solid ${editTab === t ? 'var(--brand)' : 'transparent'}`,
+                                    }}>
+                                    {t === 'info' ? 'Info & edit' : 'Notifications'}
                                 </button>
                             ))}
                         </div>
 
                         {drawerError && (
-                            <div className="mx-4 mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                            <div className="mx-4 mt-3 rounded-lg px-3 py-2"
+                                style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
                                 {drawerError}
                             </div>
                         )}
@@ -810,55 +852,57 @@ export default function DevicesView({
                                 <>
                                     {/* Name */}
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Device Name</label>
+                                        <label className="block uppercase mb-1" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Device name</label>
                                         <div className="flex gap-2">
                                             <input
                                                 value={editName}
                                                 onChange={e => setEditName(e.target.value)}
                                                 onKeyDown={e => { if (e.key === 'Enter') saveDevice(); }}
-                                                className="flex-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400"
+                                                className="tad-input flex-1"
+                                                style={{ height: 34, fontSize: 'var(--text-sm)' }}
                                             />
                                         </div>
                                     </div>
 
                                     {/* Notes */}
                                     <div>
-                                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Assignee / Notes</label>
+                                        <label className="block uppercase mb-1" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Assignee / notes</label>
                                         <textarea
                                             value={editNotes}
                                             onChange={e => setEditNotes(e.target.value)}
                                             rows={3}
                                             placeholder="Add notes about this device or its assignee…"
-                                            className="w-full text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                                            className="tad-input w-full resize-none"
+                                            style={{ height: 'auto', padding: '8px 12px', fontSize: 'var(--text-sm)' }}
                                         />
                                     </div>
 
                                     <button onClick={saveDevice} disabled={saving}
-                                        className="w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                        {saving ? 'Saving…' : 'Save Changes'}
+                                        className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block">
+                                        {saving ? 'Saving…' : 'Save changes'}
                                     </button>
 
                                     {/* Beat assignment */}
                                     <div>
-                                        <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-2">Beat (Geofence)</p>
+                                        <p className="uppercase mb-2" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Beat (geofence)</p>
                                         {drawerDevice.current_beat ? (
-                                            <div className="flex items-center gap-2 mb-2 rounded-lg border border-gray-100 dark:border-gray-700 px-3 py-2">
+                                            <div className="flex items-center gap-2 mb-2 rounded-lg px-3 py-2" style={{ border: '1px solid var(--border)' }}>
                                                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: drawerDevice.current_beat.color }} />
-                                                <span className="text-xs font-medium flex-1 truncate">{drawerDevice.current_beat.name}</span>
+                                                <span className="flex-1 truncate" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{drawerDevice.current_beat.name}</span>
                                                 <button onClick={() => unassignBeat(drawerDevice.id)} disabled={beatAssigning}
-                                                    className="text-[10px] text-red-500 hover:text-red-700 font-medium disabled:opacity-40">
+                                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)', opacity: beatAssigning ? 0.4 : 1 }}>
                                                     Remove
                                                 </button>
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-gray-400 mb-2">Not assigned to any beat.</p>
+                                            <p className="mb-2" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Not assigned to any beat.</p>
                                         )}
                                         {beats.length > 0 && (
                                             <select
                                                 value={drawerDevice.current_beat?.id ?? ''}
                                                 onChange={e => { const id = Number(e.target.value); if (id) assignBeat(drawerDevice.id, id); }}
                                                 disabled={beatAssigning}
-                                                className="w-full text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-40">
+                                                className="tad-select tad-select--sm w-full">
                                                 <option value="">{beatAssigning ? 'Saving…' : '— Assign beat —'}</option>
                                                 {beats.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                             </select>
@@ -866,54 +910,62 @@ export default function DevicesView({
                                     </div>
 
                                     {/* Status + location */}
-                                    <div className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2.5 space-y-1.5">
+                                    <div className="rounded-xl px-3 py-2.5 space-y-1.5" style={{ background: 'var(--surface-sunken)' }}>
                                         <div className="flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full ${STATUS_DOT[getMyStatus(drawerDevice)]}`} />
-                                            <span className="text-xs font-medium">{STATUS_LABEL[getMyStatus(drawerDevice)]}</span>
+                                            <span className="w-2 h-2 rounded-full" style={{ background: STATUS_DOT[getMyStatus(drawerDevice)] }} />
+                                            <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: STATUS_TEXT[getMyStatus(drawerDevice)] }}>{STATUS_LABEL[getMyStatus(drawerDevice)]}</span>
                                             {drawerDevice.battery_percent != null && (
-                                                <span className="ml-auto text-xs text-gray-500">🔋 {drawerDevice.battery_percent}%</span>
+                                                <span className="ml-auto inline-flex items-center gap-1"
+                                                    style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: drawerDevice.battery_percent < 20 ? 'var(--danger)' : 'var(--text-secondary)' }}>
+                                                    {drawerDevice.battery_percent < 20
+                                                        ? <BatteryLow className="w-3.5 h-3.5" />
+                                                        : <Battery className="w-3.5 h-3.5" />}
+                                                    {drawerDevice.battery_percent}%
+                                                </span>
                                             )}
                                         </div>
-                                        {drawerDevice.last_signal_at && (
-                                            <p className="text-[10px] text-gray-400">
-                                                Last seen {new Date(drawerDevice.last_signal_at).toLocaleString()}
+                                        {drawerDevice.last_seen_at && (
+                                            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                                Last seen {new Date(drawerDevice.last_seen_at).toLocaleString()}
                                             </p>
                                         )}
                                         {drawerDevice.last_lat != null && (
-                                            <p className="text-[10px] font-mono text-gray-500">
+                                            <p style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                                                 {Number(drawerDevice.last_lat).toFixed(6)}, {Number(drawerDevice.last_lon).toFixed(6)}
                                             </p>
                                         )}
                                     </div>
 
                                     {drawerDevice.device_type && (
-                                        <div className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2.5">
-                                            <p className="text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Device Type</p>
-                                            <p className="text-xs font-medium">{drawerDevice.device_type.name}</p>
+                                        <div className="rounded-xl px-3 py-2.5" style={{ background: 'var(--surface-sunken)' }}>
+                                            <p className="uppercase mb-0.5" style={{ fontSize: 'var(--text-2xs)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>Device type</p>
+                                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{drawerDevice.device_type.name}</p>
                                         </div>
                                     )}
 
                                     {/* Unlink device */}
-                                    <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                                    <div className="pt-2" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                                         {unlinkConfirm ? (
-                                            <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-3 py-3 space-y-2">
-                                                <p className="text-xs font-medium text-red-700 dark:text-red-400">Remove this device from your account?</p>
-                                                <p className="text-[10px] text-red-600 dark:text-red-500">You can re-register it later using the device ID.</p>
+                                            <div className="rounded-xl px-3 py-3 space-y-2"
+                                                style={{ background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                                                <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)' }}>Remove this device from your account?</p>
+                                                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>You can re-register it later using the device ID.</p>
                                                 <div className="flex gap-2">
                                                     <button onClick={() => setUnlinkConfirm(false)}
-                                                        className="flex-1 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                                                        className="tad-btn tad-btn--secondary tad-btn--sm flex-1">
                                                         Cancel
                                                     </button>
                                                     <button onClick={unlinkDevice} disabled={unlinking}
-                                                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors">
+                                                        className="tad-btn tad-btn--danger tad-btn--sm flex-1">
                                                         {unlinking ? 'Removing…' : 'Yes, remove'}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
                                             <button onClick={() => setUnlinkConfirm(true)}
-                                                className="w-full py-1.5 rounded-lg text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                                Unlink Device
+                                                className="w-full py-1.5 rounded-pill transition-colors"
+                                                style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)', borderRadius: 'var(--radius-pill)' }}>
+                                                Unlink device
                                             </button>
                                         )}
                                     </div>
@@ -922,11 +974,11 @@ export default function DevicesView({
 
                             {editTab === 'notif' && (
                                 <>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                         Toggle SMS alerts per incident type. Turning one off silences it for 24 hours.
                                     </p>
                                     {notifLoading ? (
-                                        <div className="text-xs text-gray-400 py-4 text-center">Loading…</div>
+                                        <div className="py-4 text-center" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>
                                     ) : (
                                         <>
                                             <div className="space-y-1">
@@ -935,24 +987,26 @@ export default function DevicesView({
                                                     return (
                                                         <button key={pref.event_type}
                                                             onClick={() => toggleNotif(pref.event_type)}
-                                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors text-left
-                                                                ${pref.sms_enabled
-                                                                    ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
-                                                                    : 'border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 opacity-60'}`}>
+                                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left"
+                                                            style={{
+                                                                border: '1px solid var(--border)',
+                                                                background: pref.sms_enabled ? 'var(--surface)' : 'var(--surface-sunken)',
+                                                                opacity: pref.sms_enabled ? 1 : 0.6,
+                                                            }}>
                                                             {pref.sms_enabled
-                                                                ? <Bell className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                                                                : <BellOff className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
-                                                            <span className="flex-1 text-xs font-medium text-gray-800 dark:text-gray-200">{pref.label}</span>
+                                                                ? <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--brand)' }} />
+                                                                : <BellOff className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
+                                                            <span className="flex-1" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{pref.label}</span>
                                                             {isDisabledUntil && (
-                                                                <span className="text-[9px] text-orange-500 shrink-0">24h off</span>
+                                                                <span className="shrink-0" style={{ fontSize: '9px', color: 'var(--warning)' }}>24h off</span>
                                                             )}
                                                         </button>
                                                     );
                                                 })}
                                             </div>
                                             <button onClick={saveNotifPrefs} disabled={notifSaving}
-                                                className="w-full py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors mt-2">
-                                                {notifSaving ? 'Saving…' : 'Save Preferences'}
+                                                className="tad-btn tad-btn--primary tad-btn--sm tad-btn--block mt-2">
+                                                {notifSaving ? 'Saving…' : 'Save preferences'}
                                             </button>
                                         </>
                                     )}

@@ -51,25 +51,29 @@ export default function RegisterDeviceModal({ token, onClose, onRegistered }: Pr
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-                <div className="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 relative" onClick={e => e.stopPropagation()}>
-                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style={{ background: 'rgba(0,0,0,0.45)' }} onClick={onClose}>
+                <div className="w-full max-w-sm p-6 relative"
+                    style={{ background: 'var(--surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--border)' }}
+                    onClick={e => e.stopPropagation()}>
+                    <button onClick={onClose} className="tad-iconbtn tad-iconbtn--sm absolute top-3 right-3" aria-label="Close">
                         <X className="w-4 h-4" />
                     </button>
 
-                    <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Register a Device</h2>
-                    <p className="text-xs text-gray-500 mb-5">
+                    <h2 className="mb-1" style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>Register a device</h2>
+                    <p className="mb-5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                         Enter the last 10 digits of the IMEI printed on your device. P901 devices: use the 11-digit phone number shown on the label (with leading zero).
                     </p>
 
                     {success ? (
-                        <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-4 text-sm text-green-700 text-center">
+                        <div className="px-4 py-4 text-center"
+                            style={{ borderRadius: 'var(--radius-lg)', background: 'var(--success-bg)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)', fontSize: 'var(--text-sm)', color: 'var(--success)' }}>
                             {success}
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Device ID</label>
+                                <label className="block mb-1.5" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>Device ID</label>
                                 <input
                                     type="text"
                                     inputMode="numeric"
@@ -79,19 +83,20 @@ export default function RegisterDeviceModal({ token, onClose, onRegistered }: Pr
                                     onChange={e => { setInput(e.target.value.replace(/\D/g, '')); setError(null); }}
                                     placeholder="e.g. 0123456789"
                                     autoFocus
-                                    className="w-full text-sm font-mono rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-400 tracking-widest"
+                                    className="tad-input tad-input--mono w-full"
+                                    style={{ letterSpacing: '0.12em' }}
                                 />
                                 {error && (
-                                    <p className="text-xs text-red-600 mt-1.5">{error}</p>
+                                    <p className="mt-1.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)' }}>{error}</p>
                                 )}
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading || input.length < 8}
-                                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                                className="tad-btn tad-btn--primary tad-btn--block">
                                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                {loading ? 'Looking up device…' : 'Register Device'}
+                                {loading ? 'Looking up device…' : 'Register device'}
                             </button>
                         </form>
                     )}

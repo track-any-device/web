@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Building2, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiClient } from '@/lib/api-client';
 import type { TenantSummary } from '@/lib/api-client';
@@ -25,25 +26,26 @@ export default function TenantsClient() {
             .finally(() => setLoading(false));
     }, [token]);
 
-    if (loading) return <div className="p-8 text-sm text-gray-400">Loading...</div>;
+    if (loading) return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading...</div>;
 
     return (
         <div className="p-8 space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                My Tenants ({tenants.length})
+            <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                My tenants ({tenants.length})
             </h1>
 
             {apiError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 font-mono break-all">
+                <div className="rounded-lg px-4 py-3 break-all"
+                    style={{ fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
                     {apiError}
                 </div>
             )}
 
             {!apiError && tenants.length === 0 && (
-                <div className="text-center py-20 text-gray-400">
-                    <p className="text-4xl mb-3">🏢</p>
-                    <p className="text-lg font-medium">No organizations yet</p>
-                    <p className="text-sm mt-1">You&apos;ll appear here when an admin adds you to an organization.</p>
+                <div className="text-center py-20 flex flex-col items-center gap-3">
+                    <Building2 className="w-10 h-10" style={{ color: 'var(--text-subtle)' }} />
+                    <p style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>No organisations yet</p>
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>You&apos;ll appear here when an admin adds you to an organisation.</p>
                 </div>
             )}
 
@@ -52,34 +54,39 @@ export default function TenantsClient() {
                     {tenants.map((tenant) => (
                         <a key={tenant.id} href={tenant.portal_url}
                             target="_blank" rel="noopener noreferrer"
-                            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 transition-colors group flex items-center gap-4">
-                            {tenant.logo_url ? (
-                                <Image
-                                    src={tenant.logo_url}
-                                    alt={tenant.name}
-                                    width={48}
-                                    height={48}
-                                    className="rounded-lg object-contain shrink-0"
-                                />
-                            ) : (
-                                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shrink-0">
-                                    <span className="text-white text-lg font-bold">
-                                        {(tenant.app_name ?? tenant.name).charAt(0)}
+                            className="tad-card tad-card--interactive group">
+                            <div className="tad-card__body flex items-center gap-4">
+                                {tenant.logo_url ? (
+                                    <Image
+                                        src={tenant.logo_url}
+                                        alt={tenant.name}
+                                        width={48}
+                                        height={48}
+                                        className="rounded-lg object-contain shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0"
+                                        style={{ background: 'linear-gradient(135deg, var(--pak-700), var(--pak-400))' }}>
+                                        <span style={{ color: '#fff', fontSize: 'var(--text-lg)', fontWeight: 'var(--weight-bold)', fontFamily: 'var(--font-display)' }}>
+                                            {(tenant.app_name ?? tenant.name).charAt(0)}
+                                        </span>
+                                    </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate inline-flex items-center gap-1"
+                                        style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
+                                        {tenant.app_name ?? tenant.name}
+                                        <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--brand)' }} />
+                                    </p>
+                                    <p className="truncate" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{tenant.slug}.track-any-device.com</p>
+                                    <span className={`inline-block mt-1.5 capitalize ${
+                                        tenant.status === 'approved'
+                                            ? 'tad-badge tad-badge--success'
+                                            : 'tad-badge tad-badge--neutral'
+                                    }`}>
+                                        {tenant.status}
                                     </span>
                                 </div>
-                            )}
-                            <div className="min-w-0">
-                                <p className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 transition-colors">
-                                    {tenant.app_name ?? tenant.name}
-                                </p>
-                                <p className="text-xs text-gray-400 truncate">{tenant.slug}.track-any-device.com</p>
-                                <span className={`inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
-                                    tenant.status === 'approved'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-gray-100 text-gray-500'
-                                }`}>
-                                    {tenant.status}
-                                </span>
                             </div>
                         </a>
                     ))}

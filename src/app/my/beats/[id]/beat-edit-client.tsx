@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { ApiClient } from '@/lib/api-client';
 import type { BeatDetail } from '@/lib/api-client';
@@ -27,14 +28,14 @@ export default function BeatEditClient({ id }: { id: string }) {
     }, [token, authLoading, id, router]);
 
     if (authLoading || loading) {
-        return <div className="p-8 text-sm text-gray-400">Loading…</div>;
+        return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
     }
 
     if (notFound) {
         return (
-            <div className="p-8 text-sm text-gray-500">
+            <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 Beat not found.{' '}
-                <a href="/my/beats" className="text-blue-600 hover:underline">Back to My Beats</a>
+                <a href="/my/beats" style={{ color: 'var(--brand)' }}>Back to my beats</a>
             </div>
         );
     }
@@ -45,10 +46,13 @@ export default function BeatEditClient({ id }: { id: string }) {
         <div className="p-8 max-w-3xl space-y-6">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <a href="/my/devices" className="text-xs text-blue-600 hover:underline">&larr; My Devices</a>
-                    <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{beat.name}</h1>
+                    <a href="/my/devices" className="inline-flex items-center gap-1.5"
+                        style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)' }}>
+                        <ArrowLeft className="w-3.5 h-3.5" /> My devices
+                    </a>
+                    <h1 className="mt-2" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{beat.name}</h1>
                     {beat.description && (
-                        <p className="text-sm text-gray-500 mt-0.5">{beat.description}</p>
+                        <p className="mt-0.5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{beat.description}</p>
                     )}
                 </div>
                 <DeleteBeatButton beatId={beat.id} token={token} />

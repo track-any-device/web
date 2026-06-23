@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { X, Check, Upload, FolderOpen, MapPin } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { LatLng } from '@/lib/api-client';
 
@@ -100,7 +101,7 @@ async function parseKmzBeats(file: File): Promise<KmlBeat[]> {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAPS_KEY     = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-const PRESET_COLORS = ['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#64748b'];
+const PRESET_COLORS = ['#01411C','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#64748b'];
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
@@ -337,25 +338,23 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col"
-                style={{ height: 'min(85vh, 680px)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(20,16,8,0.5)', backdropFilter: 'blur(4px)' }}>
+            <div className="tad-card w-full max-w-5xl flex flex-col"
+                style={{ height: 'min(85vh, 680px)', boxShadow: 'var(--shadow-xl)' }}>
 
                 {/* ── Header ───────────────────────────────────────────────── */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+                <div className="tad-card__header shrink-0">
                     <div>
-                        <h2 className="text-base font-semibold text-gray-900 dark:text-white">Import KML / KMZ</h2>
+                        <h2 className="tad-card__title">Import KML / KMZ</h2>
                         {items && !allDone && (
-                            <p className="text-xs text-gray-500 mt-0.5">
+                            <p className="mt-0.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
                                 {items.length} zone{items.length !== 1 ? 's' : ''} found
                                 {focusedIdx !== null && ` · viewing ${items[focusedIdx]?.editingName || 'zone'}`}
                             </p>
                         )}
                     </div>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    <button onClick={onClose} className="tad-iconbtn tad-iconbtn--sm" aria-label="Close">
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
@@ -363,7 +362,7 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                 <div className="flex flex-1 overflow-hidden">
 
                     {/* Left panel */}
-                    <div className="w-72 shrink-0 flex flex-col border-r border-gray-200 dark:border-gray-700">
+                    <div className="w-72 shrink-0 flex flex-col" style={{ borderRight: '1px solid var(--border)' }}>
 
                         {/* Scrollable content */}
                         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
@@ -371,29 +370,26 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                             {/* File picker */}
                             {!allDone && (
                                 <div>
-                                    <label className="flex flex-col items-center justify-center w-full h-24 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 cursor-pointer hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors">
+                                    <label className="flex flex-col items-center justify-center w-full h-24 cursor-pointer transition-colors"
+                                        style={{ borderRadius: 'var(--radius-md)', border: '2px dashed var(--border-strong)' }}>
                                         <input ref={fileRef} type="file" accept=".kml,.kmz" className="hidden" onChange={handleFile} />
                                         {parsing ? (
-                                            <p className="text-sm text-gray-500">Parsing file…</p>
+                                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Parsing file…</p>
                                         ) : items ? (
                                             <>
-                                                <svg className="w-5 h-5 text-green-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                <p className="text-xs font-medium text-gray-600 dark:text-gray-300">{items.length} zone{items.length !== 1 ? 's' : ''} loaded</p>
-                                                <p className="text-[10px] text-blue-500 mt-0.5">Click to choose a different file</p>
+                                                <Check className="w-5 h-5 mb-1" style={{ color: 'var(--success)' }} />
+                                                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>{items.length} zone{items.length !== 1 ? 's' : ''} loaded</p>
+                                                <p className="mt-0.5" style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)' }}>Click to choose a different file</p>
                                             </>
                                         ) : (
                                             <>
-                                                <svg className="w-6 h-6 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                </svg>
-                                                <p className="text-xs text-gray-500">Choose a .kml or .kmz file</p>
-                                                <p className="text-[10px] text-gray-400 mt-0.5">Multiple beats per file supported</p>
+                                                <Upload className="w-6 h-6 mb-1" style={{ color: 'var(--text-subtle)' }} />
+                                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Choose a .kml or .kmz file</p>
+                                                <p className="mt-0.5" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)' }}>Multiple beats per file supported</p>
                                             </>
                                         )}
                                     </label>
-                                    {parseError && <p className="mt-2 text-xs text-red-600">{parseError}</p>}
+                                    {parseError && <p className="mt-2" style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)' }}>{parseError}</p>}
                                 </div>
                             )}
 
@@ -401,14 +397,15 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                             {items && !allDone && (
                                 <div>
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                                        <span className="uppercase" style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-muted)' }}>
                                             Zones to import
                                         </span>
-                                        <label className="flex items-center gap-1.5 text-[10px] text-gray-500 cursor-pointer select-none">
+                                        <label className="flex items-center gap-1.5 cursor-pointer select-none" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                                             <input type="checkbox"
                                                 checked={selectedCount === items.length && items.length > 0}
                                                 onChange={e => toggleAll(e.target.checked)}
-                                                className="rounded" />
+                                                className="rounded"
+                                                style={{ accentColor: 'var(--brand)' }} />
                                             All
                                         </label>
                                     </div>
@@ -418,18 +415,22 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                                             <div key={idx}
                                                 data-idx={idx}
                                                 onClick={() => setFocusedIdx(idx)}
-                                                className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 cursor-pointer transition-all
-                                                    ${focusedIdx === idx
-                                                        ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-900/20 shadow-sm'
-                                                        : item.selected
-                                                            ? 'border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                                            : 'border-gray-100 dark:border-gray-800 opacity-40 hover:opacity-70'}`}>
+                                                className="flex items-center gap-2.5 px-2.5 py-2 cursor-pointer transition-all"
+                                                style={{
+                                                    borderRadius: 'var(--radius-md)',
+                                                    border: '1px solid',
+                                                    borderColor: focusedIdx === idx ? 'var(--brand)' : item.selected ? 'var(--border)' : 'var(--border-subtle)',
+                                                    background: focusedIdx === idx ? 'var(--brand-subtle)' : 'transparent',
+                                                    boxShadow: focusedIdx === idx ? 'var(--shadow-xs)' : undefined,
+                                                    opacity: item.selected ? 1 : 0.4,
+                                                }}>
 
                                                 <input type="checkbox"
                                                     checked={item.selected}
                                                     onChange={() => toggleItem(idx)}
                                                     onClick={e => e.stopPropagation()}
-                                                    className="rounded shrink-0" />
+                                                    className="rounded shrink-0"
+                                                    style={{ accentColor: 'var(--brand)' }} />
 
                                                 <span className="w-2.5 h-2.5 rounded-sm shrink-0"
                                                     style={{ background: PRESET_COLORS[idx % PRESET_COLORS.length] }} />
@@ -440,10 +441,11 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                                                     onChange={e => renameItem(idx, e.target.value)}
                                                     onClick={e => e.stopPropagation()}
                                                     placeholder="Zone name"
-                                                    className="flex-1 min-w-0 bg-transparent text-xs font-medium text-gray-900 dark:text-white focus:outline-none border-b border-transparent focus:border-gray-300 dark:focus:border-gray-600 transition-colors"
+                                                    className="flex-1 min-w-0 bg-transparent focus:outline-none transition-colors"
+                                                    style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--text)', borderBottom: '1px solid transparent' }}
                                                 />
 
-                                                <span className="text-[10px] text-gray-400 shrink-0">
+                                                <span className="shrink-0" style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
                                                     {item.coordinates.length}pts
                                                 </span>
                                             </div>
@@ -456,20 +458,22 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                             {allDone && (
                                 <div className="space-y-3">
                                     {imported.length > 0 && (
-                                        <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3">
-                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                                        <div className="rounded-lg px-4 py-3"
+                                            style={{ background: 'var(--success-bg)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)' }}>
+                                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--success)' }}>
                                                 {imported.length} beat{imported.length !== 1 ? 's' : ''} imported
                                             </p>
                                             <ul className="mt-1 space-y-0.5">
-                                                {imported.map(n => <li key={n} className="text-xs text-green-600 dark:text-green-500">✓ {n}</li>)}
+                                                {imported.map(n => <li key={n} className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--success)' }}><Check className="w-3 h-3 shrink-0" /> {n}</li>)}
                                             </ul>
                                         </div>
                                     )}
                                     {failed.length > 0 && (
-                                        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3">
-                                            <p className="text-sm font-medium text-red-700 dark:text-red-400">{failed.length} failed</p>
+                                        <div className="rounded-lg px-4 py-3"
+                                            style={{ background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--danger)' }}>{failed.length} failed</p>
                                             <ul className="mt-1 space-y-0.5">
-                                                {failed.map(n => <li key={n} className="text-xs text-red-600 dark:text-red-500">✗ {n}</li>)}
+                                                {failed.map(n => <li key={n} className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)' }}><X className="w-3 h-3 shrink-0" /> {n}</li>)}
                                             </ul>
                                         </div>
                                     )}
@@ -478,39 +482,35 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                         </div>
 
                         {/* Footer */}
-                        <div className="shrink-0 px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                        <div className="shrink-0 px-4 py-3 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
                             {/* Progress bar — always visible while importing */}
                             {importing && progress && (
                                 <div>
-                                    <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                                    <div className="flex justify-between mb-1" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                                         <span>Importing beat {progress.done + (progress.done < progress.total ? 1 : 0)} of {progress.total}…</span>
-                                        <span className="font-medium text-blue-600">{Math.round((progress.done / progress.total) * 100)}%</span>
+                                        <span style={{ fontWeight: 'var(--weight-medium)', fontFamily: 'var(--font-mono)', color: 'var(--brand)' }}>{Math.round((progress.done / progress.total) * 100)}%</span>
                                     </div>
-                                    <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                        <div className="h-full bg-blue-500 rounded-full transition-all duration-200"
-                                            style={{ width: `${(progress.done / progress.total) * 100}%` }} />
+                                    <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-sunken)' }}>
+                                        <div className="h-full rounded-full transition-all duration-200"
+                                            style={{ width: `${(progress.done / progress.total) * 100}%`, background: 'var(--brand)' }} />
                                     </div>
                                 </div>
                             )}
 
                             {/* Action buttons */}
                             {allDone ? (
-                                <button onClick={onClose}
-                                    className="w-full py-2 rounded-lg text-sm font-semibold text-white"
-                                    style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
+                                <button onClick={onClose} className="tad-btn tad-btn--primary tad-btn--block">
                                     Done
                                 </button>
                             ) : (
                                 <div className="flex items-center gap-2">
-                                    <button onClick={onClose} disabled={importing}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors">
+                                    <button onClick={onClose} disabled={importing} className="tad-btn tad-btn--secondary tad-btn--sm">
                                         Cancel
                                     </button>
                                     <button onClick={handleImport}
                                         disabled={!items || selectedCount === 0 || importing}
-                                        className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                        style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                                        {importing ? 'Importing…' : `Import ${selectedCount > 0 ? selectedCount : ''} Beat${selectedCount !== 1 ? 's' : ''}`}
+                                        className="tad-btn tad-btn--primary tad-btn--sm flex-1">
+                                        {importing ? 'Importing…' : `Import ${selectedCount > 0 ? selectedCount : ''} beat${selectedCount !== 1 ? 's' : ''}`}
                                     </button>
                                 </div>
                             )}
@@ -518,25 +518,26 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                     </div>
 
                     {/* Right panel: Map */}
-                    <div className="flex-1 relative bg-gray-50 dark:bg-gray-800 rounded-br-2xl overflow-hidden">
+                    <div className="flex-1 relative overflow-hidden" style={{ background: 'var(--bg-sunken)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                         <div ref={mapRef} className="absolute inset-0" />
 
                         {/* Overlay when map not available */}
                         {!MAPS_KEY && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none">
-                                <p className="text-3xl mb-3">🗺️</p>
-                                <p className="text-sm text-gray-400">Map preview not available</p>
-                                <p className="text-xs text-gray-400 mt-1">Set <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code></p>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none gap-2">
+                                <MapPin className="w-9 h-9" style={{ color: 'var(--text-subtle)' }} />
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Map preview not available</p>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-subtle)' }}>Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code></p>
                             </div>
                         )}
 
                         {/* Overlay hint when map is ready but no file loaded */}
                         {MAPS_KEY && mapsReady && !items && !parsing && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none">
-                                <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-sm border border-gray-200 dark:border-gray-700">
-                                    <p className="text-2xl mb-2">📂</p>
-                                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Upload a KML or KMZ file</p>
-                                    <p className="text-xs text-gray-400 mt-1">Beat polygons will appear on the map</p>
+                                <div className="backdrop-blur-sm px-6 py-5 flex flex-col items-center gap-2"
+                                    style={{ background: 'color-mix(in srgb, var(--surface) 82%, transparent)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}>
+                                    <FolderOpen className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                                    <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>Upload a KML or KMZ file</p>
+                                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Beat polygons will appear on the map</p>
                                 </div>
                             </div>
                         )}
@@ -544,7 +545,8 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                         {/* Hint to click a beat */}
                         {MAPS_KEY && items && !allDone && focusedIdx === null && (
                             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
-                                <div className="bg-black/60 text-white text-xs rounded-full px-3 py-1.5 whitespace-nowrap">
+                                <div className="rounded-full px-3 py-1.5 whitespace-nowrap"
+                                    style={{ background: 'color-mix(in srgb, var(--sand-900) 65%, transparent)', color: '#fff', fontSize: 'var(--text-xs)' }}>
                                     Click a zone in the list or on the map to focus it
                                 </div>
                             </div>
@@ -553,13 +555,14 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                         {/* Focused beat label */}
                         {focusedIdx !== null && items && !allDone && (
                             <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none">
-                                <div className="flex items-center gap-2 bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+                                <div className="flex items-center gap-2 rounded-full px-3 py-1.5"
+                                    style={{ background: 'var(--surface)', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)' }}>
                                     <span className="w-2.5 h-2.5 rounded-sm shrink-0"
                                         style={{ background: PRESET_COLORS[focusedIdx % PRESET_COLORS.length] }} />
-                                    <span className="text-xs font-semibold text-gray-800 dark:text-white">
+                                    <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
                                         {items[focusedIdx]?.editingName || 'Zone ' + (focusedIdx + 1)}
                                     </span>
-                                    <span className="text-[10px] text-gray-400">
+                                    <span style={{ fontSize: 'var(--text-2xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
                                         {items[focusedIdx]?.coordinates.length} pts
                                     </span>
                                 </div>

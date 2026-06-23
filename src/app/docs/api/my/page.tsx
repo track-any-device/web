@@ -114,7 +114,7 @@ export default function MyApiDocs() {
   "battery_percent": 87,
   "last_lat":     31.5204,
   "last_lon":     74.3587,
-  "last_signal_at": "2026-06-11T09:45:00Z",
+  "last_seen_at": "2026-06-11T09:45:00Z",
   "beat": { "id": 5, "name": "City Zone A" }
 }`}</Pre>
 

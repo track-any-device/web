@@ -71,7 +71,7 @@ export default function StreamClient({ initialDevices, token, userId }: Props) {
                                         </div>
                                     </td>
                                     <td className="px-5 py-3.5 hidden sm:table-cell text-xs text-gray-500">
-                                        {d.last_signal_at ? new Date(d.last_signal_at).toLocaleString() : '—'}
+                                        {d.last_seen_at ? new Date(d.last_seen_at).toLocaleString() : '—'}
                                     </td>
                                     <td className="px-5 py-3.5 hidden md:table-cell text-xs font-mono text-gray-500">
                                         {d.last_lat != null && d.last_lon != null

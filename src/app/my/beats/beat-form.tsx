@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Pencil, Check, Trash2, MapPin } from 'lucide-react';
 import type { BeatDetail, LatLng } from '@/lib/api-client';
 
 interface Props { token: string; beat?: BeatDetail }
@@ -27,7 +28,7 @@ export default function BeatForm({ token, beat }: Props) {
 
     const [name,        setName]        = useState(beat?.name ?? '');
     const [description, setDescription] = useState(beat?.description ?? '');
-    const [color,       setColor]       = useState(beat?.color ?? '#2563eb');
+    const [color,       setColor]       = useState(beat?.color ?? '#01411C');
     const [coords,      setCoords]      = useState<LatLng[]>(beat?.coordinates ?? []);
     const [drawing,     setDrawing]     = useState(false);
     const [tempPts,     setTempPts]     = useState<LatLng[]>([]);
@@ -253,30 +254,36 @@ export default function BeatForm({ token, beat }: Props) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            {error && (
+                <div className="rounded-lg px-4 py-3"
+                    style={{ fontSize: 'var(--text-sm)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                    {error}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+                <div className="tad-field">
+                    <label className="tad-field__label">Name<span className="tad-field__req">*</span></label>
                     <input value={name} onChange={e => setName(e.target.value)} required
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g. North Zone" />
+                        className="tad-input"
+                        placeholder="e.g. North zone" />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <div className="tad-field">
+                    <label className="tad-field__label">Description</label>
                     <input value={description} onChange={e => setDescription(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="tad-input"
                         placeholder="Optional" />
                 </div>
-                <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Zone colour</label>
+                <div className="sm:col-span-2 tad-field">
+                    <label className="tad-field__label">Zone colour</label>
                     <div className="flex items-center gap-3 flex-wrap">
                         <input type="color" value={color} onChange={e => handleColorChange(e.target.value)}
-                            className="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer p-0.5 bg-white" />
-                        {['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#64748b'].map(hex => (
+                            className="w-10 h-10 cursor-pointer p-0.5"
+                            style={{ borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', background: 'var(--surface)' }} />
+                        {['#01411C','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#64748b'].map(hex => (
                             <button key={hex} type="button" onClick={() => handleColorChange(hex)}
-                                className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${color === hex ? 'border-gray-800 dark:border-white scale-110' : 'border-transparent'}`}
-                                style={{ background: hex }} />
+                                className="w-7 h-7 rounded-full transition-transform hover:scale-110"
+                                style={{ background: hex, border: '2px solid', borderColor: color === hex ? 'var(--text)' : 'transparent', transform: color === hex ? 'scale(1.1)' : undefined }} />
                         ))}
                     </div>
                 </div>
@@ -285,33 +292,37 @@ export default function BeatForm({ token, beat }: Props) {
             {/* Map */}
             <div>
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Geofence polygon *
-                        {coords.length > 0 && <span className="ml-2 text-xs text-green-600 font-normal">{coords.length} vertices</span>}
-                        {drawing && tempPts.length > 0 && <span className="ml-2 text-xs text-orange-500 font-normal">drawing… {tempPts.length} pts</span>}
+                    <label style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>
+                        Geofence polygon<span className="tad-field__req">*</span>
+                        {coords.length > 0 && <span className="ml-2" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-regular)', fontFamily: 'var(--font-mono)', color: 'var(--success)' }}>{coords.length} vertices</span>}
+                        {drawing && tempPts.length > 0 && <span className="ml-2" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-regular)', fontFamily: 'var(--font-mono)', color: 'var(--warning)' }}>drawing… {tempPts.length} pts</span>}
                     </label>
                     <div className="flex items-center gap-2 flex-wrap">
                         {MAPS_KEY && !drawing && (
                             <button type="button" onClick={() => { if (coords.length > 0) clearPolygon(); setDrawing(true); }}
-                                className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-blue-200 hover:border-blue-400 transition-colors">
+                                className="tad-btn tad-btn--subtle tad-btn--sm">
+                                <Pencil className="w-3.5 h-3.5" />
                                 {coords.length > 0 ? 'Redraw' : 'Draw'}
                             </button>
                         )}
                         {drawing && (
                             <>
                                 <button type="button" onClick={() => finishDrawing(tempPts)} disabled={tempPts.length < 3}
-                                    className="text-xs font-semibold text-white px-2 py-1 rounded bg-green-600 hover:bg-green-700 disabled:opacity-40 transition-colors">
+                                    className="tad-btn tad-btn--primary tad-btn--sm">
+                                    <Check className="w-3.5 h-3.5" />
                                     Done ({tempPts.length} pts)
                                 </button>
                                 <button type="button" onClick={cancelDrawing}
-                                    className="text-xs font-medium text-gray-600 px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 transition-colors">
+                                    className="tad-btn tad-btn--secondary tad-btn--sm">
                                     Cancel
                                 </button>
                             </>
                         )}
                         {coords.length > 0 && !drawing && (
                             <button type="button" onClick={clearPolygon}
-                                className="text-xs font-medium text-red-600 px-2 py-1 rounded border border-red-200 hover:border-red-400 transition-colors">
+                                className="tad-btn tad-btn--sm"
+                                style={{ color: 'var(--danger)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)', background: 'transparent' }}>
+                                <Trash2 className="w-3.5 h-3.5" />
                                 Clear
                             </button>
                         )}
@@ -319,34 +330,34 @@ export default function BeatForm({ token, beat }: Props) {
                 </div>
 
                 {!MAPS_KEY ? (
-                    <div className="h-80 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-center p-6">
-                        <div>
-                            <p className="text-3xl mb-2">🗺️</p>
-                            <p className="text-sm text-gray-400">Google Maps API key not configured.</p>
-                            <p className="text-xs text-gray-400 mt-1">Set <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable map drawing.</p>
+                    <div className="h-80 flex items-center justify-center text-center p-6"
+                        style={{ borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-strong)' }}>
+                        <div className="flex flex-col items-center gap-2">
+                            <MapPin className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Google Maps API key not configured.</p>
+                            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-subtle)' }}>Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable map drawing.</p>
                         </div>
                     </div>
                 ) : (
-                    <div ref={mapRef} className={`h-80 rounded-xl border overflow-hidden ${drawing ? 'border-orange-400 ring-2 ring-orange-200' : 'border-gray-200 dark:border-gray-700'}`} />
+                    <div ref={mapRef} className="h-80 overflow-hidden"
+                        style={{ borderRadius: 'var(--radius-xl)', border: drawing ? '1px solid var(--warning)' : '1px solid var(--border)', boxShadow: drawing ? '0 0 0 3px var(--warning-bg)' : undefined }} />
                 )}
 
                 {drawing && (
-                    <p className="text-xs text-orange-600 mt-1">
+                    <p className="mt-1" style={{ fontSize: 'var(--text-xs)', color: 'var(--warning)' }}>
                         Click to place vertices · Double-click or click near the first point to finish · Minimum 3 points
                     </p>
                 )}
                 {!drawing && coords.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">Click <strong>Draw</strong> to place polygon vertices on the map.</p>
+                    <p className="mt-1" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Click <strong>Draw</strong> to place polygon vertices on the map.</p>
                 )}
             </div>
 
             <div className="flex items-center gap-3">
-                <button type="submit" disabled={saving}
-                    className="px-5 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
-                    style={{ background: 'linear-gradient(135deg,#2563eb,#0891b2)' }}>
-                    {saving ? 'Saving…' : beat ? 'Update Beat' : 'Create Beat'}
+                <button type="submit" disabled={saving} className="tad-btn tad-btn--primary">
+                    {saving ? 'Saving…' : beat ? 'Update beat' : 'Create beat'}
                 </button>
-                <a href="/my/devices" className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">Cancel</a>
+                <a href="/my/devices" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Cancel</a>
             </div>
         </form>
     );

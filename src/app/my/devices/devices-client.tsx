@@ -45,7 +45,7 @@ export default function DevicesClient() {
             .catch(() => {});
     }
 
-    if (loading) return <div className="p-8 text-sm text-gray-400">Loading…</div>;
+    if (loading) return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
 
     return (
         <>
