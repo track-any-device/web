@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Building2, ExternalLink } from 'lucide-react';
+import { Building2, ExternalLink, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { ApiClient, type UserProfile, type TenantSummary } from '@/lib/api-client';
+import { ApiClient, type UserProfile, type TenantSummary, type Device } from '@/lib/api-client';
 
 const ROLE_BADGE: Record<string, { className: string; label: string }> = {
     admin:       { className: 'tad-badge tad-badge--danger',  label: 'Admin'       },
@@ -28,7 +28,14 @@ export default function ProfileClient() {
     const [profile,      setProfile]      = useState<UserProfile | null>(null);
     const [tenants,      setTenants]      = useState<TenantSummary[]>([]);
     const [deviceCount,  setDeviceCount]  = useState<number>(0);
+    const [devices,      setDevices]      = useState<Device[]>([]);
     const [loading,      setLoading]      = useState(true);
+
+    // Move-to-organisation flow
+    const [moveDevice,   setMoveDevice]   = useState<Device | null>(null);
+    const [moveTenantId, setMoveTenantId] = useState<string>('');
+    const [moving,       setMoving]       = useState(false);
+    const [moveError,    setMoveError]    = useState<string | null>(null);
 
     // Tenant request form
     const [showRequest,  setShowRequest]  = useState(false);
@@ -47,12 +54,38 @@ export default function ProfileClient() {
             api.profile(),
             api.tenants(),
             api.dashboard(),
-        ]).then(([profileRes, tenantsRes, dashRes]) => {
+            api.devices({ per_page: '100' }),
+        ]).then(([profileRes, tenantsRes, dashRes, devicesRes]) => {
             if (profileRes.status === 'fulfilled') setProfile(profileRes.value);
             if (tenantsRes.status  === 'fulfilled') setTenants(tenantsRes.value);
             if (dashRes.status     === 'fulfilled') setDeviceCount(dashRes.value.device_count ?? 0);
+            if (devicesRes.status  === 'fulfilled') setDevices(devicesRes.value.data ?? []);
         }).finally(() => setLoading(false));
     }, [token, authLoading, router]);
+
+    function openMove(device: Device) {
+        setMoveDevice(device);
+        setMoveTenantId(tenants[0] ? String(tenants[0].id) : '');
+        setMoveError(null);
+    }
+
+    async function confirmMove() {
+        if (!moveDevice || !moveTenantId || !token) return;
+        setMoving(true);
+        setMoveError(null);
+        try {
+            const tenantId = Number(moveTenantId);
+            await new ApiClient(token).assignDeviceTenant(Number(moveDevice.id), tenantId);
+            // The device leaves the user's personal list once moved.
+            setDevices(ds => ds.filter(d => d.id !== moveDevice.id));
+            setDeviceCount(c => Math.max(0, c - 1));
+            setMoveDevice(null);
+        } catch (err) {
+            setMoveError((err as { message?: string })?.message ?? 'Could not move the device. Please try again.');
+        } finally {
+            setMoving(false);
+        }
+    }
 
     async function submitRequest(e: React.FormEvent) {
         e.preventDefault();
@@ -82,6 +115,9 @@ export default function ProfileClient() {
     const displayName  = profile?.name  ?? authUser?.name  ?? '—';
     const displayEmail = profile?.email ?? authUser?.email ?? '—';
     const showTenantRequest = deviceCount > 100;
+    // Devices the user still personally owns (not yet moved into an organisation).
+    const ownedDevices = devices.filter(d => !d.tenant);
+    const moveTargetTenant = tenants.find(t => String(t.id) === moveTenantId);
 
     return (
         <div className="mx-auto max-w-2xl px-6 py-8 space-y-6">
@@ -136,6 +172,39 @@ export default function ProfileClient() {
                     ))}
                 </div>
             </div>
+
+            {/* Owned devices — move into an organisation */}
+            {ownedDevices.length > 0 && (
+                <div>
+                    <h2 className="mb-3 uppercase"
+                        style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)', letterSpacing: 'var(--tracking-caps)', color: 'var(--text-secondary)' }}>
+                        Your devices
+                    </h2>
+                    <div className="space-y-2">
+                        {ownedDevices.map(device => (
+                            <div key={device.id} className="tad-card">
+                                <div className="px-4 py-3 flex items-center gap-3">
+                                    <div className="flex-1 min-w-0">
+                                        <p className="truncate" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
+                                            {device.name || 'Unnamed device'}
+                                        </p>
+                                        <p className="truncate" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{device.imei}</p>
+                                    </div>
+                                    {tenants.length > 0 && (
+                                        <button
+                                            onClick={() => openMove(device)}
+                                            className="tad-btn tad-btn--secondary tad-btn--sm shrink-0 inline-flex items-center gap-1.5"
+                                        >
+                                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                                            Move to organisation
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Tenants section */}
             {tenants.length > 0 && (
@@ -264,6 +333,83 @@ export default function ProfileClient() {
                     Edit profile
                 </Link>
             </div>
+
+            {/* Move-to-organisation confirm dialog */}
+            {moveDevice && (
+                <div
+                    onClick={() => !moving && setMoveDevice(null)}
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        className="tad-card tad-card--raised"
+                        style={{ maxWidth: 460, width: '100%' }}
+                    >
+                        <div className="tad-card__body space-y-4">
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                                    style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
+                                    <AlertTriangle className="w-4.5 h-4.5" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p style={{ fontSize: 'var(--text-md)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                                        Move to organisation
+                                    </p>
+                                    <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
+                                        {moveDevice.name || 'Unnamed device'} · {moveDevice.imei}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="tad-field">
+                                <label className="tad-field__label" htmlFor="move-tenant">Organisation</label>
+                                <div className="tad-select-field">
+                                    <select
+                                        id="move-tenant"
+                                        className="tad-select"
+                                        value={moveTenantId}
+                                        onChange={e => setMoveTenantId(e.target.value)}
+                                        disabled={moving}
+                                    >
+                                        {tenants.map(t => (
+                                            <option key={t.id} value={String(t.id)}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                    <span className="tad-select__chevron">
+                                        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl px-4 py-3"
+                                style={{ fontSize: 'var(--text-sm)', color: 'var(--warning)', background: 'var(--warning-bg)', border: '1px solid color-mix(in srgb, var(--warning) 28%, transparent)', lineHeight: 1.5 }}>
+                                You&rsquo;ll lose personal tracking of this device — it will be visible only in{' '}
+                                <strong>{moveTargetTenant?.name ?? 'the selected organisation'}</strong>.
+                            </div>
+
+                            {moveError && (
+                                <div className="rounded-lg px-3 py-2"
+                                    style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                                    {moveError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2">
+                                <button type="button" onClick={() => setMoveDevice(null)} disabled={moving}
+                                    className="tad-btn tad-btn--secondary tad-btn--sm">
+                                    Cancel
+                                </button>
+                                <button type="button" onClick={confirmMove} disabled={moving || !moveTenantId}
+                                    className="tad-btn tad-btn--primary tad-btn--sm">
+                                    {moving ? 'Moving…' : 'Move device'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
