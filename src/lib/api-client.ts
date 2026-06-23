@@ -117,6 +117,10 @@ export class ApiClient {
         return this.get<Device>(`/devices/${id}`);
     }
 
+    async deviceTrail(id: number, hours = 12) {
+        return this.get<{ deviceId: string; hours: number; count: number; points: Array<{ lat: number; lng: number; t: string | null; speed: number | null }> }>(`/devices/${id}/trail`, { hours: String(hours) });
+    }
+
     async updateDevice(id: number, data: UpdateDeviceData) {
         return this.patch<Device>(`/devices/${id}`, data);
     }
