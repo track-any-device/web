@@ -44,6 +44,7 @@ export interface TenantDetail extends Omit<Tenant, 'devices'> {
 }
 export interface PortalUser {
   id: number | string; name: string; email: string; role: string; phone: string | null; verified: boolean;
+  blocked?: boolean;
 }
 export interface DeviceType {
   id: number | string; name: string; slug: string; originalModel: string | null; pricePkr: number | null; active: boolean;
