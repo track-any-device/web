@@ -356,6 +356,12 @@
 .tad-portal__nav-item:hover { color: var(--text); background: var(--surface-hover); }
 .tad-portal__nav-item.is-active { color: var(--brand-on-subtle, var(--brand)); background: var(--brand-subtle); font-weight: 700; }
 .tad-portal__nav-count { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Nested nav group (e.g. admin "Dashboards") — indented child links beneath an expandable header. */
+.tad-portal__nav-group { display: flex; flex-direction: column; gap: 2px; }
+.tad-portal__nav-sublist { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 4px; padding-left: 30px; position: relative; }
+.tad-portal__nav-sublist::before { content: ''; position: absolute; left: 17px; top: 4px; bottom: 4px; width: 1px; background: var(--border); }
+.tad-portal__nav-item--sub { padding: 7px 12px; font-size: 13px; font-weight: 500; }
+.tad-portal__nav-item--sub.is-active { color: var(--brand-on-subtle, var(--brand)); background: var(--brand-subtle); font-weight: 700; }
 .tad-portal__nav-badge { min-width: 19px; height: 19px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
 .tad-portal__user { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border-subtle); padding: 12px 8px 2px; margin-top: 8px; }
 .tad-portal__avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #0A4D26, #2E8455); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 12px; font-family: var(--font-display); flex: none; }
@@ -378,6 +384,10 @@
 /* ── Admin dashboard chart grid ───────────────────────────────────────── */
 .tad-charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-5); align-items: start; }
 .tad-charts-grid__full { grid-column: 1 / -1; }
+/* Overview drill-down tiles — link cards into the focused dashboards. */
+.tad-dash-drill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+.tad-dash-drill { text-decoration: none; color: inherit; display: block; }
+.tad-dash-drill__icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-md); background: var(--brand-subtle); color: var(--brand-on-subtle, var(--brand)); flex: none; }
 
 /* ── Hero globe (design-pack canvas, full-bleed behind the copy) ───────── */
 .tad-hero-globe {
