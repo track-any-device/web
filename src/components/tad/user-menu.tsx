@@ -5,7 +5,9 @@ import Link from 'next/link';
 import {
   User,
   Globe,
-  LayoutGrid,
+  Smartphone,
+  Package,
+  CircleUser,
   Wrench,
   ShieldCheck,
   LogOut,
@@ -117,9 +119,17 @@ export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuP
             <Globe size={16} strokeWidth={2} aria-hidden />
             Back to site
           </Link>
-          <Link href="/my" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
-            <LayoutGrid size={16} strokeWidth={2} aria-hidden />
-            My things
+          <Link href="/my/devices" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
+            <Smartphone size={16} strokeWidth={2} aria-hidden />
+            My devices
+          </Link>
+          <Link href="/my/orders" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
+            <Package size={16} strokeWidth={2} aria-hidden />
+            My orders
+          </Link>
+          <Link href="/my/profile" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
+            <CircleUser size={16} strokeWidth={2} aria-hidden />
+            My profile
           </Link>
           {isOps && (
             <Link href="/operations" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>

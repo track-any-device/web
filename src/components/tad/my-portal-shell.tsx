@@ -7,16 +7,10 @@ import { Logo } from '@/components/tad/logo';
 import { SiteFooter } from '@/components/tad/site-footer';
 import { UserMenu } from '@/components/tad/user-menu';
 import { getAuthUser } from '@/lib/auth-store';
+import { SITE_NAV } from '@/components/tad/site-nav';
 
-/* Customer portal chrome (/my) — TAD-PAK header + shared web footer, scoped under .tad so the
-   design tokens apply. Renders inside MyShell (the auth gate). The avatar UserMenu carries the
-   links into the public site and (for staff) the /operations and /admin portals. */
-
-const NAV = [
-  { label: 'Devices', href: '/my/devices' },
-  { label: 'Orders', href: '/my/orders' },
-  { label: 'Profile', href: '/my/profile' },
-];
+/* Customer portal chrome (/my) — TAD-PAK web header (the consistent site nav) + shared web footer.
+   Personal links (My devices / orders / profile) live in the avatar UserMenu, not the header nav. */
 
 export function MyPortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '';
@@ -41,14 +35,14 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
     <div className="tad" style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header className="tad-header">
         <div className="tad-shell__bar">
-          <Link href="/my/devices" aria-label="TAD-PAK" className="tad-shell__logo"><Logo /></Link>
+          <Link href="/" aria-label="TAD-PAK home" className="tad-shell__logo"><Logo /></Link>
           <nav className="tad-shell__nav">
-            {NAV.map((n) => (
+            {SITE_NAV.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
                 className="tad-nav-link"
-                aria-current={pathname.startsWith(n.href) ? 'page' : undefined}
+                aria-current={pathname === n.href ? 'page' : undefined}
               >
                 {n.label}
               </Link>
