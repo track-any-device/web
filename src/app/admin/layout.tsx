@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="tad">
       <div className="tad-portal">
-        <PortalSidebar nav={ADMIN_NAV} user={{ name, role: 'Admin', initials: name.slice(0, 2).toUpperCase() }} />
+        <PortalSidebar nav={ADMIN_NAV} user={{ name, role, initials: name.slice(0, 2).toUpperCase() }} />
         <main className="tad-portal__main">{children}</main>
       </div>
     </div>

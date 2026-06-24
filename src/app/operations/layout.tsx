@@ -23,7 +23,7 @@ export default async function OperationsLayout({ children }: { children: React.R
   return (
     <div className="tad">
       <div className="tad-portal">
-        <PortalSidebar nav={nav} user={{ name, role: 'Operations', initials: name.slice(0, 2).toUpperCase() }} />
+        <PortalSidebar nav={nav} user={{ name, role, initials: name.slice(0, 2).toUpperCase() }} />
         <main className="tad-portal__main">{children}</main>
       </div>
     </div>
