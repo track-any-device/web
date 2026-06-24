@@ -45,7 +45,10 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
         subtitle={d.model ?? 'Device detail'}
         right={<Link href="/admin/devices"><Button variant="ghost" size="sm">Back</Button></Link>}
       />
-      <div className="tad-portal__body" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+      <div className="tad-portal__body">
+       {/* Detail grid: 1 col on phones → 2 on small → 4 on xl. Full-width cards (activity / incidents)
+           keep col-span-full so they always stretch the row regardless of column count. */}
+       <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card title="Identity">
           <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Status" value={<Badge variant={STATUS[d.status ?? ''] ?? 'neutral'}>{d.status ?? '—'}</Badge>} />
@@ -102,6 +105,7 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
             </div>
           )}
         </Card>
+       </div>
       </div>
     </>
   );

@@ -436,6 +436,7 @@ function FieldMap({
   return (
     <div>
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Field map</div>
+      <div className="tad-table-scroll">
       <table className="tad-table">
         <tbody>
           {payloadFields.map((field) => {
@@ -456,6 +457,7 @@ function FieldMap({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

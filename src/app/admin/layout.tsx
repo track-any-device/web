@@ -1,6 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { PortalSidebar, type PortalNavItem } from '@/components/tad/portal-shell';
+import { PortalMobileNav } from '@/components/tad/portal-mobile-nav';
 import { LoadingProvider } from '@/components/tad/loading-provider';
 import { getSession } from '@/lib/auth';
 import { ADMIN_ROLES, type Role } from '@/lib/portal-data';
@@ -34,13 +35,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const role = String(session?.user?.role ?? '');
   if (!ADMIN_ROLES.includes(role as Role)) redirect('/my');
   const name = String(session?.user?.name ?? 'Admin');
+  const user = { name, role, initials: name.slice(0, 2).toUpperCase() };
   return (
     <div className="tad">
       <div className="tad-portal">
-        <PortalSidebar nav={ADMIN_NAV} user={{ name, role, initials: name.slice(0, 2).toUpperCase() }} />
+        {/* lg+ persistent sidebar (hidden below lg via tad.css). */}
+        <PortalSidebar nav={ADMIN_NAV} user={user} />
         {/* position:relative so the LoadingProvider's absolute satellite overlay covers
             ONLY this content pane (the sidebar stays visible). */}
         <main className="tad-portal__main" style={{ position: 'relative' }}>
+          {/* Below lg: sticky hamburger bar + slide-in drawer (same nav). Hidden at lg+. */}
+          <PortalMobileNav nav={ADMIN_NAV} user={user} />
           <LoadingProvider>{children}</LoadingProvider>
         </main>
       </div>

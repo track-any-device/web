@@ -82,7 +82,7 @@ export function AddDevice() {
 
   return (
     <div className="tad-card" style={{ padding: 'var(--space-5)', gap: 'var(--space-4)' }}>
-      <form onSubmit={add} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 'var(--space-4)', alignItems: 'end' }}>
+      <form onSubmit={add} className="grid items-end gap-4 sm:grid-cols-[1fr_1fr_auto]">
         <Input
           label="Device IMEI"
           mono

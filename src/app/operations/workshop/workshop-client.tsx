@@ -22,7 +22,8 @@ export function WorkshopClient({ queue, loadError }: { queue: Device[]; loadErro
   React.useEffect(() => { setRows(queue); }, [queue]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 320px) 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+    // Queue + provisioning split — stacks to one column below lg so it works down to 360px.
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(260px,320px)_1fr] lg:gap-6">
       {/* Queue */}
       <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700 }}>
@@ -123,7 +124,8 @@ function ProvisionPanel({
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-5)', alignItems: 'start' }}>
+    // Configure + onboard side-by-side on desktop; stacked single column on phones/tablets.
+    <div className="grid items-start gap-5 md:grid-cols-2">
       {/* Configuration */}
       <div className="tad-card" style={{ padding: 'var(--space-5)', gap: 'var(--space-4)' }}>
         <div>
