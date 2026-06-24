@@ -65,6 +65,46 @@ function getMyStatus(device: Device): MyStatus {
     return 'unavailable';
 }
 
+// Live metric shown under an OPEN incident (open/acknowledged/escalated): overspeed → current
+// speed, low_battery → current battery, beat_violation → current distance from the assigned beat.
+// Returns null when the incident is closed, has no `current`, or the relevant value is missing.
+const ACTIVE_INCIDENT_STATUSES = ['open', 'acknowledged', 'escalated'];
+
+function renderLiveMetric(incident: Incident) {
+    if (!ACTIVE_INCIDENT_STATUSES.includes(incident.status)) return null;
+    const current = incident.current;
+    if (!current) return null;
+
+    let value: string | null = null;
+    let unit = '';
+
+    if (incident.event_type === 'overspeed' && current.speed != null) {
+        value = current.speed.toFixed(0);
+        unit = 'km/h';
+    } else if (incident.event_type === 'low_battery' && current.battery != null) {
+        value = String(current.battery);
+        unit = '%';
+    } else if (incident.event_type === 'beat_violation' && current.distanceM != null) {
+        const m = current.distanceM;
+        if (m < 1000) {
+            value = m.toFixed(0);
+            unit = 'm from beat';
+        } else {
+            value = (m / 1000).toFixed(1);
+            unit = 'km from beat';
+        }
+    }
+
+    if (value == null) return null;
+
+    return (
+        <div style={{ marginTop: 3, display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{value}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{unit}</span>
+        </div>
+    );
+}
+
 // Map-pin colour reflects the device's LIVE status (not battery): online = green, offline = red,
 // unavailable = sand. Concrete hex (matches --success / --danger / --text-muted) so it resolves
 // even if Google reparents the marker content outside the .tad scope.
@@ -889,6 +929,7 @@ export default function DevicesView({
                                             {incident.device && (
                                                 <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
                                             )}
+                                            {renderLiveMetric(incident)}
                                         </div>
                                     </div>
                                 ))}
