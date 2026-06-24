@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import {
   User,
-  Globe,
   Smartphone,
   Package,
   CircleUser,
@@ -95,6 +94,7 @@ export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuP
         <span className="tad-usermenu__avatar" aria-hidden>
           {avatarInitials || <User size={16} strokeWidth={2} />}
         </span>
+        <span className="tad-usermenu__triggername">{name}</span>
         <ChevronDown size={15} strokeWidth={2.2} className="tad-usermenu__caret" aria-hidden data-open={open || undefined} />
       </button>
 
@@ -115,11 +115,7 @@ export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuP
 
           <div className="tad-usermenu__divider" role="separator" />
 
-          <Link href="/" className="tad-usermenu__item" role="menuitem" ref={firstItemRef} onClick={() => setOpen(false)}>
-            <Globe size={16} strokeWidth={2} aria-hidden />
-            Back to site
-          </Link>
-          <Link href="/my/devices" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
+          <Link href="/my/devices" className="tad-usermenu__item" role="menuitem" ref={firstItemRef} onClick={() => setOpen(false)}>
             <Smartphone size={16} strokeWidth={2} aria-hidden />
             My devices
           </Link>
