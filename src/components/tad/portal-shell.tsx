@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/tad/logo';
+import { UserMenu } from '@/components/tad/user-menu';
 import { cn } from '@/lib/cn';
 
 /* Internal-portal chrome (operations + admin) — persistent left sidebar + per-page topbar.
@@ -144,10 +145,10 @@ export function PortalSidebar({ nav, user }: { nav: PortalNavItem[]; user?: Port
       </nav>
       {user && (
         <div className="tad-portal__user">
-          <div className="tad-portal__avatar">{user.initials}</div>
-          <div style={{ lineHeight: 1.3, overflow: 'hidden' }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>{user.name}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{user.role}</div>
+          <UserMenu name={user.name} role={user.role} initials={user.initials} />
+          <div style={{ lineHeight: 1.3, overflow: 'hidden', minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Account menu</div>
           </div>
         </div>
       )}

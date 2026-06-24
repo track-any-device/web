@@ -4,12 +4,13 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/tad/logo';
-import { clearAuth, getAuthUser } from '@/lib/auth-store';
-import { OPS_ROLES, ADMIN_ROLES, type Role } from '@/lib/portal-data';
+import { SiteFooter } from '@/components/tad/site-footer';
+import { UserMenu } from '@/components/tad/user-menu';
+import { getAuthUser } from '@/lib/auth-store';
 
-/* Customer portal chrome (/my) — TAD-PAK header + footer, scoped under .tad so the design
-   tokens apply. Renders inside MyShell (the auth gate). Staff also get links into their
-   /operations and /admin portals (which are otherwise unreachable from the UI). */
+/* Customer portal chrome (/my) — TAD-PAK header + shared web footer, scoped under .tad so the
+   design tokens apply. Renders inside MyShell (the auth gate). The avatar UserMenu carries the
+   links into the public site and (for staff) the /operations and /admin portals. */
 
 const NAV = [
   { label: 'Devices', href: '/my/devices' },
@@ -19,10 +20,11 @@ const NAV = [
 
 export function MyPortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '';
-  const [role, setRole] = React.useState('');
-  React.useEffect(() => { setRole(String(getAuthUser()?.role ?? '')); }, []);
-  const isOps = OPS_ROLES.includes(role as Role);
-  const isAdmin = ADMIN_ROLES.includes(role as Role);
+  const [user, setUser] = React.useState<{ name: string; role: string }>({ name: 'My account', role: '' });
+  React.useEffect(() => {
+    const u = getAuthUser();
+    setUser({ name: String(u?.name ?? 'My account'), role: String(u?.role ?? '') });
+  }, []);
   // The devices/stream pages are full-bleed map apps — they manage their own height and must not
   // sit inside the centered, padded content container the other /my pages use. /my/trips and
   // /my/beats render the SAME map app (DevicesView) on a different tab, so they must be full-bleed
@@ -35,21 +37,11 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
     pathname === '/my/trips' ||
     pathname === '/my/beats';
 
-  async function signOut() {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {
-      /* ignore — clear locally regardless */
-    }
-    clearAuth();
-    window.location.href = '/login';
-  }
-
   return (
     <div className="tad" style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <header className="tad-header">
         <div className="tad-shell__bar">
-          <Link href="/my/devices" aria-label="TAD-PAK"><Logo /></Link>
+          <Link href="/my/devices" aria-label="TAD-PAK" className="tad-shell__logo"><Logo /></Link>
           <nav className="tad-shell__nav">
             {NAV.map((n) => (
               <Link
@@ -62,11 +54,8 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          <span className="tad-shell__spacer" />
           <div className="tad-shell__actions">
-            {isOps && <Link href="/operations" className="tad-btn tad-btn--ghost tad-btn--sm">Operations</Link>}
-            {isAdmin && <Link href="/admin" className="tad-btn tad-btn--ghost tad-btn--sm">Admin</Link>}
-            <button type="button" className="tad-btn tad-btn--ghost tad-btn--sm" onClick={signOut}>Sign out</button>
+            <UserMenu name={user.name} role={user.role} />
           </div>
         </div>
       </header>
@@ -79,14 +68,7 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {!fullBleed && <footer className="tad-footer">
-        <div className="tad-footer__inner">
-          <div className="tad-footer__legal">
-            <span>© {new Date().getFullYear()} TAD-PAK GPS</span>
-            <span className="tad-data">Cash on delivery · PKR · Pakistan</span>
-          </div>
-        </div>
-      </footer>}
+      {!fullBleed && <SiteFooter />}
     </div>
   );
 }

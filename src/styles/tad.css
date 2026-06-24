@@ -321,12 +321,15 @@
 
 /* ---------- SITE SHELL (header / footer) ---------- */
 .tad-header{ position:sticky; top:0; z-index:30; background:color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--border); }
-.tad-shell__bar{ display:flex; align-items:center; gap:var(--space-6); height:var(--topbar-h); max-width:var(--container-xl); margin:0 auto; padding:0 var(--space-6); }
-.tad-shell__nav{ display:flex; align-items:center; gap:2px; margin-left:var(--space-4); }
+/* Three zones — logo (left) · nav (centered) · actions (right). The 1fr centre column keeps the
+   nav visually centred in the header regardless of the logo/actions widths. */
+.tad-shell__bar{ display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:var(--space-6); height:var(--topbar-h); max-width:var(--container-xl); margin:0 auto; padding:0 var(--space-6); }
+.tad-shell__logo{ justify-self:start; display:inline-flex; align-items:center; }
+.tad-shell__nav{ grid-column:2; justify-self:center; display:flex; align-items:center; gap:2px; }
 .tad-nav-link{ font-size:var(--text-base); font-weight:var(--weight-medium); color:var(--text-secondary); padding:8px 12px; border-radius:var(--radius-sm); transition:var(--transition-colors); }
 .tad-nav-link:hover{ color:var(--text); background:var(--surface-hover); }
 .tad-shell__spacer{ flex:1; }
-.tad-shell__actions{ display:flex; align-items:center; gap:var(--space-2); }
+.tad-shell__actions{ grid-column:3; justify-self:end; display:flex; align-items:center; gap:var(--space-2); }
 .tad-footer{ border-top:1px solid var(--border); background:var(--surface-sunken); margin-top:var(--space-16); }
 .tad-footer__inner{ max-width:var(--container-xl); margin:0 auto; padding:var(--space-12) var(--space-6) var(--space-8); display:grid; gap:var(--space-8); }
 .tad-footer__cols{ display:grid; grid-template-columns:1.4fr repeat(3, 1fr); gap:var(--space-8); }
@@ -365,6 +368,33 @@
 .tad-portal__nav-badge { min-width: 19px; height: 19px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; font-family: var(--font-mono); }
 .tad-portal__user { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border-subtle); padding: 12px 8px 2px; margin-top: 8px; }
 .tad-portal__avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #0A4D26, #2E8455); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 12px; font-family: var(--font-display); flex: none; }
+
+/* ---------- USER MENU (shared avatar dropdown) ---------- */
+.tad-usermenu{ position:relative; flex:none; }
+.tad-usermenu__trigger{ display:inline-flex; align-items:center; gap:4px; padding:2px; border:1px solid transparent; border-radius:var(--radius-pill); background:transparent; cursor:pointer; transition:var(--transition-colors), box-shadow var(--dur-fast) var(--ease-out); }
+.tad-usermenu__trigger:hover{ background:var(--surface-hover); }
+.tad-usermenu__trigger:focus-visible{ outline:none; box-shadow:var(--shadow-focus); }
+.tad-usermenu__caret{ color:var(--text-muted); transition:transform var(--dur-fast) var(--ease-out); }
+.tad-usermenu__caret[data-open]{ transform:rotate(180deg); }
+.tad-usermenu__avatar{ width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #0A4D26, #2E8455); display:inline-flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:12px; font-family:var(--font-display); letter-spacing:0.01em; flex:none; }
+.tad-usermenu__avatar--lg{ width:40px; height:40px; font-size:15px; }
+.tad-usermenu__panel{ position:absolute; top:calc(100% + 8px); right:0; z-index:60; min-width:236px; padding:6px; background:var(--surface-raised); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); animation:tad-usermenu-in var(--dur-fast) var(--ease-out); }
+@keyframes tad-usermenu-in{ from{ opacity:0; transform:translateY(-4px) scale(0.98); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){ .tad-usermenu__panel{ animation:none; } }
+.tad-usermenu__head{ display:flex; align-items:center; gap:10px; padding:8px 10px 10px; }
+.tad-usermenu__id{ min-width:0; line-height:1.3; }
+.tad-usermenu__name{ font-size:var(--text-sm); font-weight:var(--weight-semibold); color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tad-usermenu__role{ display:inline-flex; align-items:center; gap:4px; margin-top:3px; padding:2px 7px; border-radius:var(--radius-pill); background:var(--brand-subtle); color:var(--brand-on-subtle); font-family:var(--font-mono); font-size:var(--text-2xs); letter-spacing:var(--tracking-caps); text-transform:uppercase; }
+.tad-usermenu__divider{ height:1px; margin:5px 6px; background:var(--border-subtle); }
+.tad-usermenu__item{ display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border:none; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); font-family:var(--font-body); font-size:var(--text-sm); font-weight:var(--weight-medium); text-align:left; text-decoration:none; cursor:pointer; transition:var(--transition-colors); }
+.tad-usermenu__item svg{ color:var(--text-muted); flex:none; transition:var(--transition-colors); }
+.tad-usermenu__item:hover{ background:var(--surface-hover); color:var(--text); }
+.tad-usermenu__item:hover svg{ color:var(--brand); }
+.tad-usermenu__item:focus-visible{ outline:none; box-shadow:var(--shadow-focus); }
+.tad-usermenu__item--danger{ color:var(--danger); }
+.tad-usermenu__item--danger svg{ color:var(--danger); }
+.tad-usermenu__item--danger:hover{ background:var(--danger-bg); color:var(--danger); }
+.tad-usermenu__item--danger:hover svg{ color:var(--danger); }
 .tad-portal__main { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
 .tad-portal__topbar {
   height: var(--topbar-h, 60px); flex: none; box-sizing: border-box; display: flex;
