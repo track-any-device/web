@@ -137,6 +137,86 @@ export function eventLabel(t: string | null): string {
   return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/* ── Admin dashboard aggregation (GET /api/admin/dashboard?days=N) ─────────
+   Shape matches app's aggregation endpoint exactly. Every timeseries array is
+   DENSE (one entry per UTC date in the window, zero-filled, ascending) and every
+   distribution includes ALL enum cases even at count 0. Shared by the admin page
+   (server fetch) and the BFF route handler. */
+export interface DashboardRange { days: number; from: string; to: string }
+
+export interface DashboardTotals {
+  users: number; devices: number; activeDevices: number; pendingDevices: number;
+  organisations: number; openIncidents: number; openTickets: number;
+  forwarded24h: number; smsSent24h: number; smsReceived24h: number;
+}
+
+export interface CountPoint { date: string; count: number }
+export interface ForwardingPoint { date: string; delivered: number; failed: number }
+export interface IncidentPoint { date: string; opened: number; resolved: number }
+export interface SmsOutgoingPoint { date: string; sent: number; failed: number; pending: number }
+
+export interface DashboardTimeseries {
+  activity: CountPoint[];
+  usersJoined: CountPoint[];
+  devicesOnboarded: CountPoint[];
+  tickets: CountPoint[];
+  smsIncoming: CountPoint[];
+  forwarding: ForwardingPoint[];
+  incidents: IncidentPoint[];
+  smsOutgoing: SmsOutgoingPoint[];
+}
+
+export interface DistributionSlice { key: string; label: string; count: number }
+
+export interface DashboardDistributions {
+  userTypes: DistributionSlice[];
+  deviceStatus: DistributionSlice[];
+  ticketStatus: DistributionSlice[];
+  incidentPriority: DistributionSlice[];
+}
+
+export interface DashboardData {
+  range: DashboardRange;
+  totals: DashboardTotals;
+  timeseries: DashboardTimeseries;
+  distributions: DashboardDistributions;
+}
+
+/** Safe empty fallback — used when the endpoint 404s (not yet deployed) or errors.
+   Totals all zero + every series empty => the UI shows ONE friendly empty state,
+   never fabricated chart data. */
+export function emptyDashboard(days = 30): DashboardData {
+  return {
+    range: { days, from: '', to: '' },
+    totals: {
+      users: 0, devices: 0, activeDevices: 0, pendingDevices: 0,
+      organisations: 0, openIncidents: 0, openTickets: 0,
+      forwarded24h: 0, smsSent24h: 0, smsReceived24h: 0,
+    },
+    timeseries: {
+      activity: [], usersJoined: [], devicesOnboarded: [], tickets: [],
+      smsIncoming: [], forwarding: [], incidents: [], smsOutgoing: [],
+    },
+    distributions: { userTypes: [], deviceStatus: [], ticketStatus: [], incidentPriority: [] },
+  };
+}
+
+/** True when the payload carries no real data (every total 0 AND every series empty).
+   Drives the single empty state instead of a wall of flat charts. */
+export function isDashboardEmpty(d: DashboardData): boolean {
+  const t = d.totals;
+  const totalsZero =
+    t.users === 0 && t.devices === 0 && t.activeDevices === 0 && t.pendingDevices === 0 &&
+    t.organisations === 0 && t.openIncidents === 0 && t.openTickets === 0 &&
+    t.forwarded24h === 0 && t.smsSent24h === 0 && t.smsReceived24h === 0;
+  const ts = d.timeseries;
+  const seriesEmpty =
+    ts.activity.length === 0 && ts.usersJoined.length === 0 && ts.devicesOnboarded.length === 0 &&
+    ts.tickets.length === 0 && ts.smsIncoming.length === 0 && ts.forwarding.length === 0 &&
+    ts.incidents.length === 0 && ts.smsOutgoing.length === 0;
+  return totalsZero && seriesEmpty;
+}
+
 /* ── Per-portal access (operations) ───────────────────────────────────────
    Each operations portal is gated to specific roles. Admin/Core can access all;
    each operations role sees only its own portal. */
