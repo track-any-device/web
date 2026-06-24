@@ -26,9 +26,9 @@ export function OrgDetailTabs({
 }) {
   const [tab, setTab] = React.useState<Tab>('devices');
 
-  // The live channel feed (inbound device traffic) is shown for every org. REST/MQTT orgs ALSO get
-  // the outbound Forwarding activity feed, so you can see signals arriving AND being delivered.
-  // tad101_channel has no outbound deliveries, so its Forwarding activity card is hidden.
+  // One logs surface per transport: REST/MQTT orgs forward outbound → show the Forwarding activity
+  // feed; the Live channel feed is shown ONLY for TAD101-channel orgs (and the safe default), whose
+  // device traffic rides the broadcast channel rather than leaving over an external transport.
   const showForwardingActivity = transport === 'rest_api' || transport === 'mqtt';
 
   return (
@@ -74,19 +74,9 @@ export function OrgDetailTabs({
       )}
 
       {tab === 'logs' && (
-        <>
-          {/* Outbound delivery feed — only when the org forwards over REST/MQTT. */}
-          {showForwardingActivity && <ForwardingActivity tenantId={tenant.id} />}
-
-          {/* Inbound device traffic — shown for every org so you can see signals arriving. */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '4px 2px 8px' }}>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800 }}>Live channel feed</h2>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Inbound device communication on this tenant’s channel, in real time</span>
-            </div>
-            <TenantLogs tenantId={tenant.id} />
-          </div>
-        </>
+        showForwardingActivity
+          ? <ForwardingActivity tenantId={tenant.id} />
+          : <TenantLogs tenantId={tenant.id} />
       )}
     </div>
   );
