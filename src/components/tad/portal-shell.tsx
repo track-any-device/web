@@ -145,7 +145,7 @@ export function PortalSidebar({ nav, user }: { nav: PortalNavItem[]; user?: Port
       </nav>
       {user && (
         <div className="tad-portal__user">
-          <UserMenu name={user.name} role={user.role} initials={user.initials} />
+          <UserMenu name={user.name} role={user.role} initials={user.initials} placement="up" />
           <div style={{ lineHeight: 1.3, overflow: 'hidden', minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Account menu</div>
