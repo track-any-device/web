@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { DataTable, StatRow } from '@/components/tad/data-table';
-import { Button, Card, Input } from '@/components/ui';
+import { Pencil, Trash2, MapPin, Hexagon } from 'lucide-react';
+import { StatRow } from '@/components/tad/data-table';
+import { Button, Card, IconButton, Input } from '@/components/ui';
 import { type ExclusionBeat } from '@/lib/portal-data';
 
 type LatLng = { lat: number; lng: number };
@@ -13,10 +14,21 @@ const DEFAULT_COLOR = '#F0463C';
 // Pixels within which clicking near the first vertex auto-closes the polygon
 const SNAP_PX = 20;
 
+// Pakistan fallback centre (Lahore) — matches the draw map default
+const FALLBACK_CENTER: LatLng = { lat: 31.5204, lng: 74.3587 };
+
+// Mean lat/lng of a zone's polygon vertices (used for panTo fallback + card meta)
+function zoneCentroid(coords: LatLng[]): LatLng | null {
+  if (!coords || coords.length === 0) return null;
+  const sum = coords.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
+  return { lat: sum.lat / coords.length, lng: sum.lng / coords.length };
+}
+
 export function ExclusionBeatsClient({ initial, loadError }: { initial: ExclusionBeat[]; loadError: string | null }) {
   const [rows, setRows] = React.useState<ExclusionBeat[]>(initial);
   const [editing, setEditing] = React.useState<ExclusionBeat | null>(null);
   const [showForm, setShowForm] = React.useState(false);
+  const [selectedId, setSelectedId] = React.useState<ExclusionBeat['id'] | null>(null);
   const [name, setName] = React.useState('');
   const [color, setColor] = React.useState(DEFAULT_COLOR);
   const [coords, setCoords] = React.useState<LatLng[]>([]);
@@ -26,6 +38,7 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // ── Form (draw) map refs ────────────────────────────────────────────────────
   const mapRef = React.useRef<HTMLDivElement>(null);
   const gmap = React.useRef<google.maps.Map | null>(null);
   const poly = React.useRef<google.maps.Polygon | null>(null);
@@ -35,6 +48,11 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
   const dblClickListener = React.useRef<google.maps.MapsEventListener | null>(null);
   const lastDblClick = React.useRef<number>(0);
 
+  // ── Overview map refs (shows ALL zones; drives the fly-to) ───────────────────
+  const overviewRef = React.useRef<HTMLDivElement>(null);
+  const overviewMap = React.useRef<google.maps.Map | null>(null);
+  const overviewPolys = React.useRef<Map<ExclusionBeat['id'], google.maps.Polygon>>(new Map());
+
   // Keep a ref of tempPts so event handlers always see the latest value
   const tempPtsRef = React.useRef<LatLng[]>([]);
   React.useEffect(() => { tempPtsRef.current = tempPts; }, [tempPts]);
@@ -43,22 +61,98 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
   const colorRef = React.useRef(color);
   React.useEffect(() => { colorRef.current = color; }, [color]);
 
-  // ── Load Maps API ─────────────────────────────────────────────────────────
+  // ── Load Maps API (shared loader; dedup with data-tad-maps) ─────────────────
   React.useEffect(() => {
-    if (!showForm) return;
-    if (typeof google !== 'undefined') { setMapsReady(true); return; }
+    if (typeof google !== 'undefined' && google.maps) { setMapsReady(true); return; }
     if (!MAPS_KEY) return;
+    const existing = document.querySelector<HTMLScriptElement>('script[data-tad-maps]');
+    if (existing) { existing.addEventListener('load', () => setMapsReady(true)); return; }
     const s = document.createElement('script');
     s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}`;
     s.async = true;
+    s.dataset.tadMaps = '1';
     s.onload = () => setMapsReady(true);
     document.head.appendChild(s);
-  }, [showForm]);
+  }, []);
 
-  // ── Init map ──────────────────────────────────────────────────────────────
+  // ── Overview map: init once, then render all zone polygons ───────────────────
+  React.useEffect(() => {
+    if (!mapsReady || !overviewRef.current || overviewMap.current) return;
+    overviewMap.current = new google.maps.Map(overviewRef.current, {
+      center: FALLBACK_CENTER,
+      zoom: 6,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+    });
+  }, [mapsReady]);
+
+  // Re-draw the overview polygons whenever the rows or selection change.
+  React.useEffect(() => {
+    const map = overviewMap.current;
+    if (!mapsReady || !map) return;
+
+    // Clear previous polygons
+    overviewPolys.current.forEach((p) => p.setMap(null));
+    overviewPolys.current.clear();
+
+    const bounds = new google.maps.LatLngBounds();
+    let any = false;
+
+    rows.forEach((z) => {
+      const verts = z.coordinates ?? [];
+      if (verts.length < 3) return;
+      const hex = z.color ?? DEFAULT_COLOR;
+      const isSel = z.id === selectedId;
+      const p = new google.maps.Polygon({
+        paths: verts,
+        map,
+        fillColor: hex,
+        fillOpacity: isSel ? 0.42 : 0.18,
+        strokeColor: hex,
+        strokeOpacity: 1,
+        strokeWeight: isSel ? 3.5 : 1.5,
+        zIndex: isSel ? 20 : 1,
+        clickable: true,
+      });
+      p.addListener('click', () => selectZone(z));
+      overviewPolys.current.set(z.id, p);
+      verts.forEach((v) => bounds.extend(v));
+      any = true;
+    });
+
+    // Frame everything only on first paint (no selection yet) so we don't fight
+    // the per-card fly-to animation.
+    if (any && selectedId == null && !bounds.isEmpty()) {
+      map.fitBounds(bounds, 48);
+    }
+  }, [mapsReady, rows, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Animated fly-to: frame the zone via fitBounds (animated), else panTo ──────
+  function flyToZone(z: ExclusionBeat) {
+    const map = overviewMap.current;
+    if (!map) return;
+    const verts = z.coordinates ?? [];
+    if (verts.length >= 3) {
+      const bounds = new google.maps.LatLngBounds();
+      verts.forEach((v) => bounds.extend(v));
+      // fitBounds pans+zooms smoothly to frame the polygon with a little padding.
+      map.fitBounds(bounds, 80);
+    } else {
+      const c = zoneCentroid(verts);
+      if (c) { map.panTo(c); map.setZoom(14); }
+    }
+  }
+
+  function selectZone(z: ExclusionBeat) {
+    setSelectedId(z.id);
+    flyToZone(z);
+  }
+
+  // ── Form draw map: init when the form opens ─────────────────────────────────
   React.useEffect(() => {
     if (!showForm || !mapsReady || !mapRef.current || gmap.current) return;
-    const center = coords.length > 0 ? coords[0] : { lat: 31.5204, lng: 74.3587 };
+    const center = coords.length > 0 ? coords[0] : FALLBACK_CENTER;
     const map = new google.maps.Map(mapRef.current, {
       center, zoom: coords.length > 0 ? 13 : 10,
       disableDoubleClickZoom: true,
@@ -293,6 +387,7 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { window.alert(data?.message ?? 'Could not delete this zone.'); return; }
       setRows((r) => r.filter((x) => x.id !== z.id));
+      setSelectedId((id) => (id === z.id ? null : id));
     } catch {
       window.alert('Network error — please try again.');
     } finally {
@@ -301,19 +396,20 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
   }
 
   const enoughPoints = coords.length >= 3;
+  const totalVertices = rows.reduce((n, z) => n + (z.coordinates?.length || 0), 0);
 
   return (
     <div className="tad-portal__body">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <StatRow stats={[
           { label: 'Zones', value: rows.length },
-          { label: 'Vertices', value: rows.reduce((n, z) => n + (z.coordinates?.length || 0), 0) },
+          { label: 'Vertices', value: totalVertices },
         ]} />
         <Button onClick={openCreate}>New zone</Button>
       </div>
 
       {showForm && (
-        <Card style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 0 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, marginBottom: 12 }}>
             {editing ? `Edit ${editing.name}` : 'New zone'}
           </div>
@@ -384,27 +480,117 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
         </Card>
       )}
 
-      <DataTable<ExclusionBeat>
-        empty={loadError ?? 'No exclusion zones yet — draw one to restrict devices from an area.'}
-        rows={rows}
-        columns={[
-          { key: 'name', header: 'Name' },
-          { key: 'color', header: 'Colour', render: (r) => (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 14, height: 14, borderRadius: 4, background: r.color ?? DEFAULT_COLOR, border: '1px solid var(--border-strong)', display: 'inline-block' }} />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)' }}>{r.color ?? DEFAULT_COLOR}</span>
-            </span>
-          ) },
-          { key: 'vertices', header: 'Vertices', align: 'center', mono: true, render: (r) => r.coordinates?.length ?? 0 },
-          { key: 'createdAt', header: 'Created', mono: true, render: (r) => (r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—') },
-          { key: 'act', header: '', align: 'right', render: (r) => (
-            <span style={{ display: 'inline-flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>Edit</Button>
-              <Button variant="danger" size="sm" disabled={busy} onClick={() => remove(r)}>Delete</Button>
-            </span>
-          ) },
-        ]}
-      />
+      {/* ── Split: zone list (left, scrollable) + overview map (right, sticky) ── */}
+      <div className="tad-excl-split">
+        {/* LEFT — scrollable list of zone cards */}
+        <div className="tad-excl-list">
+          {rows.length === 0 ? (
+            <Card>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 10, padding: '28px 8px' }}>
+                <Hexagon className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                  {loadError ?? 'No exclusion zones yet — draw one to restrict devices from an area.'}
+                </p>
+                {!loadError && (
+                  <Button size="sm" variant="secondary" onClick={openCreate}>New zone</Button>
+                )}
+              </div>
+            </Card>
+          ) : (
+            rows.map((z) => {
+              const hex = z.color ?? DEFAULT_COLOR;
+              const isSel = z.id === selectedId;
+              const vertexCount = z.coordinates?.length ?? 0;
+              return (
+                <div
+                  key={z.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => selectZone(z)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectZone(z); } }}
+                  className="tad-excl-card"
+                  aria-pressed={isSel}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '12px 14px',
+                    borderRadius: 'var(--radius-lg)',
+                    border: `1px solid ${isSel ? 'var(--brand)' : 'var(--border)'}`,
+                    background: isSel ? 'var(--brand-subtle)' : 'var(--surface)',
+                    boxShadow: isSel ? '0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent)' : undefined,
+                    cursor: 'pointer',
+                    transition: 'border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out)',
+                  }}
+                >
+                  <span style={{ width: 16, height: 16, marginTop: 2, borderRadius: 5, background: hex, border: '1px solid var(--border-strong)', flex: 'none' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--text)', fontSize: 'var(--text-sm)', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {z.name}
+                    </div>
+                    <div style={{ marginTop: 3, fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ textTransform: 'capitalize' }}>{z.geoFenceType ?? 'polygon'}</span>
+                      <span aria-hidden style={{ opacity: 0.4 }}>·</span>
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>{vertexCount} pts</span>
+                    </div>
+                  </div>
+                  <span style={{ display: 'inline-flex', gap: 2, flex: 'none' }} onClick={(e) => e.stopPropagation()}>
+                    <IconButton size="sm" label={`Edit ${z.name}`} onClick={() => openEdit(z)}>
+                      <Pencil />
+                    </IconButton>
+                    <IconButton size="sm" label={`Delete ${z.name}`} disabled={busy}
+                      onClick={() => remove(z)}
+                      style={{ color: 'var(--danger)' }}>
+                      <Trash2 />
+                    </IconButton>
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* RIGHT — overview map (sticky) */}
+        <div className="tad-excl-mapwrap">
+          {!MAPS_KEY ? (
+            <div style={{ height: '100%', minHeight: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, borderRadius: 'var(--radius-xl)', border: '1px dashed var(--border-strong)', gap: 8 }}>
+              <MapPin className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', margin: 0 }}>
+                Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable the map.
+              </p>
+            </div>
+          ) : (
+            <div ref={overviewRef} style={{ height: '100%', width: '100%', minHeight: 320, borderRadius: 'var(--radius-xl)', overflow: 'hidden', border: '1px solid var(--border)' }} />
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .tad-excl-split {
+          display: grid;
+          grid-template-columns: minmax(280px, 380px) 1fr;
+          gap: var(--space-5);
+          align-items: start;
+        }
+        .tad-excl-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          max-height: calc(100vh - var(--topbar-h, 60px) - 220px);
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+        .tad-excl-card:hover { border-color: var(--border-strong) !important; }
+        .tad-excl-mapwrap {
+          position: sticky;
+          top: 0;
+          height: calc(100vh - var(--topbar-h, 60px) - 220px);
+          min-height: 320px;
+        }
+        @media (max-width: 860px) {
+          .tad-excl-split { grid-template-columns: 1fr; }
+          .tad-excl-list { max-height: none; order: 2; }
+          .tad-excl-mapwrap { position: relative; order: 1; height: 360px; }
+        }
+      `}</style>
     </div>
   );
 }
