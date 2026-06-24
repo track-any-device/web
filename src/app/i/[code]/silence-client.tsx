@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { staticMapUrl } from './static-map';
 
 type Incident = {
   eventType: string | null;
@@ -13,6 +14,8 @@ type Incident = {
   triggeredAt: string | null;
   lat: number | null;
   lng: number | null;
+  deviceLat?: number | null;
+  deviceLng?: number | null;
   device: { name: string | null; imei: string | null } | null;
   silencedUntil: string | null;
 };
@@ -99,10 +102,25 @@ export function SilenceClient({ code }: { code: string }) {
               </p>
             )}
             {incident.lat != null && incident.lng != null && (
-              <a href={`https://maps.google.com/?q=${incident.lat},${incident.lng}`} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-block', marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--brand, #01411C)', fontWeight: 600 }}>
-                View location on map →
-              </a>
+              <div style={{ marginTop: 12 }}>
+                {(() => {
+                  const map = staticMapUrl({ lat: incident.lat, lng: incident.lng, deviceLat: incident.deviceLat, deviceLng: incident.deviceLng });
+                  return map ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={map} alt="Incident location" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border-subtle, #E7E0D6)', display: 'block' }} />
+                  ) : null;
+                })()}
+                {incident.deviceLat != null && incident.deviceLng != null && (
+                  <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    <span><span style={{ color: 'var(--danger, #F0463C)' }}>●</span> Incident</span>
+                    <span><span style={{ color: '#1F9462' }}>●</span> Device now</span>
+                  </div>
+                )}
+                <a href={`https://maps.google.com/?q=${incident.lat},${incident.lng}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-block', marginTop: 8, fontSize: 'var(--text-sm)', color: 'var(--brand, #01411C)', fontWeight: 600 }}>
+                  Open in Google Maps →
+                </a>
+              </div>
             )}
 
             <div style={{ height: 1, background: 'var(--border-subtle, #E7E0D6)', margin: '18px 0' }} />
