@@ -375,6 +375,10 @@
 .tad-table tbody tr:last-child td { border-bottom: none; }
 .tad-statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); }
 
+/* ── Admin dashboard chart grid ───────────────────────────────────────── */
+.tad-charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-5); align-items: start; }
+.tad-charts-grid__full { grid-column: 1 / -1; }
+
 /* ── Hero globe (design-pack canvas, full-bleed behind the copy) ───────── */
 .tad-hero-globe {
   position: absolute; inset: 0; width: 100%; height: 100%; display: block;
