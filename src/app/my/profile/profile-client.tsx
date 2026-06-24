@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, ExternalLink, ArrowRightLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient, type UserProfile, type TenantSummary, type Device } from '@/lib/api-client';
 
 const ROLE_BADGE: Record<string, { className: string; label: string }> = {
@@ -106,8 +107,11 @@ export default function ProfileClient() {
         }
     }
 
+    // Keep the single portal satellite up until auth + this page's data have loaded.
+    useTrackLoading(authLoading || loading);
+
     if (authLoading || loading) {
-        return <div className="mx-auto max-w-2xl px-6 py-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
+        return null; // the portal LoadingProvider overlay covers this area
     }
 
     const role         = profile?.role ?? (authUser as { role?: string } | null)?.role ?? 'user';

@@ -8,6 +8,7 @@ import { SiteFooter } from '@/components/tad/site-footer';
 import { UserMenu } from '@/components/tad/user-menu';
 import { getAuthUser } from '@/lib/auth-store';
 import { SITE_NAV } from '@/components/tad/site-nav';
+import { LoadingProvider } from '@/components/tad/loading-provider';
 
 /* Customer portal chrome (/my) — TAD-PAK web header (the consistent site nav) + shared web footer.
    Personal links (My devices / orders / profile) live in the avatar UserMenu, not the header nav. */
@@ -54,12 +55,14 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      {/* position:relative so the LoadingProvider's absolute satellite overlay covers
+          ONLY this content area (the header/footer stay visible). */}
       <main
         style={fullBleed
-          ? { flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
-          : { flex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: 'var(--space-8) var(--space-6)' }}
+          ? { position: 'relative', flex: 1, width: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
+          : { position: 'relative', flex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: 'var(--space-8) var(--space-6)' }}
       >
-        {children}
+        <LoadingProvider>{children}</LoadingProvider>
       </main>
 
       {!fullBleed && <SiteFooter />}

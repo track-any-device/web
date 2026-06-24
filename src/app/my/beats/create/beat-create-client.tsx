@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
@@ -16,8 +17,11 @@ export default function BeatCreateClient() {
         }
     }, [token, loading, router]);
 
+    // Keep the single portal satellite up until auth resolves.
+    useTrackLoading(loading || !token);
+
     if (loading || !token) {
-        return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
+        return null; // the portal LoadingProvider overlay covers this area
     }
 
     return (

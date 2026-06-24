@@ -8,6 +8,7 @@ import {
     Navigation, Route, ChevronLeft, Send, CheckCircle2, Battery, BatteryLow,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type {
     Device, Incident, Beat, NotificationPreference,
@@ -126,8 +127,11 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
         return () => { cancelled = true; };
     }, [token, deviceId]);
 
+    // Keep the single portal satellite up until this page's data has loaded.
+    useTrackLoading(loading);
+
     if (loading) {
-        return <div className="mx-auto max-w-3xl px-6 py-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
+        return null; // the portal LoadingProvider overlay covers this area
     }
 
     if (!device) {

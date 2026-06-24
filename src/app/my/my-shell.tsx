@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { clearAuth } from '@/lib/auth-store';
+import { PortalLoader } from '@/components/tad/portal-loader';
 
 export default function MyShell({ children }: { children: ReactNode }) {
     const { token, loading } = useAuth();
@@ -23,10 +24,13 @@ export default function MyShell({ children }: { children: ReactNode }) {
         return () => window.removeEventListener('tad:unauthorized', onUnauthorized);
     }, []);
 
+    // Auth gate (chrome can't render until we have a user). Show the SAME satellite
+    // visual as the in-portal LoadingProvider so the loader is one continuous
+    // satellite from the very first paint — never a bare "Loading…" then a satellite.
     if (loading || !token) {
         return (
-            <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-                <p className="text-sm text-gray-400">Loading…</p>
+            <div className="tad" style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <PortalLoader />
             </div>
         );
     }
