@@ -174,7 +174,7 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
 
         {/* Live feed */}
         <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             {entries.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28, fontSize: 13 }}>
                 {error ? 'Feed unavailable.' : 'Waiting for device communication on this tenant’s channel…'}

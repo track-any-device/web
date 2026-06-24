@@ -416,6 +416,11 @@
   background: var(--surface); border-right: 1px solid var(--border);
   display: flex; flex-direction: column; padding: 18px 14px;
 }
+/* Below lg the persistent sidebar is replaced by the slide-in drawer (.tad-pmnav).
+   1023.98px keeps the lg breakpoint (1024px) on the desktop side. */
+@media (max-width: 1023.98px) {
+  .tad-portal__sidebar { display: none; }
+}
 .tad-portal__nav-item {
   position: relative; display: flex; align-items: center; gap: 11px; width: 100%;
   padding: 10px 12px; border: none; cursor: pointer; border-radius: var(--radius-md);
@@ -469,25 +474,89 @@
 .tad-usermenu__item--danger:hover svg{ color:var(--danger); }
 .tad-portal__main { flex: 1; min-width: 0; overflow: auto; display: flex; flex-direction: column; }
 .tad-portal__topbar {
-  height: var(--topbar-h, 60px); flex: none; box-sizing: border-box; display: flex;
-  align-items: center; justify-content: space-between; padding: 0 22px;
+  min-height: var(--topbar-h, 60px); flex: none; box-sizing: border-box; display: flex;
+  align-items: center; justify-content: space-between; gap: var(--space-3); padding: 0 22px;
   border-bottom: 1px solid var(--border); background: var(--surface);
   position: sticky; top: 0; z-index: 10;
 }
+/* On phones the topbar sits below the sticky mobile bar — stack the title + right actions so a
+   long subtitle/action row never overflows 360px. Tighter horizontal padding to match the body. */
+@media (max-width: 1023.98px) {
+  .tad-portal__topbar {
+    top: var(--pmnav-h, 54px); padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap; align-items: flex-start;
+  }
+}
 .tad-portal__body { padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); }
-/* simple data table */
+@media (max-width: 1023.98px) {
+  .tad-portal__body { padding: var(--space-4); gap: var(--space-4); }
+}
+@media (max-width: 520px) {
+  .tad-portal__body { padding: var(--space-3); gap: var(--space-3); }
+}
+/* simple data table — wrapped in .tad-table-scroll so wide tables scroll horizontally inside their
+   card instead of overflowing the viewport on phones. */
+.tad-table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.tad-table th { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.tad-table th { text-align: left; font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .tad-table td { padding: 12px 14px; border-bottom: 1px solid var(--border-subtle); color: var(--text); vertical-align: middle; }
 .tad-table tbody tr:hover { background: var(--surface-hover); }
 .tad-table tbody tr:last-child td { border-bottom: none; }
 .tad-statrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); }
+@media (max-width: 420px) {
+  .tad-statrow { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); }
+}
+
+/* ── Portal mobile nav (hamburger bar + slide-in drawer; admin + operations) ── */
+/* Hidden at lg+ where the persistent sidebar takes over. */
+.tad-pmnav { display: none; }
+@media (max-width: 1023.98px) {
+  .tad-pmnav { display: block; }
+}
+.tad-pmnav__bar {
+  height: var(--pmnav-h, 54px); box-sizing: border-box; display: flex; align-items: center;
+  justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-4);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 20;
+}
+.tad-pmnav__logo { display: inline-flex; align-items: center; }
+.tad-pmnav__toggle {
+  display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  flex: none; border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  background: var(--surface); color: var(--text); cursor: pointer; transition: var(--transition-colors);
+}
+.tad-pmnav__toggle:hover { background: var(--surface-hover); }
+.tad-pmnav__toggle:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.tad-pmnav__scrim {
+  position: fixed; inset: 0; z-index: 50; background: rgba(20,14,6,0.45);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  animation: tad-mnav-fade var(--dur-fast) var(--ease-out);
+}
+.tad-pmnav__sheet {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 60; width: min(82vw, 300px);
+  display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) var(--space-3);
+  background: var(--surface-raised); border-right: 1px solid var(--border); box-shadow: var(--shadow-xl);
+  overflow-y: auto; animation: tad-pmnav-slide var(--dur-base) var(--ease-out);
+}
+@keyframes tad-pmnav-slide { from { transform: translateX(-100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tad-pmnav__scrim, .tad-pmnav__sheet { animation: none; } }
+.tad-pmnav__head { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 14px; }
+.tad-pmnav__nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.tad-pmnav__user {
+  display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--border-subtle);
+  padding: 12px 8px 2px; margin-top: 8px;
+}
 
 /* ── Admin dashboard chart grid ───────────────────────────────────────── */
 .tad-charts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-5); align-items: start; }
 .tad-charts-grid__full { grid-column: 1 / -1; }
 /* Overview drill-down tiles — link cards into the focused dashboards. */
 .tad-dash-drill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+/* Below 360px the 320px chart-card min would overflow — let the card go full-width instead. */
+@media (max-width: 519.98px) {
+  .tad-charts-grid { grid-template-columns: 1fr; gap: var(--space-4); }
+  .tad-dash-drill-grid { grid-template-columns: 1fr; }
+}
 .tad-dash-drill { text-decoration: none; color: inherit; display: block; }
 .tad-dash-drill__icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-md); background: var(--brand-subtle); color: var(--brand-on-subtle, var(--brand)); flex: none; }
 

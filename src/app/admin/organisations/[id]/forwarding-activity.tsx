@@ -179,7 +179,7 @@ export function ForwardingActivity({ tenantId }: { tenantId: number | string }) 
 
         {/* Activity log */}
         <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 420, overflowY: 'auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             {logs.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28, fontSize: 13 }}>
                 No forwarding activity yet — deliveries appear here as signals arrive.

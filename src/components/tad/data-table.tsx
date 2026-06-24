@@ -22,27 +22,32 @@ export function DataTable<T>({
   empty?: React.ReactNode;
 }) {
   return (
+    // overflow:hidden on the card clips the rounded corners; the inner .tad-table-scroll provides
+    // horizontal scroll so wide tables scroll WITHIN the card on phones instead of overflowing the
+    // viewport. The desktop table is unchanged (it just never needs to scroll there).
     <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <table className="tad-table">
-        <thead>
-          <tr>{columns.map((c) => <th key={c.key} style={{ textAlign: c.align ?? 'left' }}>{c.header}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr><td colSpan={columns.length} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28 }}>{empty}</td></tr>
-          ) : (
-            rows.map((row, i) => (
-              <tr key={(row as { id?: React.Key }).id ?? i}>
-                {columns.map((c) => (
-                  <td key={c.key} style={{ textAlign: c.align ?? 'left', fontFamily: c.mono ? 'var(--font-mono)' : undefined }}>
-                    {c.render ? c.render(row) : ((row as Record<string, React.ReactNode>)[c.key])}
-                  </td>
-                ))}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+      <div className="tad-table-scroll">
+        <table className="tad-table">
+          <thead>
+            <tr>{columns.map((c) => <th key={c.key} style={{ textAlign: c.align ?? 'left' }}>{c.header}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={columns.length} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28 }}>{empty}</td></tr>
+            ) : (
+              rows.map((row, i) => (
+                <tr key={(row as { id?: React.Key }).id ?? i}>
+                  {columns.map((c) => (
+                    <td key={c.key} style={{ textAlign: c.align ?? 'left', fontFamily: c.mono ? 'var(--font-mono)' : undefined }}>
+                      {c.render ? c.render(row) : ((row as Record<string, React.ReactNode>)[c.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

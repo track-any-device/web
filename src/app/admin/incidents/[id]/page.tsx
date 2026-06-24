@@ -54,7 +54,9 @@ export default async function AdminIncidentDetailPage({ params }: { params: Prom
         subtitle={`Incident #${inc.id}`}
         right={<Link href="/admin/incidents"><Button variant="ghost" size="sm">Back</Button></Link>}
       />
-      <div className="tad-portal__body" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+      <div className="tad-portal__body">
+       {/* Meta grid: 1 col on phones → 3 on lg. The playback card spans the full width below it. */}
+       <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card title="Incident">
           <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Event" value={title} />
@@ -94,6 +96,7 @@ export default async function AdminIncidentDetailPage({ params }: { params: Prom
         <div style={{ gridColumn: '1 / -1' }}>
           <PlaybackCard locations={inc.locations ?? []} />
         </div>
+       </div>
       </div>
     </>
   );

@@ -376,8 +376,8 @@ function TicketModal({
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>
 
-        {/* Details */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        {/* Details — two columns on larger phones+, single column at the narrowest widths. */}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2" style={{ marginBottom: 14 }}>
           <DetailField label="Device" value={view.device?.name ?? 'Unknown device'} sub={view.device?.imei ?? undefined} />
           <DetailField label="Customer" value={view.customer?.name ?? 'Unknown'} sub={view.customer?.phone ?? undefined} />
           <DetailField label="Assignee" value={view.assignee?.name ?? 'Unassigned'} />
