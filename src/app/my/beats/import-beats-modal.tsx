@@ -358,11 +358,12 @@ export default function ImportBeatsModal({ token, onClose, onImported }: Props) 
                     </button>
                 </div>
 
-                {/* ── Body: left list + right map ──────────────────────────── */}
-                <div className="flex flex-1 overflow-hidden">
+                {/* ── Body: left list + right map (stacks vertically on mobile) ── */}
+                <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
 
                     {/* Left panel */}
-                    <div className="w-72 shrink-0 flex flex-col" style={{ borderRight: '1px solid var(--border)' }}>
+                    <div className="flex max-h-[45%] shrink-0 flex-col border-b md:max-h-none md:w-72 md:border-b-0 md:border-r"
+                        style={{ borderColor: 'var(--border)' }}>
 
                         {/* Scrollable content */}
                         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">

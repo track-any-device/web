@@ -184,7 +184,7 @@ export default function BeatForm({ token, beat }: Props) {
         poly.current = p;
 
         const path = p.getPath();
-        const sync = () => setCoords(path.getArray().map(ll => ({ lat: ll.lat(), lng: ll.lng() })));
+        const sync = () => setCoords(path.getArray().map((ll: google.maps.LatLng) => ({ lat: ll.lat(), lng: ll.lng() })));
         path.addListener('set_at', sync);
         path.addListener('insert_at', sync);
         path.addListener('remove_at', sync);

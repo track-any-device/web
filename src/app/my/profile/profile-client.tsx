@@ -124,7 +124,7 @@ export default function ProfileClient() {
     const moveTargetTenant = tenants.find(t => String(t.id) === moveTenantId);
 
     return (
-        <div className="mx-auto max-w-2xl px-6 py-8 space-y-6">
+        <div className="mx-auto max-w-2xl px-4 py-6 space-y-6 sm:px-6 sm:py-8">
 
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -168,10 +168,10 @@ export default function ProfileClient() {
                             ? new Date(profile.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
                             : '—', mono: true },
                     ].map((row, i) => (
-                        <div key={row.label} className="px-6 py-4 flex items-center justify-between"
+                        <div key={row.label} className="px-4 py-4 flex items-center justify-between gap-4 sm:px-6"
                             style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border-subtle)' }}>
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{row.label}</p>
-                            <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)', fontFamily: row.mono ? 'var(--font-mono)' : undefined }}>{row.value}</p>
+                            <p className="shrink-0" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{row.label}</p>
+                            <p className="min-w-0 text-right break-words" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text)', fontFamily: row.mono ? 'var(--font-mono)' : undefined }}>{row.value}</p>
                         </div>
                     ))}
                 </div>

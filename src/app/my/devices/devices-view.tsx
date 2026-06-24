@@ -127,7 +127,7 @@ function formatTripCoords(p: { lat: number; lng: number } | null): string {
 function makeMarkerElement(device: Device, selected = false): HTMLElement {
     const status  = getMyStatus(device);
     const color   = STATUS_PIN[status];
-    // @ts-expect-error heading not yet in Device type — will be null
+    // heading not yet in Device type — read it loosely; will be null until the API adds it.
     const heading: number | null = (device as { heading?: number }).heading ?? null;
     const arrow   = useArrow(heading);
     const dotSize = selected ? PIN_SIZE + 8 : PIN_SIZE;
@@ -195,13 +195,18 @@ export default function DevicesView({
     const [mapsReady,       setMapsReady]       = useState(false);
     const [showImport,      setShowImport]      = useState(false);
 
+    // Mobile-only: which single pane is shown (the desktop lg+ layout shows all three side by side).
+    // 'list' = the Assets/Beats/Trips panel · 'map' = the live map · 'alerts' = incidents.
+    type MobilePane = 'list' | 'map' | 'alerts';
+    const [mobilePane, setMobilePane] = useState<MobilePane>('list');
+
     // Left "Trips" tab: auto-detected trips for the selected device
     const [trips,           setTrips]           = useState<Trip[]>([]);
     const [tripsLoading,    setTripsLoading]    = useState(false);
 
     const mapRef      = useRef<HTMLDivElement>(null);
     const gmapRef     = useRef<google.maps.Map | null>(null);
-    const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; position?: { lat: number; lng: number } }>>(new Map());
+    const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; addListener?: (ev: string, fn: () => void) => void; position?: { lat: number; lng: number } }>>(new Map());
     const markerSigRef = useRef<Map<number, string>>(new Map());
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
     const trailRef    = useRef<google.maps.Polyline | null>(null);
@@ -378,6 +383,23 @@ export default function DevicesView({
         return () => { cancelled = true; };
     }, [selectedDev, token]);
 
+    // ── Mobile: when the map pane becomes visible, Google needs a resize nudge ──
+    // (it was laid out at 0×0 while hidden behind the List/Alerts pane). Re-center
+    // on the current selection or refit so the tiles fill the now-visible pane.
+    useEffect(() => {
+        if (mobilePane !== 'map') return;
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+        const id = window.setTimeout(() => {
+            google.maps.event.trigger(map, 'resize');
+            const sel = selectedDev != null ? devices.find(d => d.id === selectedDev) : null;
+            const lat = sel ? Number(sel.last_lat) : NaN;
+            const lng = sel ? Number(sel.last_lon) : NaN;
+            if (!isNaN(lat) && !isNaN(lng)) map.panTo({ lat, lng });
+        }, 60);
+        return () => window.clearTimeout(id);
+    }, [mobilePane, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ── Create AdvancedMarkerElement with graceful fallback ───────────────────
     function createAdvancedMarker(
         map: google.maps.Map,
@@ -434,6 +456,8 @@ export default function DevicesView({
 
         setSelectedDev(id);
         setSelectedBeat(null);
+        // On phones the list and map are separate panes — jump to the map so the pin is visible.
+        setMobilePane('map');
         document.getElementById(`device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, [devices]);
 
@@ -518,6 +542,8 @@ export default function DevicesView({
 
         setSelectedBeat(id);
         setSelectedDev(null);
+        // On phones the list and map are separate panes — jump to the map so the zone is visible.
+        setMobilePane('map');
         document.getElementById(`beat-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -528,25 +554,55 @@ export default function DevicesView({
         ['open', 'acknowledged', 'escalated'].includes(i.status)).length;
 
     return (
-        <div className="mx-auto w-full max-w-[1240px] px-7 py-6" style={{ background: 'var(--bg)' }}>
-
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 16px', color: 'var(--text)' }}>
+        // Fills the full-bleed <main> (flex:1; minHeight:0). On phones/tablets it's a single
+        // flex column with a List⇄Map⇄Alerts segmented control swapping one pane at a time; at
+        // lg+ it switches to the original three-column split (list · map · incidents).
+        <div
+            className="tad flex min-h-0 w-full flex-1 flex-col lg:mx-auto lg:block lg:max-w-[1240px] lg:px-7 lg:py-6"
+            style={{ background: 'var(--bg)' }}
+        >
+            <h1 className="hidden lg:block" style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 16px', color: 'var(--text)' }}>
                 My things
             </h1>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '320px minmax(0,1fr) 300px', gap: 16, alignItems: 'start' }}>
+            {/* Mobile segmented control (hidden at lg+) */}
+            <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2.5 lg:hidden"
+                style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}>
+                <div className="tad-tabs tad-tabs--pill flex-1" role="tablist" aria-label="View">
+                    {([
+                        { value: 'list',   label: activeTab === 'beats' ? 'Beats' : activeTab === 'trips' ? 'Trips' : 'Assets', count: activeTab === 'assets' ? devices.length : activeTab === 'beats' ? beats.length : null },
+                        { value: 'map',    label: 'Map',    count: null },
+                        { value: 'alerts', label: 'Alerts', count: newIncidentCount > 0 ? newIncidentCount : null },
+                    ] as { value: MobilePane; label: string; count: number | null }[]).map(p => (
+                        <button key={p.value} type="button" role="tab"
+                            aria-selected={mobilePane === p.value}
+                            onClick={() => setMobilePane(p.value)}
+                            className="tad-tab flex-1 justify-center">
+                            {p.label}
+                            {p.count != null && <span className="tad-tab__count">{p.count}</span>}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:flex-none lg:grid-cols-[320px_minmax(0,1fr)_300px] lg:items-start lg:gap-4">
 
                 {/* ── LEFT: Assets · Beats · Trips ─────────────────────────── */}
-                <Card flushBody>
-                    <div style={{ padding: '12px 14px 0' }}>
-                        {/* Pill tabs are real links — each view (Assets / Beats / Trips) is its own route. */}
-                        <div className="tad-tabs tad-tabs--pill" role="tablist">
+                {/* Plain wrapper carries the responsive show/hide (Tailwind utilities can't override
+                    the unlayered .tad-card display, so the toggle lives on this div instead). */}
+                <div className={`${mobilePane === 'list' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
+                <Card flushBody
+                    className="tad-card--fill min-h-0 flex-1 lg:flex-none">
+                    <div className="shrink-0 overflow-x-auto" style={{ padding: '12px 14px 0' }}>
+                        {/* Pill tabs are real links — each view (Assets / Beats / Trips) is its own route.
+                            On narrow screens the row scrolls horizontally instead of wrapping/overflowing. */}
+                        <div className="tad-tabs tad-tabs--pill w-max min-w-full" role="tablist">
                             {TAB_LINKS.map(t => {
                                 const count = t.value === 'assets' ? devices.length : t.value === 'beats' ? beats.length : null;
                                 return (
                                     <Link key={t.value} href={t.href} role="tab"
                                         aria-selected={activeTab === t.value}
-                                        className="tad-tab" style={{ textDecoration: 'none' }}>
+                                        className="tad-tab flex-1 justify-center" style={{ textDecoration: 'none' }}>
                                         {t.label}
                                         {count != null && <span className="tad-tab__count">{count}</span>}
                                     </Link>
@@ -555,7 +611,7 @@ export default function DevicesView({
                         </div>
                     </div>
 
-                    <div style={{ marginTop: 10, maxHeight: 'calc(100vh - 14rem)', overflowY: 'auto' }}>
+                    <div className="mt-2.5 min-h-0 flex-1 overflow-y-auto lg:max-h-[calc(100vh-14rem)] lg:flex-none">
 
                         {/* ── ASSETS ──────────────────────────────────────── */}
                         {activeTab === 'assets' && (
@@ -685,10 +741,14 @@ export default function DevicesView({
                         )}
                     </div>
                 </Card>
+                </div>
 
                 {/* ── CENTER: Live Map ─────────────────────────────────────── */}
-                <Card flushBody style={{ overflow: 'hidden' }}>
-                    <div style={{ height: 460, position: 'relative' }}>
+                <div className={`${mobilePane === 'map' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
+                <Card flushBody style={{ overflow: 'hidden' }}
+                    className="tad-card--fill min-h-0 flex-1 lg:flex-none">
+                    {/* Fills the pane on mobile; fixed 460px in the desktop split. */}
+                    <div className="relative min-h-0 flex-1 lg:h-[460px] lg:flex-none">
                         {!MAPS_KEY ? (
                             <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
                                 <div className="flex flex-col items-center gap-3">
@@ -786,9 +846,10 @@ export default function DevicesView({
                         )}
                     </div>
                 </Card>
+                </div>
 
                 {/* ── RIGHT: Incidents & alerts + Notify me on ─────────────── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className={`${mobilePane === 'alerts' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3 lg:flex lg:flex-none lg:overflow-visible lg:p-0`}>
 
                     {/* Incidents & alerts */}
                     <Card title="Incidents & alerts"
