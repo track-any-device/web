@@ -44,7 +44,7 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
         subtitle={d.model ?? 'Device detail'}
         right={<Link href="/admin/devices"><Button variant="ghost" size="sm">Back</Button></Link>}
       />
-      <div className="tad-portal__body" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}>
+      <div className="tad-portal__body" style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
         <Card title="Identity">
           <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Status" value={<Badge variant={STATUS[d.status ?? ''] ?? 'neutral'}>{d.status ?? '—'}</Badge>} />

@@ -45,7 +45,7 @@ export function DeviceMapCard({ lat, lon, online, name }: {
     if (!gmapRef.current) {
       gmapRef.current = new google.maps.Map(mapRef.current, {
         center,
-        zoom: 16,
+        zoom: 15,
         mapId: 'admin-device-detail-map',
         fullscreenControl: false,
         streetViewControl: false,
@@ -74,8 +74,8 @@ export function DeviceMapCard({ lat, lon, online, name }: {
   }, [ready, hasLocation, lat, lon, color, name]);
 
   return (
-    <Card title="Location" flushBody style={{ gridColumn: '1 / -1' }}>
-      <div style={{ height: 340, position: 'relative', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', overflow: 'hidden' }}>
+    <Card title="Location" flushBody>
+      <div style={{ height: 200, position: 'relative', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', overflow: 'hidden' }}>
         {!MAPS_KEY ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg-sunken)' }}>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
