@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { useRealtimeDevices } from '@/hooks/use-realtime-devices';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat } from '@/lib/api-client';
@@ -36,6 +37,9 @@ export default function DevicesClient({ initialTab = 'assets' }: { initialTab?: 
             .finally(() => setLoading(false));
     }, [token]);
 
+    // Keep the single portal satellite up until this page's data has loaded.
+    useTrackLoading(loading);
+
     const { deviceList, connected } = useRealtimeDevices(initialDevices, token, userId);
 
     function handleRegistered(deviceId: number) {
@@ -47,7 +51,7 @@ export default function DevicesClient({ initialTab = 'assets' }: { initialTab?: 
             .catch(() => {});
     }
 
-    if (loading) return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
+    if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
         <>

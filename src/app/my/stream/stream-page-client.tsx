@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type { Device } from '@/lib/api-client';
 import StreamClient from './stream-client';
@@ -22,7 +23,10 @@ export default function StreamPageClient() {
             .finally(() => setLoading(false));
     }, [token]);
 
-    if (loading) return <div className="p-8 text-sm text-gray-400">Loading…</div>;
+    // Keep the single portal satellite up until this page's data has loaded.
+    useTrackLoading(loading);
+
+    if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
         <div className="p-8 space-y-6">

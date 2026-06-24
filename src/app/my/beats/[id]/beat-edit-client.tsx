@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type { BeatDetail } from '@/lib/api-client';
 import BeatForm from '../beat-form';
@@ -27,8 +28,11 @@ export default function BeatEditClient({ id }: { id: string }) {
             .finally(() => setLoading(false));
     }, [token, authLoading, id, router]);
 
+    // Keep the single portal satellite up until auth + this beat have loaded.
+    useTrackLoading(authLoading || loading);
+
     if (authLoading || loading) {
-        return <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>;
+        return null; // the portal LoadingProvider overlay covers this area
     }
 
     if (notFound) {

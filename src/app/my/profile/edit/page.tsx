@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 
 const TIMEZONES = [
@@ -58,6 +59,9 @@ export default function EditProfilePage() {
             .finally(() => setLoading(false));
     }, [token]);
 
+    // Keep the single portal satellite up until this page's data has loaded.
+    useTrackLoading(loading);
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setSaving(true);
@@ -93,10 +97,7 @@ export default function EditProfilePage() {
             </div>
             <h1 className="-mt-2" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>Edit profile</h1>
 
-            {loading && (
-                <div className="py-12 text-center" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading profile…</div>
-            )}
-
+            {/* While loading the portal LoadingProvider overlay covers this area (no bare text). */}
             {!loading && (
                 <form onSubmit={handleSubmit} className="tad-card tad-card--raised">
                     <div className="tad-card__body space-y-5">

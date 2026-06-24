@@ -1,6 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { PortalSidebar, type PortalNavItem } from '@/components/tad/portal-shell';
+import { LoadingProvider } from '@/components/tad/loading-provider';
 import { getSession } from '@/lib/auth';
 import { ADMIN_ROLES, type Role } from '@/lib/portal-data';
 
@@ -37,7 +38,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="tad">
       <div className="tad-portal">
         <PortalSidebar nav={ADMIN_NAV} user={{ name, role, initials: name.slice(0, 2).toUpperCase() }} />
-        <main className="tad-portal__main">{children}</main>
+        {/* position:relative so the LoadingProvider's absolute satellite overlay covers
+            ONLY this content pane (the sidebar stays visible). */}
+        <main className="tad-portal__main" style={{ position: 'relative' }}>
+          <LoadingProvider>{children}</LoadingProvider>
+        </main>
       </div>
     </div>
   );

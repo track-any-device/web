@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type { Incident } from '@/lib/api-client';
 
@@ -53,9 +54,10 @@ export default function IncidentsClient() {
             .finally(() => setLoading(false));
     }, [token, statusFilter]);
 
-    if (loading) return (
-        <div className="mx-auto max-w-4xl px-6 py-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Loading…</div>
-    );
+    // Keep the single portal satellite up until this page's data has loaded.
+    useTrackLoading(loading);
+
+    if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
         <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">

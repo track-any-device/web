@@ -1,10 +1,10 @@
-import { PortalLoader } from '@/components/tad/portal-loader';
-
-/* Route-segment Suspense fallback — shown ONLY while the server resolves a navigation (slow nav /
-   hard refresh), inside the persistent /admin chrome. It renders the identical <PortalLoader> as
-   the client `template.tsx` (PortalTransition), so when the template mounts the satellite continues
-   seamlessly — no double-loader. The MINIMUM 1s visibility is owned by PortalTransition, not here.*/
+/* Route-segment Suspense fallback for /admin. Renders NOTHING on purpose: the single
+   continuous satellite loader is owned by <LoadingProvider> (mounted in the /admin
+   content <main>, which persists across the loading.tsx↔page swap). The provider's
+   overlay already covers the content pane during this server gap AND through any
+   client-side data fetch, so rendering a satellite here too would stack a second
+   one. Returning null keeps the provider as the SINGLE source of truth. */
 
 export default function Loading() {
-  return <PortalLoader />;
+  return null;
 }
