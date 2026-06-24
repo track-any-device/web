@@ -2,14 +2,20 @@
 
 import React from 'react';
 import Pusher from 'pusher-js';
+import { Waypoints } from 'lucide-react';
+import { Card } from '@/components/ui';
 import { getAuthToken } from '@/lib/auth-store';
 
-/* Live window onto a tenant's device communication. Subscribes via Soketi/Pusher to two channels:
+/* Live window onto a tenant's device communication — the logs surface for TAD101-channel orgs
+   (REST/MQTT orgs see the outbound Forwarding activity feed instead). Themed to match that card:
+   a brand-green TAD101 header, live throughput tiles, and a newest-first event table.
+
+   Subscribes via Soketi/Pusher to two channels:
    - private-tenant.{id}.device-logs — `device-log` events (every inbound frame / outbound command);
    - private-tenant.{id}.locations   — `locations.batch` (TCP location fixes, most of the traffic)
      and `signal.created` events.
    All three event types merge into the SAME newest-first list, capped at the existing limit.
-   Real events only; nothing is fabricated. */
+   The tiles count real events seen since this view opened; nothing is fabricated. */
 
 interface LogEvent {
   ts?: string;
@@ -36,6 +42,8 @@ interface SignalCreated {
   signal?: Record<string, unknown>;
 }
 
+const ACCENT = 'var(--brand)'; // TAD101 channel theme — Pakistan green, matches forwarding-activity.
+
 const LEVEL_COLOR: Record<string, string> = {
   info: 'var(--text-muted)', warn: 'var(--warning)', warning: 'var(--warning)',
   error: 'var(--danger)', critical: 'var(--danger)',
@@ -43,8 +51,11 @@ const LEVEL_COLOR: Record<string, string> = {
 
 export function TenantLogs({ tenantId }: { tenantId: number | string }) {
   const [entries, setEntries] = React.useState<Entry[]>([]);
+  const [counts, setCounts] = React.useState({ total: 0, locations: 0, frames: 0 });
+  const [lastEventAt, setLastEventAt] = React.useState<number | null>(null);
   const [connected, setConnected] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [, setTick] = React.useState(0); // re-renders the relative "last event" label every second
   const seq = React.useRef(0);
 
   React.useEffect(() => {
@@ -71,6 +82,11 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
     // Merge a new event into the same newest-first list, capped at the existing limit.
     const push = (e: LogEvent) =>
       setEntries((prev) => [{ ...e, _id: seq.current++ }, ...prev].slice(0, 200));
+    // Tally real throughput since the view opened (the list itself is capped; these are not).
+    const bump = (kind: 'locations' | 'frames', n = 1) => {
+      setCounts((c) => ({ ...c, total: c.total + n, [kind]: c[kind] + n }));
+      setLastEventAt(Date.now());
+    };
 
     // pusher-js passes an object ({status, error, ...}) here; pull out a readable code.
     const onSubError = (name: string) => (e: unknown) => {
@@ -84,14 +100,15 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
     const logsName = `private-tenant.${tenantId}.device-logs`;
     const logsChannel = pusher.subscribe(logsName);
     logsChannel.bind('pusher:subscription_error', onSubError(logsName));
-    logsChannel.bind('device-log', (data: LogEvent) => push(data));
+    logsChannel.bind('device-log', (data: LogEvent) => { push(data); bump('frames'); });
 
     // Locations channel — TCP fixes (most traffic) and per-signal events.
     const locName = `private-tenant.${tenantId}.locations`;
     const locChannel = pusher.subscribe(locName);
     locChannel.bind('pusher:subscription_error', onSubError(locName));
     locChannel.bind('locations.batch', (data: LocationsBatch) => {
-      for (const l of data?.locations ?? []) {
+      const locs = data?.locations ?? [];
+      for (const l of locs) {
         const coords = l.lat != null && l.lng != null ? `${l.lat},${l.lng}` : '—';
         const bat = l.battery != null ? ` · ${l.battery}%` : '';
         push({
@@ -102,58 +119,101 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
           imei: l.imei ?? null,
         });
       }
+      if (locs.length) bump('locations', locs.length);
     });
-    locChannel.bind('signal.created', (data: SignalCreated) =>
+    locChannel.bind('signal.created', (data: SignalCreated) => {
       push({
         source: 'tcp',
         direction: 'in',
         summary: `signal · ${data?.imei ?? '—'}`,
         imei: data?.imei ?? null,
         device_id: data?.device_id,
-      }));
+      });
+      bump('locations');
+    });
 
-    return () => { pusher.unsubscribe(logsName); pusher.unsubscribe(locName); pusher.disconnect(); };
+    const ticker = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => { clearInterval(ticker); pusher.unsubscribe(logsName); pusher.unsubscribe(locName); pusher.disconnect(); };
   }, [tenantId]);
 
+  const headerPill = (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-muted)' }}>
+        <span style={{ width: 8, height: 8, borderRadius: 99, background: connected ? 'var(--success)' : 'var(--text-muted)', boxShadow: connected ? '0 0 0 3px color-mix(in srgb, var(--success) 25%, transparent)' : 'none' }} />
+        {connected ? 'live' : 'connecting…'}
+      </span>
+      <span
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 'var(--radius-pill)',
+          fontSize: 12, fontWeight: 700, color: ACCENT, background: `color-mix(in srgb, ${ACCENT} 12%, transparent)`,
+        }}
+      >
+        <Waypoints size={13} strokeWidth={2.2} aria-hidden />
+        TAD101 channel
+      </span>
+    </div>
+  );
+
   return (
-    <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontWeight: 700 }}>Live channel feed</div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--text-muted)' }}>
-          <span style={{ width: 8, height: 8, borderRadius: 99, background: connected ? 'var(--success)' : 'var(--text-muted)', boxShadow: connected ? '0 0 0 3px color-mix(in srgb, var(--success) 25%, transparent)' : 'none' }} />
-          <span style={{ fontFamily: 'var(--font-mono)' }}>tenant.{String(tenantId)}.device-logs</span>
-          <span>· {connected ? 'live' : 'connecting…'}</span>
+    <Card title="Live channel feed" action={headerPill}>
+      <div style={{ display: 'grid', gap: 16 }}>
+        {/* Live throughput since this view opened */}
+        <div>
+          <div className="tad-statrow">
+            <MetricTile label="Events" value={counts.total} accent={ACCENT} />
+            <MetricTile label="Locations" value={counts.locations} accent={ACCENT} />
+            <MetricTile label="Frames" value={counts.frames} accent={ACCENT} />
+            <MetricTile label="Last event" value={relAge(lastEventAt)} accent={ACCENT} mono />
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+            Live since this view opened · <span style={{ fontFamily: 'var(--font-mono)' }}>tenant.{String(tenantId)}.device-logs</span> + .locations
+          </div>
+        </div>
+
+        {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+
+        {/* Live feed */}
+        <div className="tad-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+            {entries.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28, fontSize: 13 }}>
+                {error ? 'Feed unavailable.' : 'Waiting for device communication on this tenant’s channel…'}
+              </div>
+            ) : (
+              <table className="tad-table">
+                <tbody>
+                  {entries.map((e) => (
+                    <tr key={e._id}>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {fmtTime(e.ts)}
+                      </td>
+                      <td style={{ width: 24, textAlign: 'center', color: e.direction === 'out' ? 'var(--sky, #2b7fff)' : 'var(--success)' }} title={e.direction === 'out' ? 'server → device' : 'device → server'}>
+                        {e.direction === 'out' ? '↑' : '↓'}
+                      </td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{e.source ?? '—'}</td>
+                      <td style={{ color: LEVEL_COLOR[e.level ?? 'info'] ?? 'var(--text)' }}>{e.summary ?? '—'}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.imei ?? (e.device_id ? `#${e.device_id}` : '')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
+    </Card>
+  );
+}
 
-      {error && <div style={{ padding: '10px 16px', color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
-
-      <div style={{ maxHeight: 420, overflowY: 'auto' }}>
-        {entries.length === 0 ? (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 28, fontSize: 13 }}>
-            {error ? 'Feed unavailable.' : 'Waiting for device communication on this tenant’s channel…'}
-          </div>
-        ) : (
-          <table className="tad-table">
-            <tbody>
-              {entries.map((e) => (
-                <tr key={e._id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {fmtTime(e.ts)}
-                  </td>
-                  <td style={{ width: 24, textAlign: 'center', color: e.direction === 'out' ? 'var(--sky, #2b7fff)' : 'var(--success)' }} title={e.direction === 'out' ? 'server → device' : 'device → server'}>
-                    {e.direction === 'out' ? '↑' : '↓'}
-                  </td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{e.source ?? '—'}</td>
-                  <td style={{ color: LEVEL_COLOR[e.level ?? 'info'] ?? 'var(--text)' }}>{e.summary ?? '—'}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{e.imei ?? (e.device_id ? `#${e.device_id}` : '')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+/* Themed metric tile — mirrors the forwarding-activity card's tiles so both logs surfaces match. */
+function MetricTile({ label, value, accent, mono = false }: { label: string; value: React.ReactNode; accent: string; mono?: boolean }) {
+  return (
+    <Card style={{ padding: 'var(--space-5)' }}>
+      <span className="tad-metric__label">{label}</span>
+      <div style={{ marginTop: 4, fontSize: 22, fontWeight: 800, color: accent, fontFamily: mono ? 'var(--font-mono)' : 'var(--font-display)' }}>
+        {value}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -161,4 +221,15 @@ function fmtTime(ts?: string): string {
   if (!ts) return '';
   const d = new Date(ts);
   return Number.isNaN(d.getTime()) ? ts : d.toLocaleTimeString();
+}
+
+function relAge(ms: number | null): string {
+  if (!ms) return 'never';
+  const sec = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
 }
