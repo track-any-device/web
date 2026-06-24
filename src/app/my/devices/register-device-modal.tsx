@@ -10,8 +10,12 @@ interface Props {
     onRegistered: (deviceId: number, name: string) => void;
 }
 
+// Quick-pick thing names (the design-system device kinds) — tap to fill, then customise.
+const NAME_SUGGESTIONS = ['My car', 'My bike', 'Truck', 'Van', 'Person', 'Asset', 'Generator'];
+
 export default function RegisterDeviceModal({ token, onClose, onRegistered }: Props) {
     const [input,   setInput]   = useState('');
+    const [name,    setName]    = useState('');
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -24,6 +28,10 @@ export default function RegisterDeviceModal({ token, onClose, onRegistered }: Pr
             setError('Enter the last 10 digits (or 11 with leading 0) printed on your device.');
             return;
         }
+        if (!name.trim()) {
+            setError('Give your thing a name so you can find it later.');
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -31,11 +39,11 @@ export default function RegisterDeviceModal({ token, onClose, onRegistered }: Pr
 
         try {
             const api = new ApiClient(token);
-            const res = await api.registerDevice(trimmed);
+            const res = await api.registerDevice(trimmed, name);
             setSuccess(res.message);
             if (res.device_id) {
                 setTimeout(() => {
-                    onRegistered(res.device_id!, res.name ?? 'New Device');
+                    onRegistered(res.device_id!, name.trim() || res.name || 'New Device');
                 }, 1200);
             }
         } catch (err) {
@@ -91,9 +99,36 @@ export default function RegisterDeviceModal({ token, onClose, onRegistered }: Pr
                                 )}
                             </div>
 
+                            <div>
+                                <label className="block mb-1.5" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-secondary)' }}>Name your thing</label>
+                                <input
+                                    type="text"
+                                    maxLength={120}
+                                    value={name}
+                                    onChange={e => { setName(e.target.value); setError(null); }}
+                                    placeholder="e.g. My Corolla"
+                                    className="tad-input w-full"
+                                />
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {NAME_SUGGESTIONS.map(s => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => { setName(s); setError(null); }}
+                                            style={{
+                                                fontSize: 'var(--text-xs)', padding: '4px 11px', borderRadius: 'var(--radius-pill)',
+                                                border: `1px solid ${name === s ? 'var(--brand)' : 'var(--border)'}`,
+                                                background: name === s ? 'var(--brand-subtle)' : 'var(--surface)',
+                                                color: name === s ? 'var(--brand)' : 'var(--text-secondary)', cursor: 'pointer',
+                                            }}
+                                        >{s}</button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <button
                                 type="submit"
-                                disabled={loading || input.length < 8}
+                                disabled={loading || input.length < 8 || !name.trim()}
                                 className="tad-btn tad-btn--primary tad-btn--block">
                                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {loading ? 'Looking up device…' : 'Register device'}
