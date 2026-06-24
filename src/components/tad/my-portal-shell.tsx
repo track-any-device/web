@@ -65,7 +65,7 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
         <LoadingProvider>{children}</LoadingProvider>
       </main>
 
-      {!fullBleed && <SiteFooter />}
+      <SiteFooter loggedIn />
     </div>
   );
 }

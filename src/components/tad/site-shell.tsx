@@ -53,7 +53,7 @@ export async function SiteShell({ children, dark = false }: SiteShellProps) {
         <PageTransition>{children}</PageTransition>
       </main>
 
-      <SiteFooter dark={dark} />
+      <SiteFooter dark={dark} loggedIn={Boolean(session?.user)} />
     </div>
   );
 }

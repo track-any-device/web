@@ -4,9 +4,12 @@ import { Logo } from './logo';
 
 /* Shared TAD-PAK web footer — brand blurb + Track/Company/Account link columns + legal row.
    Used by SiteShell (public/marketing) and MyPortalShell (/my) so the customer portal keeps a
-   consistent footer with links back to the public site. PortalShell (admin/ops) has no footer. */
+   consistent footer with links back to the public site. PortalShell (admin/ops) has no footer.
+   The Account column adapts to auth state (loggedIn). */
 
-const FOOTER_COLS: { heading: string; links: { label: string; href: string }[] }[] = [
+type Col = { heading: string; links: { label: string; href: string }[] };
+
+const STATIC_COLS: Col[] = [
   {
     heading: 'Track',
     links: [
@@ -25,18 +28,29 @@ const FOOTER_COLS: { heading: string; links: { label: string; href: string }[] }
       { label: 'Help center', href: '/support' },
     ],
   },
-  {
-    heading: 'Account',
-    links: [
-      { label: 'Sign in', href: '/login' },
-      { label: 'My devices', href: '/my' },
-      { label: 'Track an order', href: '/my/orders' },
-      { label: 'Status', href: '/status' },
-    ],
-  },
 ];
 
-export function SiteFooter({ dark = false }: { dark?: boolean }) {
+function accountCol(loggedIn: boolean): Col {
+  return {
+    heading: 'Account',
+    links: loggedIn
+      ? [
+          { label: 'My devices', href: '/my/devices' },
+          { label: 'My orders', href: '/my/orders' },
+          { label: 'My profile', href: '/my/profile' },
+          { label: 'Status', href: '/status' },
+        ]
+      : [
+          { label: 'Sign in', href: '/login' },
+          { label: 'My devices', href: '/my' },
+          { label: 'Track an order', href: '/my/orders' },
+          { label: 'Status', href: '/status' },
+        ],
+  };
+}
+
+export function SiteFooter({ dark = false, loggedIn = false }: { dark?: boolean; loggedIn?: boolean }) {
+  const cols = [...STATIC_COLS, accountCol(loggedIn)];
   return (
     <footer className="tad-footer">
       <div className="tad-footer__inner">
@@ -48,7 +62,7 @@ export function SiteFooter({ dark = false }: { dark?: boolean }) {
               and team across Pakistan.
             </p>
           </div>
-          {FOOTER_COLS.map((col) => (
+          {cols.map((col) => (
             <div key={col.heading}>
               <div className="tad-footer__heading">{col.heading}</div>
               {col.links.map((l) => (
