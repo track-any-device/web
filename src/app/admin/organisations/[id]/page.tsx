@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui';
 import { fetchPortalOne } from '@/lib/admin-api';
 import { type TenantDetail, type TenantDeviceRow } from '@/lib/portal-data';
 import { TenantLogs } from './tenant-logs';
+import { ForwardingConfig } from './forwarding-config';
 
 const DEVICE_STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   active: 'success', pending: 'warning', blocked: 'danger',
@@ -48,6 +49,8 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           </div>
           <TenantLogs tenantId={t.id} />
         </div>
+
+        <ForwardingConfig tenantId={t.id} />
 
         <div>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 800, margin: '4px 2px 8px' }}>Devices</h2>
