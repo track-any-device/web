@@ -167,8 +167,11 @@ export class ApiClient {
         return res.json();
     }
 
-    async registerDevice(deviceId: string): Promise<RegisterDeviceResult> {
-        return this.post<RegisterDeviceResult>('/devices/register', { device_id: deviceId });
+    async registerDevice(deviceId: string, name?: string): Promise<RegisterDeviceResult> {
+        return this.post<RegisterDeviceResult>('/devices/register', {
+            device_id: deviceId,
+            ...(name && name.trim() ? { name: name.trim() } : {}),
+        });
     }
 
     async assignBeat(deviceId: number, beatId: number) {
