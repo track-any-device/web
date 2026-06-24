@@ -157,7 +157,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
         : 'No location yet';
 
     return (
-        <div className="mx-auto max-w-3xl px-6 py-8 space-y-4">
+        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4 sm:px-6 sm:py-8">
 
             {/* Back link */}
             <Link href="/my/devices" className="inline-flex items-center gap-1"
@@ -166,15 +166,15 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
             </Link>
 
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <div className="shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden"
+            <div className="flex items-center gap-3 sm:gap-4">
+                <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden sm:w-14 sm:h-14"
                     style={{ background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}>
                     {device.image_url
                         ? <img src={device.image_url} alt="" className="w-full h-full object-cover" />
                         : (device.map_icon ? <span style={{ fontSize: 26 }}>{device.map_icon}</span> : <Smartphone className="w-6 h-6" />)}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
+                    <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.5vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
                         {device.name}
                     </h1>
                     <p className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>

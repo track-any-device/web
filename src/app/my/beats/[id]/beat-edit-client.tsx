@@ -47,7 +47,7 @@ export default function BeatEditClient({ id }: { id: string }) {
     if (!beat || !token) return null;
 
     return (
-        <div className="p-8 max-w-3xl space-y-6">
+        <div className="mx-auto max-w-3xl p-4 space-y-6 sm:p-6 lg:p-8">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <a href="/my/devices" className="inline-flex items-center gap-1.5"

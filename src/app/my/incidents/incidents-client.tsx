@@ -60,7 +60,7 @@ export default function IncidentsClient() {
     if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
-        <div className="mx-auto max-w-4xl px-6 py-8 space-y-6">
+        <div className="mx-auto max-w-4xl px-4 py-6 space-y-6 sm:px-6 sm:py-8">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
                     Incidents

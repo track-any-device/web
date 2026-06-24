@@ -29,10 +29,10 @@ export default function StreamPageClient() {
     if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="mx-auto max-w-5xl p-4 space-y-6 sm:p-6 lg:p-8">
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Live Stream</h1>
-                <p className="text-sm text-gray-500 mt-1">Real-time device activity. Updates push automatically via WebSocket.</p>
+                <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>Live Stream</h1>
+                <p className="mt-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Real-time device activity. Updates push automatically via WebSocket.</p>
             </div>
             <StreamClient initialDevices={initialDevices} token={token!} userId={userId} />
         </div>

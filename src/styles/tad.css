@@ -281,6 +281,15 @@
 .tad-card__body--flush{ padding:0; }
 .tad-card__footer{ padding:14px 18px; border-top:1px solid var(--border-subtle); background:var(--surface-sunken); }
 .tad-card--accent{ border-top:3px solid var(--brand); }
+/* Card whose body fills the remaining height (e.g. the map / scrolling list in the /my map app on
+   mobile). .tad-card already lays its children in a column; this lets the body grow + scroll. */
+.tad-card--fill{ min-height:0; }
+.tad-card--fill > .tad-card__body{ display:flex; flex-direction:column; flex:1; min-height:0; }
+/* On phones/tablets the fill cards run edge-to-edge (no border / rounding); the desktop split
+   restores the framed card at lg. Defined here so it beats the unlayered .tad-card defaults. */
+@media (max-width: 1023.98px){
+  .tad-card--fill{ border:0; border-radius:0; }
+}
 
 /* Metric */
 .tad-metric{ display:flex; flex-direction:column; gap:6px; font-family:var(--font-body); }

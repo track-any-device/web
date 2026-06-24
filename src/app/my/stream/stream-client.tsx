@@ -46,7 +46,8 @@ export default function StreamClient({ initialDevices, token, userId }: Props) {
                     <p className="text-xs text-gray-500 mt-1">Devices transmitting data will appear and update in real time.</p>
                 </div>
             ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="rounded-xl border overflow-x-auto"
+                    style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">

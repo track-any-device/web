@@ -133,7 +133,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
         .map(p => ({ lat: Number(p.latitude), lng: Number(p.longitude) }));
 
     return (
-        <div className="mx-auto max-w-3xl px-6 py-8 space-y-5">
+        <div className="mx-auto max-w-3xl px-4 py-6 space-y-5 sm:px-6 sm:py-8">
 
             {/* Back link */}
             <Link href="/my/incidents" className="inline-flex items-center gap-1"
@@ -142,14 +142,14 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
             </Link>
 
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <div className="shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center"
+            <div className="flex items-center gap-3 sm:gap-4">
+                <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center sm:w-14 sm:h-14"
                     style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}>
                     <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
+                        <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.5vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
                             {incident.display_label ?? humanizeEventType(incident.event_type)}
                         </h1>
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: STATUS_DOT[incident.status] ?? 'var(--text-muted)' }} />

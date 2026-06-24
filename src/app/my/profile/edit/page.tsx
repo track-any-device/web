@@ -85,7 +85,7 @@ export default function EditProfilePage() {
     }
 
     return (
-        <div className="mx-auto max-w-lg px-6 py-8 space-y-6">
+        <div className="mx-auto max-w-lg px-4 py-6 space-y-6 sm:px-6 sm:py-8">
 
             {/* Header */}
             <div className="flex items-center gap-3">
