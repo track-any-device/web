@@ -6,6 +6,7 @@ import { fetchPortalOne } from '@/lib/admin-api';
 import { type AdminDeviceDetail } from '@/lib/portal-data';
 import { DeviceMapCard } from './device-map-card';
 import { DeviceActivityCard } from './device-activity-card';
+import { DeviceSummaryCard } from './device-summary-card';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
@@ -49,6 +50,16 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
        {/* Detail grid: 1 col on phones → 2 on small → 4 on xl. Full-width cards (activity / incidents)
            keep col-span-full so they always stretch the row regardless of column count. */}
        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <DeviceSummaryCard
+          name={d.name}
+          speed={d.speed}
+          lastSeenAt={d.lastSeenAt}
+          online={d.online}
+          productSku={d.productSku}
+          productName={d.productName}
+          model={d.model}
+        />
+
         <Card title="Identity">
           <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Status" value={<Badge variant={STATUS[d.status ?? ''] ?? 'neutral'}>{d.status ?? '—'}</Badge>} />
