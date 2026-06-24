@@ -4,6 +4,7 @@ import { PortalTopbar } from '@/components/tad/portal-shell';
 import { Badge, Button, Card } from '@/components/ui';
 import { fetchPortalOne } from '@/lib/admin-api';
 import { type AdminDeviceDetail } from '@/lib/portal-data';
+import { DeviceMapCard } from './device-map-card';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
@@ -76,6 +77,8 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
             />
           </div>
         </Card>
+
+        <DeviceMapCard lat={d.lastLat ?? null} lon={d.lastLon ?? null} online={d.online} name={d.name} />
 
         <Card title="Recent incidents" style={{ gridColumn: '1 / -1' }}>
           {d.incidents.length === 0 ? (
