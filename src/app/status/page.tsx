@@ -15,10 +15,13 @@ export default function StatusPage() {
         primaryCta={{ label: 'Back to home', href: '/' }}
       />
       <Section eyebrow="Components" title="Current status" width="lg">
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <Card flushBody>
           {COMPONENTS.map((c, i) => (
-            <div key={c} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: i ? '1px solid var(--border-subtle)' : 'none' }}>
-              <span style={{ color: 'var(--text)' }}>{c}</span>
+            <div
+              key={c}
+              className={`flex items-center justify-between gap-3 px-5 py-3.5${i ? ' border-t border-[var(--border-subtle)]' : ''}`}
+            >
+              <span className="text-[var(--text)]">{c}</span>
               <Badge variant="success" dot>Operational</Badge>
             </div>
           ))}

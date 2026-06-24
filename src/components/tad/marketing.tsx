@@ -16,13 +16,13 @@ export interface SectionProps {
 
 export function Section({ eyebrow, title, subtitle, width = 'xl', children, className }: SectionProps) {
   return (
-    <section className={className} style={{ padding: 'var(--space-16) var(--space-6)' }}>
-      <div style={{ maxWidth: width === 'lg' ? 'var(--container-lg)' : 'var(--container-xl)', margin: '0 auto' }}>
+    <section className={['tad-section px-5 py-12 sm:px-6 sm:py-16', className].filter(Boolean).join(' ')}>
+      <div className="mx-auto" style={{ maxWidth: width === 'lg' ? 'var(--container-lg)' : 'var(--container-xl)' }}>
         {(eyebrow || title || subtitle) && (
-          <header style={{ display: 'grid', gap: 8, marginBottom: 'var(--space-8)', maxWidth: 640 }}>
+          <header className="mb-8 grid max-w-[640px] gap-2">
             {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
-            {title && <h2 style={{ fontSize: 'var(--text-3xl)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{title}</h2>}
-            {subtitle && <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-lg)' }}>{subtitle}</p>}
+            {title && <h2 className="tad-section__title text-[length:var(--text-3xl)] font-extrabold tracking-[var(--tracking-tighter)]">{title}</h2>}
+            {subtitle && <p className="tad-section__subtitle text-[length:var(--text-lg)] text-[var(--text-secondary)]">{subtitle}</p>}
           </header>
         )}
         {children}
@@ -42,27 +42,26 @@ export interface HeroProps {
 }
 
 export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full }: HeroProps) {
+  const ctas = (primaryCta || secondaryCta) && (
+    <div className="tad-cta-row mt-2 flex flex-wrap gap-3">
+      {primaryCta && <Link href={primaryCta.href} className="tad-btn tad-btn--primary tad-btn--lg">{primaryCta.label}</Link>}
+      {secondaryCta && <Link href={secondaryCta.href} className="tad-btn tad-btn--secondary tad-btn--lg">{secondaryCta.label}</Link>}
+    </div>
+  );
+
   if (full) {
     return (
       <section
-        style={{
-          position: 'relative', minHeight: 'calc(100vh - var(--topbar-h))', overflow: 'hidden',
-          display: 'flex', alignItems: 'center',
-          background: 'radial-gradient(120% 95% at 74% 44%, var(--brand-subtle), var(--surface) 62%)',
-        }}
+        className="tad-hero tad-hero--full relative flex min-h-[calc(100vh-var(--topbar-h))] items-center overflow-hidden"
+        style={{ background: 'radial-gradient(120% 95% at 74% 44%, var(--brand-subtle), var(--surface) 62%)' }}
       >
-        <HeroGlobe cxFactor={0.76} radiusFactor={0.48} />
-        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 'var(--container-xl)', margin: '0 auto', padding: '0 var(--space-8)' }}>
-          <div style={{ maxWidth: 560, display: 'grid', gap: 'var(--space-5)' }}>
+        <div className="tad-hero__globe-wrap"><HeroGlobe cxFactor={0.76} radiusFactor={0.48} /></div>
+        <div className="tad-hero__inner relative z-[1] mx-auto w-full px-6 sm:px-8" style={{ maxWidth: 'var(--container-xl)' }}>
+          <div className="tad-hero__copy grid max-w-[560px] gap-5">
             {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
-            <h1 style={{ fontSize: 'var(--text-6xl)', lineHeight: 'var(--leading-tight)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{title}</h1>
-            {subtitle && <p style={{ fontSize: 'var(--text-xl)', color: 'var(--text-secondary)', maxWidth: 500 }}>{subtitle}</p>}
-            {(primaryCta || secondaryCta) && (
-              <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
-                {primaryCta && <Link href={primaryCta.href} className="tad-btn tad-btn--primary tad-btn--lg">{primaryCta.label}</Link>}
-                {secondaryCta && <Link href={secondaryCta.href} className="tad-btn tad-btn--secondary tad-btn--lg">{secondaryCta.label}</Link>}
-              </div>
-            )}
+            <h1 className="tad-hero__title text-[length:var(--text-6xl)] font-extrabold leading-[var(--leading-tight)] tracking-[var(--tracking-tighter)]">{title}</h1>
+            {subtitle && <p className="tad-hero__subtitle max-w-[500px] text-[length:var(--text-xl)] text-[var(--text-secondary)]">{subtitle}</p>}
+            {ctas}
           </div>
         </div>
       </section>
@@ -70,26 +69,20 @@ export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full 
   }
 
   return (
-    <section style={{ padding: 'var(--space-6)' }}>
+    <section className="tad-hero tad-hero--panel-wrap p-5 sm:p-6">
       <div
-        className="tad-dot-bg"
+        className="tad-dot-bg tad-hero--panel relative mx-auto overflow-hidden rounded-[var(--radius-2xl)] px-6 py-14 sm:px-10 sm:py-16 md:px-12 md:py-20"
         style={{
-          position: 'relative', maxWidth: 'var(--container-xl)', margin: '0 auto',
-          borderRadius: 'var(--radius-2xl)', overflow: 'hidden',
+          maxWidth: 'var(--container-xl)',
           background: 'linear-gradient(160deg, var(--brand-subtle), var(--surface) 70%)',
-          border: '1px solid var(--border)', padding: 'var(--space-20) var(--space-12)',
+          border: '1px solid var(--border)',
         }}
       >
-        <div style={{ position: 'relative', zIndex: 1, maxWidth: 640, display: 'grid', gap: 'var(--space-5)' }}>
+        <div className="relative z-[1] grid max-w-[640px] gap-5">
           {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
-          <h1 style={{ fontSize: 'var(--text-6xl)', lineHeight: 'var(--leading-tight)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{title}</h1>
-          {subtitle && <p style={{ fontSize: 'var(--text-xl)', color: 'var(--text-secondary)' }}>{subtitle}</p>}
-          {(primaryCta || secondaryCta) && (
-            <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
-              {primaryCta && <Link href={primaryCta.href} className="tad-btn tad-btn--primary tad-btn--lg">{primaryCta.label}</Link>}
-              {secondaryCta && <Link href={secondaryCta.href} className="tad-btn tad-btn--secondary tad-btn--lg">{secondaryCta.label}</Link>}
-            </div>
-          )}
+          <h1 className="tad-hero__title text-[length:var(--text-6xl)] font-extrabold leading-[var(--leading-tight)] tracking-[var(--tracking-tighter)]">{title}</h1>
+          {subtitle && <p className="tad-hero__subtitle text-[length:var(--text-xl)] text-[var(--text-secondary)]">{subtitle}</p>}
+          {ctas}
         </div>
         <HeroGlobe />
       </div>
@@ -114,25 +107,25 @@ export interface ProductCardProps {
 export function ProductCard({ name, category, image, price, href = '/shop', vendor }: ProductCardProps) {
   return (
     <Card interactive raised flushBody>
-      <div style={{ aspectRatio: '4 / 3', background: 'var(--surface-sunken)', display: 'grid', placeItems: 'center', position: 'relative' }}>
-        <span style={{ position: 'absolute', top: 12, left: 12 }}>
+      <div className="relative grid aspect-[4/3] place-items-center bg-[var(--surface-sunken)]">
+        <span className="absolute left-3 top-3">
           <Badge variant="brand">{CATEGORY_LABEL[category]}</Badge>
         </span>
         {image
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={image} alt={name} style={{ maxWidth: '78%', maxHeight: '78%', objectFit: 'contain' }} />
-          : <span style={{ color: 'var(--text-subtle)', fontSize: 'var(--text-sm)' }}>No image</span>}
+          ? <img src={image} alt={name} className="max-h-[78%] max-w-[78%] object-contain" />
+          : <span className="text-[length:var(--text-sm)] text-[var(--text-subtle)]">No image</span>}
       </div>
-      <div style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-2)' }}>
+      <div className="grid gap-2 p-5">
         {vendor && <span className="tad-eyebrow">{vendor}</span>}
-        <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>{name}</h3>
+        <h3 className="text-[length:var(--text-lg)] font-bold">{name}</h3>
         {price != null && (
-          <div style={{ display: 'grid', gap: 2 }}>
-            <span className="tad-data" style={{ fontSize: 'var(--text-2xl)', fontWeight: 600 }}>Rs {price.toLocaleString('en-PK')}</span>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>Includes 1-year subscription · renew yearly</span>
+          <div className="grid gap-0.5">
+            <span className="tad-data text-[length:var(--text-2xl)] font-semibold">Rs {price.toLocaleString('en-PK')}</span>
+            <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">Includes 1-year subscription · renew yearly</span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+        <div className="mt-2 flex flex-wrap gap-2">
           <Link href={href} className="tad-btn tad-btn--secondary tad-btn--sm">View details</Link>
           <Link href={href} className="tad-btn tad-btn--primary tad-btn--sm">Add to cart</Link>
         </div>
@@ -153,27 +146,27 @@ export interface ProductDetailProps {
 
 export function ProductDetail({ name, category, image, price, vendor, features = [], typeApproved = true }: ProductDetailProps) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-10)', alignItems: 'start' }}>
+    <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10">
       <Card flushBody>
-        <div style={{ aspectRatio: '1 / 1', background: 'var(--surface-sunken)', display: 'grid', placeItems: 'center' }}>
+        <div className="grid aspect-square place-items-center bg-[var(--surface-sunken)]">
           {image
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={image} alt={name} style={{ maxWidth: '74%', maxHeight: '74%', objectFit: 'contain' }} />
-            : <span style={{ color: 'var(--text-subtle)' }}>No image</span>}
+            ? <img src={image} alt={name} className="max-h-[74%] max-w-[74%] object-contain" />
+            : <span className="text-[var(--text-subtle)]">No image</span>}
         </div>
       </Card>
-      <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div className="grid gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="brand">{CATEGORY_LABEL[category]}</Badge>
           {typeApproved && <Badge variant="success" dot>Type-approved</Badge>}
           {vendor && <span className="tad-eyebrow">{vendor}</span>}
         </div>
-        <h1 style={{ fontSize: 'var(--text-4xl)', fontWeight: 800, letterSpacing: 'var(--tracking-tighter)' }}>{name}</h1>
+        <h1 className="text-[length:var(--text-4xl)] font-extrabold tracking-[var(--tracking-tighter)]">{name}</h1>
         {features.length > 0 && (
-          <ul style={{ display: 'grid', gap: 8, padding: 0, margin: 0, listStyle: 'none' }}>
+          <ul className="m-0 grid list-none gap-2 p-0">
             {features.map((f) => (
-              <li key={f} style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--text-secondary)' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--brand)', flex: 'none' }}>
+              <li key={f} className="flex items-center gap-2.5 text-[var(--text-secondary)]">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="flex-none text-[var(--brand)]">
                   <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 {f}
@@ -182,12 +175,12 @@ export function ProductDetail({ name, category, image, price, vendor, features =
           </ul>
         )}
         {price != null && (
-          <div style={{ display: 'grid', gap: 2 }}>
-            <span className="tad-data" style={{ fontSize: 'var(--text-3xl)', fontWeight: 600 }}>Rs {price.toLocaleString('en-PK')}</span>
-            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Includes a 1-year subscription — renew yearly to keep tracking, alerts &amp; history live.</span>
+          <div className="grid gap-0.5">
+            <span className="tad-data text-[length:var(--text-3xl)] font-semibold">Rs {price.toLocaleString('en-PK')}</span>
+            <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">Includes a 1-year subscription — renew yearly to keep tracking, alerts &amp; history live.</span>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)', flexWrap: 'wrap' }}>
+        <div className="tad-cta-row mt-2 flex flex-wrap gap-3">
           <Link href="/checkout" className="tad-btn tad-btn--primary tad-btn--lg">Add to cart</Link>
           <Link href="/checkout" className="tad-btn tad-btn--secondary tad-btn--lg">Buy now · Cash on delivery</Link>
         </div>

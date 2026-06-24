@@ -15,9 +15,9 @@ export default function StoresPage() {
         primaryCta={{ label: 'Shop online', href: '/shop' }}
       />
       <Section eyebrow="Coming soon" title="Cities we serve" width="lg">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-4)' }}>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {CITIES.map((c) => (
-            <Card key={c} style={{ padding: 'var(--space-5)', fontWeight: 600, color: 'var(--text)' }}>{c}</Card>
+            <Card key={c} className="p-5 font-semibold text-[var(--text)]">{c}</Card>
           ))}
         </div>
       </Section>

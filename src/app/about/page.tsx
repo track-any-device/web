@@ -19,11 +19,11 @@ export default function AboutPage() {
         primaryCta={{ label: 'Shop trackers', href: '/shop' }}
       />
       <Section eyebrow="Why TAD-PAK" title="Tracking, the friendly way" width="lg">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {POINTS.map(([t, d]) => (
-            <Card key={t} style={{ padding: 'var(--space-6)' }}>
-              <h3 style={{ margin: '0 0 6px', fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--text)' }}>{t}</h3>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>{d}</p>
+            <Card key={t} className="p-6">
+              <h3 className="mb-1.5 font-[family-name:var(--font-display)] text-[17px] text-[var(--text)]">{t}</h3>
+              <p className="m-0 text-sm leading-normal text-[var(--text-secondary)]">{d}</p>
             </Card>
           ))}
         </div>

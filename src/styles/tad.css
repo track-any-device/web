@@ -330,6 +330,34 @@
 .tad-nav-link:hover{ color:var(--text); background:var(--surface-hover); }
 .tad-shell__spacer{ flex:1; }
 .tad-shell__actions{ grid-column:3; justify-self:end; display:flex; align-items:center; gap:var(--space-2); }
+.tad-shell__signin{ padding:2px; }
+
+/* ---------- MOBILE NAV (hamburger → slide-in sheet) ---------- */
+/* The hamburger only shows below the nav breakpoint (see media query). The desktop nav
+   (.tad-shell__nav) is hidden there, so this is the only navigation on phones/tablets. */
+.tad-mnav{ display:none; }
+.tad-mnav__toggle{ display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border:1px solid var(--border-strong); border-radius:var(--radius-md); background:var(--surface); color:var(--text); cursor:pointer; transition:var(--transition-colors); }
+.tad-mnav__toggle:hover{ background:var(--surface-hover); }
+.tad-mnav__toggle:focus-visible{ outline:none; box-shadow:var(--shadow-focus); }
+.tad-mnav__scrim{ position:fixed; inset:0; z-index:50; background:rgba(20,14,6,0.45); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); animation:tad-mnav-fade var(--dur-fast) var(--ease-out); }
+.tad-mnav__sheet{ position:fixed; top:0; right:0; bottom:0; z-index:60; width:min(86vw, 340px); display:flex; flex-direction:column; gap:var(--space-2); padding:var(--space-5); background:var(--surface-raised); border-left:1px solid var(--border); box-shadow:var(--shadow-xl); overflow-y:auto; animation:tad-mnav-slide var(--dur-base) var(--ease-out); }
+@keyframes tad-mnav-fade{ from{ opacity:0; } to{ opacity:1; } }
+@keyframes tad-mnav-slide{ from{ transform:translateX(100%); } to{ transform:none; } }
+@media (prefers-reduced-motion: reduce){ .tad-mnav__scrim, .tad-mnav__sheet{ animation:none; } }
+.tad-mnav__head{ display:flex; align-items:center; justify-content:space-between; padding-bottom:var(--space-2); }
+.tad-mnav__close{ display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border:none; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); cursor:pointer; transition:var(--transition-colors); }
+.tad-mnav__close:hover{ background:var(--surface-hover); color:var(--text); }
+.tad-mnav__close:focus-visible{ outline:none; box-shadow:var(--shadow-focus); }
+.tad-mnav__links{ display:flex; flex-direction:column; gap:2px; }
+.tad-mnav__link{ display:flex; align-items:center; min-height:48px; padding:0 var(--space-3); border-radius:var(--radius-md); font-size:var(--text-lg); font-weight:var(--weight-medium); color:var(--text-secondary); transition:var(--transition-colors); }
+.tad-mnav__link:hover{ background:var(--surface-hover); color:var(--text); }
+.tad-mnav__link[aria-current="page"]{ color:var(--brand-on-subtle); background:var(--brand-subtle); font-weight:var(--weight-semibold); }
+.tad-mnav__divider{ height:1px; margin:var(--space-2) 0; background:var(--border-subtle); }
+.tad-mnav__account{ display:flex; align-items:center; gap:var(--space-3); min-height:48px; padding:var(--space-2) var(--space-3); border-radius:var(--radius-md); color:var(--text); transition:var(--transition-colors); }
+.tad-mnav__account:hover{ background:var(--surface-hover); }
+.tad-mnav__account-text{ display:flex; flex-direction:column; min-width:0; }
+.tad-mnav__account-name{ font-size:var(--text-base); font-weight:var(--weight-semibold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tad-mnav__account-hint{ font-size:var(--text-xs); color:var(--text-muted); }
 .tad-footer{ border-top:1px solid var(--border); background:var(--surface-sunken); margin-top:var(--space-16); }
 .tad-footer__inner{ max-width:var(--container-xl); margin:0 auto; padding:var(--space-12) var(--space-6) var(--space-8); display:grid; gap:var(--space-8); }
 .tad-footer__cols{ display:grid; grid-template-columns:1.4fr repeat(3, 1fr); gap:var(--space-8); }
@@ -339,7 +367,35 @@
 .tad-footer__legal{ display:flex; flex-wrap:wrap; gap:var(--space-3); align-items:center; justify-content:space-between; padding-top:var(--space-6); border-top:1px solid var(--border); color:var(--text-muted); font-size:var(--text-xs); }
 @media (max-width: 860px){
   .tad-shell__nav{ display:none; }
-  .tad-footer__cols{ grid-template-columns:1fr 1fr; }
+  .tad-mnav{ display:inline-flex; }
+  .tad-footer__cols{ grid-template-columns:1fr 1fr; gap:var(--space-6); }
+}
+@media (max-width: 520px){
+  .tad-footer__cols{ grid-template-columns:1fr; gap:var(--space-6); }
+  .tad-footer__inner{ padding:var(--space-10) var(--space-5) var(--space-8); }
+  .tad-footer__legal{ flex-direction:column; align-items:flex-start; gap:var(--space-2); }
+}
+
+/* ---------- MARKETING RESPONSIVE (hero + section scaling on small screens) ---------- */
+/* Tighten the full-bleed hero so the headline/CTAs don't overflow narrow phones, and pull
+   the globe behind the copy rather than beside it. */
+@media (max-width: 860px){
+  .tad-hero--full{ min-height:auto; padding:var(--space-16) 0; align-items:flex-start; }
+  .tad-hero--full .tad-hero__inner{ padding:0 var(--space-5); }
+  .tad-hero--full .tad-hero__copy{ max-width:100%; }
+  .tad-hero__globe-wrap .tad-hero-globe{ opacity:0.5; }
+}
+@media (max-width: 640px){
+  .tad-hero__title{ font-size:var(--text-4xl); }
+  .tad-hero--full .tad-hero__title{ font-size:var(--text-5xl); }
+  .tad-hero__subtitle{ font-size:var(--text-lg); }
+  .tad-hero--panel{ padding:var(--space-12) var(--space-6); }
+  .tad-section{ padding:var(--space-12) var(--space-5); }
+  .tad-section__title{ font-size:var(--text-2xl); }
+  .tad-section__subtitle{ font-size:var(--text-md); }
+  /* Full-width CTAs on phones so taps are comfortable. */
+  .tad-cta-row{ flex-direction:column; align-items:stretch; }
+  .tad-cta-row .tad-btn{ width:100%; }
 }
 
 /* ── Internal portal chrome (operations + admin) ───────────────────────── */
