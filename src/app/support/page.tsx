@@ -1,4 +1,8 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { Mail, Bug, BookOpen, FileText, ArrowRight } from 'lucide-react';
+import { Hero, Section } from '@/components/tad/marketing';
+import { Card, Badge } from '@/components/ui';
 
 export const runtime = 'edge';
 
@@ -15,21 +19,21 @@ const DOCS = [
 
 const CONTACT_METHODS = [
   {
-    icon: '✉️',
+    icon: Mail,
     label: 'Email Support',
     value: 'support@track-any-device.com',
     href: 'mailto:support@track-any-device.com',
     description: 'General enquiries, billing, and account issues. Response within 24 hours.',
   },
   {
-    icon: '🐛',
+    icon: Bug,
     label: 'Bug Reports',
     value: 'GitHub Issues',
     href: 'https://github.com/track-any-device',
     description: 'Found a bug? Open an issue on our GitHub organisation.',
   },
   {
-    icon: '📖',
+    icon: BookOpen,
     label: 'Documentation',
     value: 'docs.track-any-device.com',
     href: '/docs',
@@ -39,70 +43,76 @@ const CONTACT_METHODS = [
 
 export default function SupportPage() {
   return (
-    <div className="max-w-5xl mx-auto px-6 py-14 space-y-16">
-
-      {/* Header */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: '#3b82f6' }}>Help &amp; Support</p>
-        <h1 className="text-4xl font-extrabold mb-3" style={{ color: '#f1f5f9' }}>Support</h1>
-        <p className="text-lg max-w-xl" style={{ color: '#64748b' }}>
-          Need help with your devices, account, or integration? We&apos;re here for you.
-        </p>
-      </div>
+    <>
+      <Hero
+        eyebrow="Help & Support"
+        title="Support"
+        subtitle="Need help with your devices, account, or integration? We're here for you."
+        primaryCta={{ label: 'Browse docs', href: '/docs' }}
+      />
 
       {/* Contact methods */}
-      <section>
-        <h2 className="text-xl font-bold mb-5" style={{ color: '#f1f5f9' }}>Contact Us</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {CONTACT_METHODS.map(m => (
-            <a key={m.label} href={m.href}
-              target={m.href.startsWith('http') ? '_blank' : undefined}
-              rel={m.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-              className="card-hover glass rounded-2xl p-6 block group">
-              <div className="text-3xl mb-3">{m.icon}</div>
-              <p className="font-semibold text-sm mb-0.5 group-hover:text-blue-400 transition-colors"
-                style={{ color: '#e2e8f0' }}>{m.label}</p>
-              <p className="text-xs font-medium mb-2" style={{ color: '#60a5fa' }}>{m.value}</p>
-              <p className="text-xs leading-relaxed" style={{ color: '#64748b' }}>{m.description}</p>
-            </a>
-          ))}
+      <Section eyebrow="Get in touch" title="Contact us" width="lg">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {CONTACT_METHODS.map((m) => {
+            const Icon = m.icon;
+            const external = m.href.startsWith('http');
+            return (
+              <a
+                key={m.label}
+                href={m.href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noopener noreferrer' : undefined}
+                className="group block"
+              >
+                <Card interactive raised className="h-full p-6">
+                  <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+                    <Icon size={20} strokeWidth={2} aria-hidden />
+                  </span>
+                  <p className="font-semibold text-[var(--text)]">{m.label}</p>
+                  <p className="mt-0.5 font-[family-name:var(--font-mono)] text-[length:var(--text-sm)] text-[var(--brand)]">{m.value}</p>
+                  <p className="mt-2 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">{m.description}</p>
+                </Card>
+              </a>
+            );
+          })}
         </div>
-      </section>
+      </Section>
 
       {/* Documentation */}
-      <section>
-        <h2 className="text-xl font-bold mb-5" style={{ color: '#f1f5f9' }}>Documentation</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {DOCS.map(doc => (
-            <a key={doc.href} href={doc.href}
-              className="card-hover glass rounded-xl px-5 py-4 flex items-start gap-4 group">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: 'rgba(37,99,235,0.15)' }}>
-                <span style={{ color: '#60a5fa', fontSize: 16 }}>📄</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm group-hover:text-blue-400 transition-colors"
-                  style={{ color: '#e2e8f0' }}>{doc.title}</p>
-                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#64748b' }}>{doc.description}</p>
-              </div>
-              <span className="ml-auto text-xs shrink-0 mt-0.5" style={{ color: '#475569' }}>→</span>
-            </a>
+      <Section eyebrow="Reference" title="Documentation" width="lg" className="pt-0">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {DOCS.map((doc) => (
+            <Link key={doc.href} href={doc.href} className="group block">
+              <Card interactive className="flex h-full flex-row items-start gap-4 p-5">
+                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+                  <FileText size={16} strokeWidth={2} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-[var(--text)]">{doc.title}</p>
+                  <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">{doc.description}</p>
+                </div>
+                <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Card>
+            </Link>
           ))}
         </div>
-      </section>
+      </Section>
 
       {/* Status */}
-      <section className="rounded-2xl p-6 flex items-center gap-4"
-        style={{ background: 'rgba(6,78,59,0.2)', border: '1px solid rgba(16,185,129,0.2)' }}>
-        <span className="w-3 h-3 rounded-full bg-emerald-500 pulse-dot shrink-0" />
-        <div>
-          <p className="font-semibold text-sm" style={{ color: '#6ee7b7' }}>All Systems Operational</p>
-          <p className="text-xs mt-0.5" style={{ color: '#064e3b' }}>
-            Platform, API, and real-time services are running normally.
-          </p>
-        </div>
-      </section>
-
-    </div>
+      <Section width="lg" className="pt-0">
+        <Card raised className="p-6">
+          <div className="flex items-center gap-4">
+            <Badge variant="success" dot>Operational</Badge>
+            <div>
+              <p className="font-semibold text-[var(--text)]">All systems operational</p>
+              <p className="mt-0.5 text-[length:var(--text-sm)] text-[var(--text-secondary)]">
+                Platform, API, and real-time services are running normally.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </Section>
+    </>
   );
 }

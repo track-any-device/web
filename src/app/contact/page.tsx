@@ -20,14 +20,14 @@ export default function ContactPage() {
         primaryCta={{ label: 'Go to support', href: '/support' }}
       />
       <Section eyebrow="Get in touch" title="Reach us" width="lg">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {METHODS.map(([t, v, hint]) => (
-            <Card key={t} style={{ padding: 'var(--space-6)' }}>
-              <h3 style={{ margin: '0 0 6px', fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--text)' }}>{t}</h3>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text)' }}>{v}</div>
+            <Card key={t} className="p-6">
+              <h3 className="mb-1.5 font-[family-name:var(--font-display)] text-[17px] text-[var(--text)]">{t}</h3>
+              <div className="font-[family-name:var(--font-mono)] text-sm text-[var(--text)]">{v}</div>
               {hint.startsWith('/')
-                ? <Link href={hint} className="tad-foot-link" style={{ display: 'inline-block', marginTop: 4 }}>Open support</Link>
-                : <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: 13 }}>{hint}</p>}
+                ? <Link href={hint} className="tad-foot-link mt-1 inline-block">Open support</Link>
+                : <p className="mt-1 text-[13px] text-[var(--text-muted)]">{hint}</p>}
             </Card>
           ))}
         </div>

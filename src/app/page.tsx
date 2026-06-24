@@ -10,7 +10,7 @@ import { PRODUCTS } from '@/lib/products';
 function Grid({ category }: { category: ProductCategory }) {
   const items = PRODUCTS.filter((p) => p.category === category);
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 'var(--space-6)' }}>
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((p) => <ProductCard key={p.name} {...p} />)}
     </div>
   );

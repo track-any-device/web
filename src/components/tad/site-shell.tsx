@@ -5,6 +5,7 @@ import { Logo } from './logo';
 import { SiteFooter } from './site-footer';
 import { PageTransition } from './page-transition';
 import { UserMenu } from './user-menu';
+import { MobileNav } from './mobile-nav';
 import { SITE_NAV } from './site-nav';
 import { getSession } from '@/lib/auth';
 
@@ -20,11 +21,12 @@ export interface SiteShellProps {
 
 export async function SiteShell({ children, dark = false }: SiteShellProps) {
   const session = await getSession();
+  const userName = String(session?.user?.name ?? 'Account');
   return (
     <div
-      className="tad"
+      className="tad flex min-h-screen flex-col"
       data-theme={dark ? 'dark' : undefined}
-      style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+      style={{ background: 'var(--bg)' }}
     >
       <header className="tad-header">
         <div className="tad-shell__bar">
@@ -36,17 +38,18 @@ export async function SiteShell({ children, dark = false }: SiteShellProps) {
           </nav>
           <div className="tad-shell__actions">
             {session?.user ? (
-              <UserMenu name={String(session.user.name ?? 'Account')} role={String(session.user.role ?? '')} />
+              <UserMenu name={userName} role={String(session.user.role ?? '')} />
             ) : (
-              <Link href="/login" aria-label="Sign in" className="tad-usermenu__trigger" style={{ padding: 2 }}>
+              <Link href="/login" aria-label="Sign in" className="tad-shell__signin tad-usermenu__trigger">
                 <span className="tad-usermenu__avatar" aria-hidden><User size={16} strokeWidth={2} /></span>
               </Link>
             )}
+            <MobileNav signedIn={Boolean(session?.user)} userName={userName} dark={dark} />
           </div>
         </div>
       </header>
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <main className="flex min-h-0 flex-1 flex-col">
         <PageTransition>{children}</PageTransition>
       </main>
 
