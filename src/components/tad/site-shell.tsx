@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Logo } from './logo';
 import { SiteFooter } from './site-footer';
+import { PageTransition } from './page-transition';
 
 /* TAD-PAK site shell — sticky blurred header + footer, wraps page content in a `.tad` root
    so design-system tokens resolve. Marketing + customer-portal surfaces render inside this. */
@@ -41,7 +42,9 @@ export function SiteShell({ children, dark = false }: SiteShellProps) {
         </div>
       </header>
 
-      <main style={{ flex: 1 }}>{children}</main>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <PageTransition>{children}</PageTransition>
+      </main>
 
       <SiteFooter dark={dark} />
     </div>
