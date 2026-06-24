@@ -1,14 +1,23 @@
 'use client';
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Input, Button, OTPInput, Badge } from '@/components/ui';
 import { setAuth } from '@/lib/auth-store';
 
 /* SMS-OTP sign-in — posts to the BFF (/api/auth/otp/*) which talks to app and sets the
-   httpOnly tad_session cookie. On success, lands the user in their portal. */
+   httpOnly tad_session cookie. On success, lands the user where they were headed (?next=…,
+   e.g. /checkout) or in their portal by default. */
+
+// Only allow same-origin path redirects (no protocol-relative // or absolute URLs).
+function safeNext(raw: string | null): string {
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  return '/my';
+}
 
 export function AccountClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const [step, setStep] = React.useState<'phone' | 'otp' | 'done'>('phone');
   const [phone, setPhone] = React.useState('');
   const [code, setCode] = React.useState('');
@@ -51,7 +60,7 @@ export function AccountClient() {
       const data = await res.json().catch(() => ({}));
       if (data?.token) setAuth(data.token, data.user);
       setStep('done');
-      window.location.assign('/my');
+      window.location.assign(next);
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
   }
