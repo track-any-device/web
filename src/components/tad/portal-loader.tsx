@@ -24,8 +24,8 @@ export function PortalLoader({ label = 'Locating…' }: { label?: string }) {
         padding: 'var(--space-6)',
       }}
     >
-      <div style={{ position: 'relative', width: 'min(62vw, 320px)', height: 'min(62vw, 320px)' }}>
-        <HeroGlobe cxFactor={0.5} radiusFactor={0.42} />
+      <div style={{ position: 'relative', width: 'min(82vw, 480px)', height: 'min(82vw, 480px)' }}>
+        <HeroGlobe cxFactor={0.5} radiusFactor={0.46} />
       </div>
       <div
         style={{

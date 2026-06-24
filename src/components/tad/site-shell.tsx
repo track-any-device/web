@@ -1,18 +1,16 @@
 import React from 'react';
 import Link from 'next/link';
+import { User } from 'lucide-react';
 import { Logo } from './logo';
 import { SiteFooter } from './site-footer';
 import { PageTransition } from './page-transition';
+import { UserMenu } from './user-menu';
+import { SITE_NAV } from './site-nav';
+import { getSession } from '@/lib/auth';
 
 /* TAD-PAK site shell — sticky blurred header + footer, wraps page content in a `.tad` root
-   so design-system tokens resolve. Marketing + customer-portal surfaces render inside this. */
-
-const NAV = [
-  { label: 'Home', href: '/' },
-  { label: 'Shop', href: '/shop' },
-  { label: 'For business', href: '/business' },
-  { label: 'Support', href: '/support' },
-];
+   so design-system tokens resolve. Marketing + customer-portal surfaces render inside this.
+   The header is session-aware: signed-in visitors get the avatar menu, otherwise a sign-in icon. */
 
 export interface SiteShellProps {
   children: React.ReactNode;
@@ -20,7 +18,8 @@ export interface SiteShellProps {
   dark?: boolean;
 }
 
-export function SiteShell({ children, dark = false }: SiteShellProps) {
+export async function SiteShell({ children, dark = false }: SiteShellProps) {
+  const session = await getSession();
   return (
     <div
       className="tad"
@@ -31,13 +30,18 @@ export function SiteShell({ children, dark = false }: SiteShellProps) {
         <div className="tad-shell__bar">
           <Link href="/" aria-label="TAD-PAK home" className="tad-shell__logo"><Logo dark={dark} /></Link>
           <nav className="tad-shell__nav">
-            {NAV.map((n) => (
+            {SITE_NAV.map((n) => (
               <Link key={n.href} href={n.href} className="tad-nav-link">{n.label}</Link>
             ))}
           </nav>
           <div className="tad-shell__actions">
-            <Link href="/login" className="tad-btn tad-btn--ghost tad-btn--sm">Sign in</Link>
-            <Link href="/my" className="tad-btn tad-btn--primary tad-btn--sm">My devices</Link>
+            {session?.user ? (
+              <UserMenu name={String(session.user.name ?? 'Account')} role={String(session.user.role ?? '')} />
+            ) : (
+              <Link href="/login" aria-label="Sign in" className="tad-usermenu__trigger" style={{ padding: 2 }}>
+                <span className="tad-usermenu__avatar" aria-hidden><User size={16} strokeWidth={2} /></span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
