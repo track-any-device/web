@@ -4,9 +4,12 @@ import React from 'react';
 import Pusher from 'pusher-js';
 import { getAuthToken } from '@/lib/auth-store';
 
-/* Live window onto a tenant's device-communication channel (private-tenant.{id}.device-logs).
-   Subscribes via Soketi/Pusher and appends each `device-log` event — every inbound frame and
-   outbound command logged for the tenant's devices. Real events only; nothing is fabricated. */
+/* Live window onto a tenant's device communication. Subscribes via Soketi/Pusher to two channels:
+   - private-tenant.{id}.device-logs — `device-log` events (every inbound frame / outbound command);
+   - private-tenant.{id}.locations   — `locations.batch` (TCP location fixes, most of the traffic)
+     and `signal.created` events.
+   All three event types merge into the SAME newest-first list, capped at the existing limit.
+   Real events only; nothing is fabricated. */
 
 interface LogEvent {
   ts?: string;
@@ -20,6 +23,18 @@ interface LogEvent {
   payload?: Record<string, unknown>;
 }
 type Entry = LogEvent & { _id: number };
+
+// TCP location/signal traffic broadcast on private-tenant.{id}.locations.
+interface LocationsBatch {
+  tenant_id?: number;
+  count?: number;
+  locations?: Array<{ lat?: number; lng?: number; battery?: number; imei?: string; recorded_at?: string }>;
+}
+interface SignalCreated {
+  device_id?: number;
+  imei?: string;
+  signal?: Record<string, unknown>;
+}
 
 const LEVEL_COLOR: Record<string, string> = {
   info: 'var(--text-muted)', warn: 'var(--warning)', warning: 'var(--warning)',
@@ -53,19 +68,51 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
     pusher.connection.bind('connected', () => setConnected(true));
     pusher.connection.bind('disconnected', () => setConnected(false));
 
-    const channelName = `private-tenant.${tenantId}.device-logs`;
-    const channel = pusher.subscribe(channelName);
+    // Merge a new event into the same newest-first list, capped at the existing limit.
+    const push = (e: LogEvent) =>
+      setEntries((prev) => [{ ...e, _id: seq.current++ }, ...prev].slice(0, 200));
+
     // pusher-js passes an object ({status, error, ...}) here; pull out a readable code.
-    channel.bind('pusher:subscription_error', (e: unknown) => {
+    const onSubError = (name: string) => (e: unknown) => {
       const code = typeof e === 'object' && e !== null
         ? ((e as { status?: number }).status ?? (e as { error?: { data?: { code?: number } } }).error?.data?.code ?? '')
         : e;
-      setError(`Could not subscribe to ${channelName}${code ? ` (auth ${code})` : ''}.`);
-    });
-    channel.bind('device-log', (data: LogEvent) =>
-      setEntries((prev) => [{ ...data, _id: seq.current++ }, ...prev].slice(0, 200)));
+      setError(`Could not subscribe to ${name}${code ? ` (auth ${code})` : ''}.`);
+    };
 
-    return () => { pusher.unsubscribe(channelName); pusher.disconnect(); };
+    // Existing device-logs channel — every inbound frame / outbound command.
+    const logsName = `private-tenant.${tenantId}.device-logs`;
+    const logsChannel = pusher.subscribe(logsName);
+    logsChannel.bind('pusher:subscription_error', onSubError(logsName));
+    logsChannel.bind('device-log', (data: LogEvent) => push(data));
+
+    // Locations channel — TCP fixes (most traffic) and per-signal events.
+    const locName = `private-tenant.${tenantId}.locations`;
+    const locChannel = pusher.subscribe(locName);
+    locChannel.bind('pusher:subscription_error', onSubError(locName));
+    locChannel.bind('locations.batch', (data: LocationsBatch) => {
+      for (const l of data?.locations ?? []) {
+        const coords = l.lat != null && l.lng != null ? `${l.lat},${l.lng}` : '—';
+        const bat = l.battery != null ? ` · ${l.battery}%` : '';
+        push({
+          ts: l.recorded_at,
+          source: 'tcp',
+          direction: 'in',
+          summary: `location · ${l.imei ?? '—'} · ${coords}${bat}`,
+          imei: l.imei ?? null,
+        });
+      }
+    });
+    locChannel.bind('signal.created', (data: SignalCreated) =>
+      push({
+        source: 'tcp',
+        direction: 'in',
+        summary: `signal · ${data?.imei ?? '—'}`,
+        imei: data?.imei ?? null,
+        device_id: data?.device_id,
+      }));
+
+    return () => { pusher.unsubscribe(logsName); pusher.unsubscribe(locName); pusher.disconnect(); };
   }, [tenantId]);
 
   return (
