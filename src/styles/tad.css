@@ -380,6 +380,9 @@
 .tad-usermenu__avatar--lg{ width:40px; height:40px; font-size:15px; }
 .tad-usermenu__panel{ position:absolute; top:calc(100% + 8px); right:0; z-index:60; min-width:236px; padding:6px; background:var(--surface-raised); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); animation:tad-usermenu-in var(--dur-fast) var(--ease-out); }
 @keyframes tad-usermenu-in{ from{ opacity:0; transform:translateY(-4px) scale(0.98); } to{ opacity:1; transform:none; } }
+/* Drop UP (sidebar bottom trigger): anchor to the bottom-left of the trigger so the panel rises into view instead of off the bottom. */
+.tad-usermenu--up .tad-usermenu__panel{ top:auto; bottom:calc(100% + 8px); left:0; right:auto; transform-origin:bottom left; animation-name:tad-usermenu-in-up; }
+@keyframes tad-usermenu-in-up{ from{ opacity:0; transform:translateY(4px) scale(0.98); } to{ opacity:1; transform:none; } }
 @media (prefers-reduced-motion: reduce){ .tad-usermenu__panel{ animation:none; } }
 .tad-usermenu__head{ display:flex; align-items:center; gap:10px; padding:8px 10px 10px; }
 .tad-usermenu__id{ min-width:0; line-height:1.3; }

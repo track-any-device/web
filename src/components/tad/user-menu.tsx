@@ -26,6 +26,8 @@ export interface UserMenuProps {
   role: string;
   /** Optional pre-computed initials; derived from `name` when omitted. */
   initials?: string;
+  /** Where the panel opens. Use 'up' when the trigger sits low (the sidebar bottom); 'down' for top bars. */
+  placement?: 'up' | 'down';
 }
 
 function deriveInitials(name: string): string {
@@ -35,7 +37,7 @@ function deriveInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function UserMenu({ name, role, initials }: UserMenuProps) {
+export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuProps) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const firstItemRef = React.useRef<HTMLAnchorElement>(null);
@@ -79,7 +81,7 @@ export function UserMenu({ name, role, initials }: UserMenuProps) {
   }
 
   return (
-    <div className="tad-usermenu" ref={rootRef}>
+    <div className={`tad-usermenu${placement === 'up' ? ' tad-usermenu--up' : ''}`} ref={rootRef}>
       <button
         type="button"
         className="tad-usermenu__trigger"
