@@ -102,9 +102,12 @@ export interface ProductCardProps {
   price?: number;
   href?: string;
   vendor?: string;
+  /** Order action (client-side Add-to-cart). When provided, replaces the placeholder "Add to cart"
+      link so the grid card can add the real orderable product to the cart. */
+  addToCart?: React.ReactNode;
 }
 
-export function ProductCard({ name, category, image, price, href = '/shop', vendor }: ProductCardProps) {
+export function ProductCard({ name, category, image, price, href = '/shop', vendor, addToCart }: ProductCardProps) {
   return (
     <Card interactive raised flushBody>
       <div className="relative grid aspect-[4/3] place-items-center bg-[var(--surface-sunken)]">
@@ -127,7 +130,7 @@ export function ProductCard({ name, category, image, price, href = '/shop', vend
         )}
         <div className="mt-2 flex flex-wrap gap-2">
           <Link href={href} className="tad-btn tad-btn--secondary tad-btn--sm">View details</Link>
-          <Link href={href} className="tad-btn tad-btn--primary tad-btn--sm">Add to cart</Link>
+          {addToCart ?? <Link href={href} className="tad-btn tad-btn--primary tad-btn--sm">View to order</Link>}
         </div>
       </div>
     </Card>
@@ -142,9 +145,12 @@ export interface ProductDetailProps {
   vendor?: string;
   features?: string[];
   typeApproved?: boolean;
+  /** Order actions (e.g. the client-side Add-to-cart). When provided, replaces the default
+      placeholder CTA row so the page can wire real ordering against the Shop API. */
+  actions?: React.ReactNode;
 }
 
-export function ProductDetail({ name, category, image, price, vendor, features = [], typeApproved = true }: ProductDetailProps) {
+export function ProductDetail({ name, category, image, price, vendor, features = [], typeApproved = true, actions }: ProductDetailProps) {
   return (
     <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10">
       <Card flushBody>
@@ -180,10 +186,11 @@ export function ProductDetail({ name, category, image, price, vendor, features =
             <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">Includes a 1-year subscription — renew yearly to keep tracking, alerts &amp; history live.</span>
           </div>
         )}
-        <div className="tad-cta-row mt-2 flex flex-wrap gap-3">
-          <Link href="/checkout" className="tad-btn tad-btn--primary tad-btn--lg">Add to cart</Link>
-          <Link href="/checkout" className="tad-btn tad-btn--secondary tad-btn--lg">Buy now · Cash on delivery</Link>
-        </div>
+        {actions ?? (
+          <div className="tad-cta-row mt-2 flex flex-wrap gap-3">
+            <Link href="/shop" className="tad-btn tad-btn--secondary tad-btn--lg">Browse the shop</Link>
+          </div>
+        )}
       </div>
     </div>
   );

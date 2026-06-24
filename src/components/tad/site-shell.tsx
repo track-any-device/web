@@ -5,6 +5,7 @@ import { Logo } from './logo';
 import { SiteFooter } from './site-footer';
 import { PageTransition } from './page-transition';
 import { UserMenu } from './user-menu';
+import { CartButton } from './cart-button';
 import { MobileNav } from './mobile-nav';
 import { SITE_NAV } from './site-nav';
 import { getSession } from '@/lib/auth';
@@ -37,6 +38,7 @@ export async function SiteShell({ children, dark = false }: SiteShellProps) {
             ))}
           </nav>
           <div className="tad-shell__actions">
+            <CartButton />
             {session?.user ? (
               <UserMenu name={userName} role={String(session.user.role ?? '')} />
             ) : (

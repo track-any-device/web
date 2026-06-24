@@ -2,12 +2,14 @@ import React from 'react';
 import { SiteShell } from '@/components/tad/site-shell';
 import { Section } from '@/components/tad/marketing';
 import { getDeviceTypes } from '@/lib/catalog';
+import { getShopProducts } from '@/lib/shop-api';
 import { ShopGrid } from './shop-grid';
 
-/* Shop surface (PREVIEW at /tad-preview/shop). Catalog from Sanity (server-side) → ShopGrid. */
+/* Shop surface. Catalogue (presentation) from Sanity + orderable products (real DB ids/stock) from
+   the Shop API, both server-side → ShopGrid lines them up by slug to enable real Add-to-cart. */
 
 export default async function ShopPreview() {
-  const products = await getDeviceTypes();
+  const [products, orderable] = await Promise.all([getDeviceTypes(), getShopProducts()]);
   return (
     <SiteShell>
       <Section
@@ -15,7 +17,7 @@ export default async function ShopPreview() {
         title="GPS trackers for every ride"
         subtitle="Cash on delivery across Pakistan — every device includes a 1-year subscription."
       >
-        <ShopGrid products={products} />
+        <ShopGrid products={products} orderable={orderable} />
       </Section>
     </SiteShell>
   );

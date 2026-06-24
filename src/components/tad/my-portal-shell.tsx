@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/tad/logo';
 import { SiteFooter } from '@/components/tad/site-footer';
 import { UserMenu } from '@/components/tad/user-menu';
+import { CartButton } from '@/components/tad/cart-button';
 import { getAuthUser } from '@/lib/auth-store';
 import { SITE_NAV } from '@/components/tad/site-nav';
 import { LoadingProvider } from '@/components/tad/loading-provider';
@@ -50,6 +51,7 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
           <div className="tad-shell__actions">
+            <CartButton />
             <UserMenu name={user.name} role={user.role} />
           </div>
         </div>

@@ -19,6 +19,7 @@ export async function getDeviceTypes(): Promise<Product[]> {
     if (rows && rows.length) {
       return rows.map((r) => ({
         name: r.name,
+        slug: r.slug,
         category: r.category as Product['category'],
         vendor: r.vendor,
         protocol: r.protocol as Product['protocol'],
