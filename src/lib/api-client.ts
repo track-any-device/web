@@ -366,6 +366,9 @@ export interface Incident {
     resolved_at: string | null;
     device?: { id: number; name: string; imei: string };
     beat?: { id: number; name: string };
+    /** Live metric for an OPEN incident (null once closed): overspeed → speed (km/h),
+     *  low_battery → battery (%), beat_violation → distanceM (metres from the assigned beat). */
+    current?: { speed: number | null; battery: number | null; distanceM: number | null } | null;
 }
 
 export interface IncidentLocation {
