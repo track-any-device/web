@@ -6,9 +6,16 @@ import { Card } from '@/components/ui';
 
 /* Last-known position of one device on a Google map — the admin counterpart of the /my device map.
    Uses the device's stored last_lat/last_lon (no live trail; the admin detail endpoint returns only
-   the latest fix). Real position only — when there's no fix, a friendly empty state, never a guess. */
+   the latest fix). Real position only — when there's no fix, a friendly empty state, never a guess.
+
+   The card is the 4th cell of a 4-column CSS grid row, so the row stretches it to match its taller
+   neighbours. We make the card body flex-fill (the scoped style below grows .tad-card__body, which the
+   Card component doesn't do by default) and the map fill that body, with a minHeight floor so a short
+   row never collapses the map. */
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
+
+const MIN_MAP_HEIGHT = 200;
 
 export function DeviceMapCard({ lat, lon, online, name }: {
   lat: number | null;
@@ -73,9 +80,20 @@ export function DeviceMapCard({ lat, lon, online, name }: {
     return () => { marker.setMap(null); };
   }, [ready, hasLocation, lat, lon, color, name]);
 
+  // Shared style for the body wrapper so the map (or empty state) fills the stretched card height.
+  const fillBody: React.CSSProperties = {
+    height: '100%',
+    minHeight: MIN_MAP_HEIGHT,
+    position: 'relative',
+    borderRadius: '0 0 var(--radius-lg) var(--radius-lg)',
+    overflow: 'hidden',
+  };
+
   return (
-    <Card title="Location" flushBody>
-      <div style={{ height: 200, position: 'relative', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', overflow: 'hidden' }}>
+    <Card title="Location" flushBody className="admin-device-map-card" style={{ height: '100%' }}>
+      {/* Grow .tad-card__body to fill the card; the Card component doesn't flex its body by default. */}
+      <style>{`.admin-device-map-card .tad-card__body{flex:1;min-height:0;display:flex;}`}</style>
+      <div style={fillBody}>
         {!MAPS_KEY ? (
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg-sunken)' }}>
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
