@@ -5,7 +5,20 @@ import { getSession } from '@/lib/auth';
 import { ADMIN_ROLES, type Role } from '@/lib/portal-data';
 
 const ADMIN_NAV: PortalNavItem[] = [
-  { href: '/admin', label: 'Dashboard', icon: 'grid', exact: true },
+  {
+    href: '/admin',
+    label: 'Dashboards',
+    icon: 'grid',
+    exact: true,
+    children: [
+      { href: '/admin', label: 'Overview', icon: 'grid', exact: true },
+      { href: '/admin/dashboards/fleet', label: 'Fleet', icon: 'cpu' },
+      { href: '/admin/dashboards/operations', label: 'Operations', icon: 'alert' },
+      { href: '/admin/dashboards/support', label: 'Support', icon: 'bell' },
+      { href: '/admin/dashboards/integrations', label: 'Integrations', icon: 'message' },
+      { href: '/admin/dashboards/customers', label: 'Customers', icon: 'users' },
+    ],
+  },
   { href: '/admin/users', label: 'Users', icon: 'users' },
   { href: '/admin/organisations', label: 'Organisations', icon: 'building' },
   { href: '/admin/devices', label: 'Devices', icon: 'cpu' },

@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/tad/logo';
+import { cn } from '@/lib/cn';
 
 /* Internal-portal chrome (operations + admin) — persistent left sidebar + per-page topbar.
    Scoped under `.tad`; built on the design tokens. Mirrors the design-skill FleetChrome. */
@@ -44,12 +45,85 @@ export interface PortalNavItem {
   count?: number;
   badge?: number;
   exact?: boolean; // match only the exact path (e.g. a section index like /admin)
+  /** Optional nested entries. When present this item renders as an expandable group
+     header (its own `href` still navigates) and the children render indented beneath it.
+     Flat navs (no `children`) are unaffected — the existing portals keep working as-is. */
+  children?: PortalNavItem[];
 }
 
 export interface PortalUser {
   name: string;
   role: string;
   initials: string;
+}
+
+/** Active when the pathname matches this item (exact match, or a prefix when not `exact`). */
+function isNavItemActive(item: PortalNavItem, pathname: string): boolean {
+  return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/');
+}
+
+/** A single flat nav link (used both at top level and, indented, as a group child). */
+function NavLink({ item, pathname, nested }: { item: PortalNavItem; pathname: string; nested?: boolean }) {
+  const active = isNavItemActive(item, pathname);
+  return (
+    <Link
+      href={item.href}
+      className={cn('tad-portal__nav-item', nested && 'tad-portal__nav-item--sub', active && 'is-active')}
+    >
+      {!nested && <Icon name={item.icon} />}
+      <span style={{ flex: 1 }}>{item.label}</span>
+      {item.count != null && <span className="tad-portal__nav-count">{item.count}</span>}
+      {item.badge != null && <span className="tad-portal__nav-badge">{item.badge}</span>}
+    </Link>
+  );
+}
+
+/** An expandable group: header link + indented children. Expanded whenever the header
+   itself or any child is active (no client state needed — purely path-driven). */
+function NavGroup({ item, pathname }: { item: PortalNavItem; pathname: string }) {
+  const children = item.children ?? [];
+  const childActive = children.some((c) => isNavItemActive(c, pathname));
+  const headerActive = isNavItemActive(item, pathname);
+  const expanded = headerActive || childActive;
+  return (
+    <div className="tad-portal__nav-group">
+      <Link
+        href={item.href}
+        aria-expanded={expanded}
+        className={cn('tad-portal__nav-item', (headerActive || childActive) && 'is-active')}
+      >
+        <Icon name={item.icon} />
+        <span style={{ flex: 1 }}>{item.label}</span>
+        <Chevron open={expanded} />
+      </Link>
+      {expanded && (
+        <div className="tad-portal__nav-sublist">
+          {children.map((c) => (
+            <NavLink key={c.href} item={c} pathname={pathname} nested />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ flex: 'none', transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none', opacity: 0.7 }}
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
+  );
 }
 
 export function PortalSidebar({ nav, user }: { nav: PortalNavItem[]; user?: PortalUser }) {
@@ -60,18 +134,13 @@ export function PortalSidebar({ nav, user }: { nav: PortalNavItem[]; user?: Port
         <Link href="/my" aria-label="TAD-PAK — my account"><Logo /></Link>
       </div>
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-        {nav.map((item) => {
-          const active = item.exact ? pathname === item.href : (pathname === item.href || pathname.startsWith(item.href + '/'));
-          return (
-            <Link key={item.href} href={item.href}
-              className={'tad-portal__nav-item' + (active ? ' is-active' : '')}>
-              <Icon name={item.icon} />
-              <span style={{ flex: 1 }}>{item.label}</span>
-              {item.count != null && <span className="tad-portal__nav-count">{item.count}</span>}
-              {item.badge != null && <span className="tad-portal__nav-badge">{item.badge}</span>}
-            </Link>
-          );
-        })}
+        {nav.map((item) =>
+          item.children && item.children.length > 0 ? (
+            <NavGroup key={item.href} item={item} pathname={pathname} />
+          ) : (
+            <NavLink key={item.href} item={item} pathname={pathname} />
+          ),
+        )}
       </nav>
       {user && (
         <div className="tad-portal__user">
