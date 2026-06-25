@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Card } from '@/components/ui';
-import { TrendArea, MultiTrend, CHART_COLORS } from '@/components/tad/charts';
+import { TrendArea, MultiTrend, Donut, CHART_COLORS } from '@/components/tad/charts';
 import { type DashboardData } from '@/lib/portal-data';
 import { DashboardSection } from '../dashboard-section';
 
@@ -49,6 +49,9 @@ export function IntegrationsCharts({ initial, initialDays }: { initial: Dashboar
           </Card>
           <Card title="SMS received">
             <TrendArea data={d.timeseries.smsIncoming} name="Received" color={CHART_COLORS.blue} />
+          </Card>
+          <Card title="Forwarding transports">
+            <Donut data={d.distributions.transports.map((s) => ({ label: s.label, count: s.count }))} centerLabel="tenants" />
           </Card>
         </>
       )}

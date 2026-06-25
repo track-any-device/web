@@ -149,6 +149,8 @@ export interface DashboardTotals {
   users: number; devices: number; activeDevices: number; pendingDevices: number;
   organisations: number; openIncidents: number; openTickets: number;
   forwarded24h: number; smsSent24h: number; smsReceived24h: number;
+  /** Wave F — mean time-to-resolve (HOURS) of incidents resolved in the window, 2dp; 0 when none. */
+  mttrHours: number;
 }
 
 export interface CountPoint { date: string; count: number }
@@ -165,6 +167,9 @@ export interface DashboardTimeseries {
   forwarding: ForwardingPoint[];
   incidents: IncidentPoint[];
   smsOutgoing: SmsOutgoingPoint[];
+  /** Wave F — dense daily signal counts from InfluxDB (one CountPoint per UTC day in the
+     window, ascending, zero-filled; all zeros when InfluxDB is disabled/unreachable). */
+  signalVolume: CountPoint[];
 }
 
 export interface DistributionSlice { key: string; label: string; count: number }
@@ -174,6 +179,12 @@ export interface DashboardDistributions {
   deviceStatus: DistributionSlice[];
   ticketStatus: DistributionSlice[];
   incidentPriority: DistributionSlice[];
+  /** Wave F — one slice per ACTIVE DeviceType (name asc); key = String(id), count = devices of
+     that type. Length is dynamic (no fixed enum); empty when no active types. */
+  deviceTypes: DistributionSlice[];
+  /** Wave F — tenant forwarding-transport mix. ALWAYS the 4 fixed slices in this order
+     (rest, mqtt, tad101, none), every case present even at 0. */
+  transports: DistributionSlice[];
 }
 
 export interface DashboardData {
@@ -181,6 +192,31 @@ export interface DashboardData {
   totals: DashboardTotals;
   timeseries: DashboardTimeseries;
   distributions: DashboardDistributions;
+}
+
+/** The 4 fixed forwarding-transport slices, in their canonical order, all at count 0.
+   Matches app's `distributions.transports` contract exactly (every case always present). */
+export function emptyTransportSlices(): DistributionSlice[] {
+  return [
+    { key: 'rest', label: 'REST API', count: 0 },
+    { key: 'mqtt', label: 'MQTT', count: 0 },
+    { key: 'tad101', label: 'TAD101 Channel', count: 0 },
+    { key: 'none', label: 'None', count: 0 },
+  ];
+}
+
+/** A dense, zero-filled CountPoint[] of length `days`: one entry per UTC day, ASCENDING,
+   ending today (last date === today UTC). Mirrors the dense signalVolume the API returns so the
+   empty fallback is shaped identically (never absent, never sparse). */
+export function denseZeroCountPoints(days: number): CountPoint[] {
+  const n = Math.max(0, Math.trunc(days));
+  const out: CountPoint[] = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    out.push({ date: d.toISOString().slice(0, 10), count: 0 });
+  }
+  return out;
 }
 
 /** Safe empty fallback — used when the endpoint 404s (not yet deployed) or errors.
@@ -193,12 +229,18 @@ export function emptyDashboard(days = 30): DashboardData {
       users: 0, devices: 0, activeDevices: 0, pendingDevices: 0,
       organisations: 0, openIncidents: 0, openTickets: 0,
       forwarded24h: 0, smsSent24h: 0, smsReceived24h: 0,
+      mttrHours: 0,
     },
     timeseries: {
       activity: [], usersJoined: [], devicesOnboarded: [], tickets: [],
       smsIncoming: [], forwarding: [], incidents: [], smsOutgoing: [],
+      // Dense zero-filled, matching the API's signalVolume shape (never sparse/absent).
+      signalVolume: denseZeroCountPoints(days),
     },
-    distributions: { userTypes: [], deviceStatus: [], ticketStatus: [], incidentPriority: [] },
+    distributions: {
+      userTypes: [], deviceStatus: [], ticketStatus: [], incidentPriority: [],
+      deviceTypes: [], transports: emptyTransportSlices(),
+    },
   };
 }
 
@@ -209,12 +251,16 @@ export function isDashboardEmpty(d: DashboardData): boolean {
   const totalsZero =
     t.users === 0 && t.devices === 0 && t.activeDevices === 0 && t.pendingDevices === 0 &&
     t.organisations === 0 && t.openIncidents === 0 && t.openTickets === 0 &&
-    t.forwarded24h === 0 && t.smsSent24h === 0 && t.smsReceived24h === 0;
+    t.forwarded24h === 0 && t.smsSent24h === 0 && t.smsReceived24h === 0 &&
+    t.mttrHours === 0;
   const ts = d.timeseries;
+  // signalVolume is always DENSE (length === days even when empty), so length can't signal
+  // emptiness — only a non-zero count means it carries real data.
+  const signalVolumeEmpty = !ts.signalVolume.some((p) => p.count > 0);
   const seriesEmpty =
     ts.activity.length === 0 && ts.usersJoined.length === 0 && ts.devicesOnboarded.length === 0 &&
     ts.tickets.length === 0 && ts.smsIncoming.length === 0 && ts.forwarding.length === 0 &&
-    ts.incidents.length === 0 && ts.smsOutgoing.length === 0;
+    ts.incidents.length === 0 && ts.smsOutgoing.length === 0 && signalVolumeEmpty;
   return totalsZero && seriesEmpty;
 }
 
