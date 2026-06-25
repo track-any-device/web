@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Globe, Radio, Waypoints, KeyRound, ArrowUpRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { StatRow } from '@/components/tad/data-table';
+import { PortalTopbar } from '@/components/tad/portal-shell';
 import { Badge, Button, Input, Card } from '@/components/ui';
 
 /* Admin organisations listing (Wave E).
@@ -122,18 +123,23 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
   const forwardingCount = rows.length - tad101Count;
 
   return (
-    <div className="tad-portal__body">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <>
+      <PortalTopbar
+        title="Organisations"
+        subtitle="Tenant accounts (B2B fleets), their transport and delivery"
+        right={
+          <Button onClick={() => { setShowForm((s) => !s); setError(null); }}>
+            {showForm ? 'Close' : 'New organisation'}
+          </Button>
+        }
+      />
+      <div className="tad-portal__body">
         <StatRow stats={[
           { label: 'Organisations', value: rows.length },
           { label: 'On TAD101 channel', value: tad101Count, hint: 'broadcast over the channel' },
           { label: 'Forwarding out', value: forwardingCount, hint: 'REST API / MQTT' },
           { label: 'Devices managed', value: rows.reduce((n, t) => n + (t.devices || 0), 0) },
         ]} />
-        <Button onClick={() => { setShowForm((s) => !s); setError(null); }}>
-          {showForm ? 'Close' : 'New organisation'}
-        </Button>
-      </div>
 
       {showForm && (
         <Card>
@@ -162,6 +168,7 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
 
       {revealed && <KeyDialog data={revealed} onClose={() => setRevealed(null)} />}
     </div>
+    </>
   );
 }
 

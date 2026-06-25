@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Table2, Map as MapIcon, MapPin, Smartphone } from 'lucide-react';
 import { DataTable, StatRow } from '@/components/tad/data-table';
+import { PortalTopbar } from '@/components/tad/portal-shell';
 import { HeartbeatCell } from '@/components/tad/heartbeat';
 import { Badge, Button, Card, Tabs } from '@/components/ui';
 
@@ -187,19 +188,24 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
   ];
 
   return (
-    <div className="tad-portal__body">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <>
+      <PortalTopbar
+        title="Devices"
+        subtitle="Every device on the platform"
+        right={
+          <Tabs
+            variant="pill"
+            value={view}
+            onChange={(v) => setView(v as 'table' | 'map')}
+            items={[
+              { value: 'table', label: 'Table', icon: <Table2 /> },
+              { value: 'map', label: 'Map', icon: <MapIcon /> },
+            ]}
+          />
+        }
+      />
+      <div className="tad-portal__body">
         <StatRow stats={stats} />
-        <Tabs
-          variant="pill"
-          value={view}
-          onChange={(v) => setView(v as 'table' | 'map')}
-          items={[
-            { value: 'table', label: 'Table', icon: <Table2 /> },
-            { value: 'map', label: 'Map', icon: <MapIcon /> },
-          ]}
-        />
-      </div>
 
       {view === 'table' ? (
         /* SIM is admin-only per the privacy rules — never shown in tenant/my portals. */
@@ -229,6 +235,7 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
         />
       )}
     </div>
+    </>
   );
 }
 
