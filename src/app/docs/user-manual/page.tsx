@@ -42,15 +42,15 @@ export default function UserManual() {
             </header>
 
             <H2>1. Signing In</H2>
-            <P>Track Any Device uses a central single sign-on (SSO) system. You sign in once and gain access to all services you are authorised for.</P>
+            <P>Track Any Device signs you in with your <strong>phone number</strong> and a one-time SMS code (OTP) — there is no password and no separate single sign-on. The website is its own login.</P>
             <ol className="mt-3 list-decimal pl-5 space-y-1">
-                <Li>Navigate to <strong>track-any-device.com/my</strong></Li>
-                <Li>Click <strong>Sign in</strong> — you will be redirected to the login page</Li>
-                <Li>Enter your email and password</Li>
-                <Li>If two-factor authentication is enabled on your account, enter the SMS code sent to your registered number</Li>
-                <Li>You are returned to the My portal</Li>
+                <Li>Navigate to <strong>track-any-device.com/login</strong> (or click <strong>Sign in</strong> from any page)</Li>
+                <Li>Enter your <strong>phone number</strong> and tap <strong>Send code</strong></Li>
+                <Li>We send a one-time code by SMS to that number</Li>
+                <Li>Enter the code to verify — no password required</Li>
+                <Li>You are taken to the My portal</Li>
             </ol>
-            <Note>First-time users must be registered by an administrator. Contact your organisation&apos;s admin or the platform team to receive an invitation.</Note>
+            <Note>The code is valid for a short time. If it doesn&apos;t arrive, check the phone number and request a new one. First-time users must be registered on the platform before they can sign in — contact your organisation&apos;s admin or the platform team.</Note>
 
             <H2>2. The My Portal</H2>
             <P>The My portal (<strong>track-any-device.com/my</strong>) is your personal dashboard. It shows:</P>
@@ -110,12 +110,13 @@ export default function UserManual() {
             <Note>Background location is required for tracking to continue when the app is minimised. Enable <em>Allow always</em> in your phone&apos;s location settings for uninterrupted tracking.</Note>
 
             <H2>8. Account Settings</H2>
-            <P>Account settings are managed at <strong>login.track-any-device.com</strong> after signing in:</P>
+            <P>Your profile is managed inside the app after you sign in:</P>
             <ul className="mt-3 list-disc pl-5 space-y-1">
-                <Li><strong>Profile</strong> — update your name and email address</Li>
-                <Li><strong>Phone / 2FA</strong> — register or update your mobile number for two-factor authentication</Li>
-                <Li><strong>Security</strong> — change your password or manage active sessions</Li>
+                <Li><strong>Profile</strong> — update your name and contact details</Li>
+                <Li><strong>Phone number</strong> — the number you sign in with and where one-time SMS codes are sent</Li>
+                <Li><strong>Sessions</strong> — sign out to end your session on this device</Li>
             </ul>
+            <P>There is no password to manage — sign-in is always by phone number and a one-time SMS code.</P>
 
             <div className="mt-12 rounded-xl border border-border bg-muted/40 p-6 text-sm text-muted-foreground">
                 <strong className="text-foreground">Need help?</strong>

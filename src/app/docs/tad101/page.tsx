@@ -80,8 +80,7 @@ export default function OverviewPage() {
                 </li>
                 <li>
                     <strong>Open ecosystem.</strong> The protocol is documented,
-                    extensible, and welcomes new device types. See{' '}
-                    <em>Present Your Idea</em>.
+                    extensible, and welcomes new device types.
                 </li>
             </ol>
 
@@ -99,7 +98,6 @@ export default function OverviewPage() {
                         <th>Device Type</th>
                         <th>Slug</th>
                         <th>SDK / Library</th>
-                        <th>Guide</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -109,9 +107,6 @@ export default function OverviewPage() {
                             <code>android_app</code>
                         </td>
                         <td>pusher-java-client</td>
-                        <td>
-                            <a href="/docs/tad101/android">Android</a>
-                        </td>
                     </tr>
                     <tr>
                         <td>iOS App</td>
@@ -119,9 +114,6 @@ export default function OverviewPage() {
                             <code>ios_app</code>
                         </td>
                         <td>pusher-websocket-swift</td>
-                        <td>
-                            <a href="/docs/tad101/ios">iOS</a>
-                        </td>
                     </tr>
                     <tr>
                         <td>Arduino / ESP32</td>
@@ -129,9 +121,6 @@ export default function OverviewPage() {
                             <code>arduino</code>
                         </td>
                         <td>ArduinoWebsockets</td>
-                        <td>
-                            <a href="/docs/tad101/arduino">Arduino</a>
-                        </td>
                     </tr>
                     <tr>
                         <td>Raspberry Pi</td>
@@ -139,9 +128,6 @@ export default function OverviewPage() {
                             <code>raspberry_pi</code>
                         </td>
                         <td>pusher (Python)</td>
-                        <td>
-                            <a href="/docs/tad101/raspberry-pi">Raspberry Pi</a>
-                        </td>
                     </tr>
                 </tbody>
             </table>
