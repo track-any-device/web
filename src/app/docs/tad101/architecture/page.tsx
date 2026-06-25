@@ -8,15 +8,15 @@ export const metadata: Metadata = { title: 'Architecture – TAD101 | Track Any 
 const TOPOLOGY = `\
 Device (Android/iOS/Arduino/RPi)
   └─ WebSocket ──► Soketi (Pusher-compatible)
-                     └─ private-device.{imei}
-                          ├─ tad101.* events ──► TAD101 driver
-                          └─ tad101.cmd.* ◄────── Command bus`;
+                     └─ private-tad101.device.{imei}
+                          ├─ client-tad101-* events ──► TAD101 driver
+                          └─ tad101-command ◄────────── Command bus`;
 
 const AUTH_FLOW = `\
 1. Device POST /api/tad101/auth  { imei, secret }
 2. Server validates secret  →  issues Soketi channel auth token
-3. Device subscribes to private-device.{imei}
-4. Telemetry pushed as tad101.telemetry events`;
+3. Device subscribes to private-tad101.device.{imei}
+4. Telemetry pushed as client-tad101-signal events`;
 
 export default function ArchitecturePage() {
     return (
@@ -36,17 +36,14 @@ export default function ArchitecturePage() {
                 <tbody>
                     <tr>
                         <td>
-                            <code>tad101.device.{`{imei}`}</code>
+                            <code>private-tad101.device.{`{imei}`}</code>
                         </td>
-                        <td>Per-device telemetry + command bus</td>
-                        <td>Private, device secret</td>
-                    </tr>
-                    <tr>
                         <td>
-                            <code>admin.devices</code>
+                            Per-device telemetry + command bus. The server
+                            broadcasts the <code>tad101-command</code> event on
+                            this channel to reach the device.
                         </td>
-                        <td>Filament admin map feed</td>
-                        <td>Private, admin</td>
+                        <td>Private, device secret</td>
                     </tr>
                     <tr>
                         <td>
@@ -61,13 +58,6 @@ export default function ArchitecturePage() {
                         </td>
                         <td>End-user app feed</td>
                         <td>Private, user</td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <code>tad101.commands</code>
-                        </td>
-                        <td>Admin observability mirror</td>
-                        <td>Public</td>
                     </tr>
                 </tbody>
             </table>

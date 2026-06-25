@@ -4,17 +4,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     AlertTriangle, ArrowLeft, ArrowRight,
-    BookOpen, Box, CheckCircle2, Cpu, History,
-    Info, Lightbulb, Network, Smartphone, Terminal, Wifi,
+    BookOpen, Box, CheckCircle2,
+    Info, Network, Wifi,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(' ');
 
 type SectionId =
-    | 'overview' | 'architecture' | 'envelope'
-    | 'android' | 'ios' | 'arduino' | 'raspberry-pi'
-    | 'sensors' | 'commands' | 'present-your-idea' | 'changelog';
+    | 'overview' | 'architecture' | 'envelope' | 'sensors';
 
 type SectionEntry = { id: SectionId; title: string; href: string; icon: LucideIcon };
 
@@ -22,14 +20,7 @@ export const TAD101_SECTIONS: SectionEntry[] = [
     { id: 'overview',          title: 'Overview',             href: '/docs/tad101',                     icon: BookOpen   },
     { id: 'architecture',      title: 'Architecture',         href: '/docs/tad101/architecture',         icon: Network    },
     { id: 'envelope',          title: 'Message envelope',     href: '/docs/tad101/envelope',             icon: Box        },
-    { id: 'android',           title: 'Android integration',  href: '/docs/tad101/android',              icon: Smartphone },
-    { id: 'ios',               title: 'iOS integration',      href: '/docs/tad101/ios',                  icon: Smartphone },
-    { id: 'arduino',           title: 'Arduino guide',        href: '/docs/tad101/arduino',              icon: Cpu        },
-    { id: 'raspberry-pi',      title: 'Raspberry Pi guide',   href: '/docs/tad101/raspberry-pi',         icon: Cpu        },
     { id: 'sensors',           title: 'Sensor registry',      href: '/docs/tad101/sensors',              icon: Wifi       },
-    { id: 'commands',          title: 'Command registry',     href: '/docs/tad101/commands',             icon: Terminal   },
-    { id: 'present-your-idea', title: 'Present your idea',    href: '/docs/tad101/present-your-idea',    icon: Lightbulb  },
-    { id: 'changelog',         title: 'Changelog',            href: '/docs/tad101/changelog',            icon: History    },
 ];
 
 export const TAD101_VERSION     = '1.0.0';

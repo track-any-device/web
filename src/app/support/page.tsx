@@ -1,43 +1,27 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Mail, Bug, BookOpen, FileText, ArrowRight } from 'lucide-react';
+import { Mail, Phone, BookOpen, Cpu, Webhook, ArrowRight } from 'lucide-react';
 import { Hero, Section } from '@/components/tad/marketing';
-import { Card, Badge } from '@/components/ui';
+import { Card } from '@/components/ui';
 
 export const runtime = 'edge';
 
 export const metadata: Metadata = { title: 'Support' };
 
-const DOCS = [
-  { title: 'User Manual',       href: '/docs/user-manual',    description: 'Getting started with your TAD devices and the my portal.' },
-  { title: 'TAD101 Protocol',   href: '/docs/tad101',         description: 'Universal device communication protocol documentation.' },
-  { title: 'Tenant Manual',     href: '/docs/tenant-manual',  description: 'Managing fleets, beats, and incidents as an organization.' },
-  { title: 'Tenant API',        href: '/docs/tenant-api',     description: 'REST API reference for tenant integrations.' },
-  { title: 'JT808 Protocol',    href: '/docs/jt808',          description: 'JT/T 808 protocol support for compatible devices.' },
-  { title: 'Engineers Manual',  href: '/docs/engineers-manual', description: 'Deep-dive technical reference for hardware engineers.' },
-];
-
 const CONTACT_METHODS = [
   {
+    icon: Phone,
+    label: 'Call us',
+    value: '+92 21 111 823 725',
+    href: 'tel:+922111823725',
+    description: 'Mon–Sat, 9am–8pm PKT. Talk to our team about devices, orders, or your account.',
+  },
+  {
     icon: Mail,
-    label: 'Email Support',
-    value: 'support@track-any-device.com',
-    href: 'mailto:support@track-any-device.com',
-    description: 'General enquiries, billing, and account issues. Response within 24 hours.',
-  },
-  {
-    icon: Bug,
-    label: 'Bug Reports',
-    value: 'GitHub Issues',
-    href: 'https://github.com/track-any-device',
-    description: 'Found a bug? Open an issue on our GitHub organisation.',
-  },
-  {
-    icon: BookOpen,
-    label: 'Documentation',
-    value: 'docs.track-any-device.com',
-    href: '/docs',
-    description: 'Browse the full platform documentation.',
+    label: 'Email us',
+    value: 'help@track-any-device.com',
+    href: 'mailto:help@track-any-device.com',
+    description: 'General enquiries, billing, and account issues. We reply within one business day.',
   },
 ];
 
@@ -47,24 +31,38 @@ export default function SupportPage() {
       <Hero
         eyebrow="Help & Support"
         title="Support"
-        subtitle="Need help with your devices, account, or integration? We're here for you."
-        primaryCta={{ label: 'Browse docs', href: '/docs' }}
+        subtitle="Whether you're tracking your own devices or building on the platform, here's where to start."
+        primaryCta={{ label: 'Read the User Manual', href: '/docs/user-manual' }}
       />
 
-      {/* Contact methods */}
-      <Section eyebrow="Get in touch" title="Contact us" width="lg">
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {/* ── For Users ── */}
+      <Section eyebrow="For users" title="Using your devices" width="lg">
+        <p className="mb-6 max-w-2xl text-[length:var(--text-base)] leading-normal text-[var(--text-secondary)]">
+          New to Track Any Device, or just need a refresher? The User Manual walks you through
+          signing in, adding a device, live tracking, incidents, and the mobile app. If you&apos;d
+          rather talk to someone, reach our team directly.
+        </p>
+
+        <Link href="/docs/user-manual" className="group block">
+          <Card interactive raised className="mb-6 flex flex-row items-start gap-4 p-6">
+            <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+              <BookOpen size={20} strokeWidth={2} aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-[var(--text)]">User Manual</p>
+              <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">
+                Getting started with your TAD devices, the my portal, and the mobile app.
+              </p>
+            </div>
+            <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </Card>
+        </Link>
+
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {CONTACT_METHODS.map((m) => {
             const Icon = m.icon;
-            const external = m.href.startsWith('http');
             return (
-              <a
-                key={m.label}
-                href={m.href}
-                target={external ? '_blank' : undefined}
-                rel={external ? 'noopener noreferrer' : undefined}
-                className="group block"
-              >
+              <a key={m.label} href={m.href} className="group block">
                 <Card interactive raised className="h-full p-6">
                   <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
                     <Icon size={20} strokeWidth={2} aria-hidden />
@@ -79,39 +77,45 @@ export default function SupportPage() {
         </div>
       </Section>
 
-      {/* Documentation */}
-      <Section eyebrow="Reference" title="Documentation" width="lg" className="pt-0">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {DOCS.map((doc) => (
-            <Link key={doc.href} href={doc.href} className="group block">
-              <Card interactive className="flex h-full flex-row items-start gap-4 p-5">
-                <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
-                  <FileText size={16} strokeWidth={2} aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className="font-semibold text-[var(--text)]">{doc.title}</p>
-                  <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">{doc.description}</p>
-                </div>
-                <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </Section>
+      {/* ── For Business ── */}
+      <Section eyebrow="For business" title="Build on the platform" width="lg" className="pt-0">
+        <p className="mb-6 max-w-2xl text-[length:var(--text-base)] leading-normal text-[var(--text-secondary)]">
+          Connecting your own hardware or integrating telemetry into your fleet? TAD101 is our universal
+          device protocol, and signal forwarding delivers your devices&apos; live signals straight into
+          your own systems over REST API or MQTT.
+        </p>
 
-      {/* Status */}
-      <Section width="lg" className="pt-0">
-        <Card raised className="p-6">
-          <div className="flex items-center gap-4">
-            <Badge variant="success" dot>Operational</Badge>
-            <div>
-              <p className="font-semibold text-[var(--text)]">All systems operational</p>
-              <p className="mt-0.5 text-[length:var(--text-sm)] text-[var(--text-secondary)]">
-                Platform, API, and real-time services are running normally.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Link href="/docs/tad101" className="group block">
+            <Card interactive raised className="flex h-full flex-row items-start gap-4 p-6">
+              <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+                <Cpu size={20} strokeWidth={2} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-[var(--text)]">TAD101 Protocol</p>
+                <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">
+                  Universal device communication protocol for real-time telemetry and remote commands.
+                </p>
+              </div>
+              <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Card>
+          </Link>
+
+          <Link href="/docs/forwarding" className="group block">
+            <Card interactive raised className="flex h-full flex-row items-start gap-4 p-6">
+              <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+                <Webhook size={20} strokeWidth={2} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-[var(--text)]">Signal forwarding</p>
+                <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">
+                  Forward your devices&apos; location &amp; heartbeat signals to your systems via REST API or MQTT.
+                </p>
+              </div>
+              <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Card>
+          </Link>
+        </div>
       </Section>
     </>
   );

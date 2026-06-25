@@ -7,9 +7,12 @@ export const metadata: Metadata = { title: 'Message Envelope – TAD101 | Track 
 
 const ENVELOPE = `\
 {
-  "tad": "1.0",
+  "tad": "101",
+  "v": "1.0",
   "imei": "860000000000001",
+  "event": "update",
   "ts": 1715000000,
+  "seq": 42,
   "payload": { ... }
 }`;
 
@@ -27,7 +30,7 @@ const PAYLOAD = `\
 const COMMAND = `\
 {
   "cmd": "ping",
-  "id": "cmd-abc123"
+  "cmd_id": "cmd-abc123"
 }`;
 
 export default function EnvelopePage() {
