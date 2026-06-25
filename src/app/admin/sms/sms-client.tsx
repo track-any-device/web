@@ -3,6 +3,7 @@
 import React from 'react';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { Badge, Button, Input, Card, Tabs } from '@/components/ui';
+import { PortalTopbar } from '@/components/tad/portal-shell';
 import type { OutgoingSmsRow, IncomingSmsRow } from '@/lib/portal-data';
 
 const STATUS_VARIANT: Record<string, 'warning' | 'success' | 'danger' | 'neutral'> = {
@@ -69,6 +70,18 @@ export function SmsClient({
   }
 
   return (
+    <>
+      <PortalTopbar
+        title="SMS"
+        subtitle="Inbound and outbound messages"
+        right={
+          tab === 'outgoing' ? (
+            <Button onClick={() => { setShowForm((s) => !s); setError(null); }}>
+              {showForm ? 'Close' : 'Send SMS'}
+            </Button>
+          ) : undefined
+        }
+      />
     <div className="tad-portal__body">
       <Tabs
         variant="pill"
@@ -83,17 +96,12 @@ export function SmsClient({
 
       {tab === 'outgoing' ? (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
-            <StatRow stats={[
-              { label: 'Total', value: counts.total },
-              { label: 'Pending', value: counts.pending },
-              { label: 'Sent', value: counts.sent },
-              { label: 'Failed', value: counts.failed },
-            ]} />
-            <Button onClick={() => { setShowForm((s) => !s); setError(null); }}>
-              {showForm ? 'Close' : 'Send SMS'}
-            </Button>
-          </div>
+          <StatRow stats={[
+            { label: 'Total', value: counts.total },
+            { label: 'Pending', value: counts.pending },
+            { label: 'Sent', value: counts.sent },
+            { label: 'Failed', value: counts.failed },
+          ]} />
 
           {showForm && (
             <Card style={{ marginBottom: 16 }}>
@@ -139,5 +147,6 @@ export function SmsClient({
         />
       )}
     </div>
+    </>
   );
 }

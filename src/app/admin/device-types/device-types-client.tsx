@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DataTable, StatRow } from '@/components/tad/data-table';
+import { PortalTopbar } from '@/components/tad/portal-shell';
 import { Badge, Button, Card, Input, Switch } from '@/components/ui';
 import { type DeviceType } from '@/lib/portal-data';
 
@@ -63,15 +64,18 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
   }
 
   return (
-    <div className="tad-portal__body">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+    <>
+      <PortalTopbar
+        title="Device types"
+        subtitle="The sellable catalogue"
+        right={<Button onClick={openCreate}>New device type</Button>}
+      />
+      <div className="tad-portal__body">
         <StatRow stats={[
           { label: 'Types', value: rows.length },
           { label: 'Active', value: rows.filter((t) => t.active).length },
           { label: 'Devices', value: rows.reduce((n, t) => n + (t.deviceCount || 0), 0) },
         ]} />
-        <Button onClick={openCreate}>New device type</Button>
-      </div>
 
       {showForm && (
         <Card style={{ marginBottom: 16 }}>
@@ -117,5 +121,6 @@ export function DeviceTypesClient({ initial, loadError }: { initial: DeviceType[
         ]}
       />
     </div>
+    </>
   );
 }

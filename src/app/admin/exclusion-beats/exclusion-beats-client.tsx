@@ -3,6 +3,7 @@
 import React from 'react';
 import { Pencil, Trash2, MapPin, Hexagon } from 'lucide-react';
 import { StatRow } from '@/components/tad/data-table';
+import { PortalTopbar } from '@/components/tad/portal-shell';
 import { Button, Card, IconButton, Input } from '@/components/ui';
 import { type ExclusionBeat } from '@/lib/portal-data';
 
@@ -399,14 +400,17 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
   const totalVertices = rows.reduce((n, z) => n + (z.coordinates?.length || 0), 0);
 
   return (
-    <div className="tad-portal__body">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <>
+      <PortalTopbar
+        title="Exclusion zones"
+        subtitle="No-go areas — every device is restricted unless its type is exempt"
+        right={<Button onClick={openCreate}>New zone</Button>}
+      />
+      <div className="tad-portal__body">
         <StatRow stats={[
           { label: 'Zones', value: rows.length },
           { label: 'Vertices', value: totalVertices },
         ]} />
-        <Button onClick={openCreate}>New zone</Button>
-      </div>
 
       {showForm && (
         <Card style={{ marginBottom: 0 }}>
@@ -592,5 +596,6 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
         }
       `}</style>
     </div>
+    </>
   );
 }
