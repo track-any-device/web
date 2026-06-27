@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat } from '@/lib/api-client';
@@ -31,7 +31,6 @@ interface Props {
 const TAB_LINKS: { value: DevicesTab; label: string; href: string }[] = [
     { value: 'assets', label: 'Assets', href: '/my/devices' },
     { value: 'beats',  label: 'Beats',  href: '/my/beats' },
-    { value: 'trips',  label: 'Trips',  href: '/my/trips' },
 ];
 
 const MAPS_KEY    = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
@@ -221,6 +220,7 @@ export default function DevicesView({
 }: Props) {
     const router   = useRouter();
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     // Active tab follows the URL; fall back to the prop on first render.
     const activeTab: DevicesTab =
         pathname?.startsWith('/my/beats') ? 'beats'
@@ -238,7 +238,11 @@ export default function DevicesView({
     // Mobile-only: which single pane is shown (the desktop lg+ layout shows all three side by side).
     // 'list' = the Assets/Beats/Trips panel · 'map' = the live map · 'alerts' = incidents.
     type MobilePane = 'list' | 'map' | 'alerts';
-    const [mobilePane, setMobilePane] = useState<MobilePane>('list');
+    // Map is the default mobile pane. Section links carry ?view=list so tapping Devices/Beats
+    // (which remounts this page on a route change) lands on the list, not back on the map.
+    const [mobilePane, setMobilePane] = useState<MobilePane>(
+        searchParams.get('view') === 'list' || activeTab === 'beats' ? 'list' : 'map',
+    );
 
     // Left "Trips" tab: auto-detected trips for the selected device
     const [trips,           setTrips]           = useState<Trip[]>([]);
@@ -608,20 +612,34 @@ export default function DevicesView({
             {/* Mobile segmented control (hidden at lg+) */}
             <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2.5 lg:hidden"
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}>
-                <div className="tad-tabs tad-tabs--pill flex-1" role="tablist" aria-label="View">
-                    {([
-                        { value: 'list',   label: 'List',   count: activeTab === 'assets' ? devices.length : activeTab === 'beats' ? beats.length : null },
-                        { value: 'map',    label: 'Map',    count: null },
-                        { value: 'alerts', label: 'Alerts', count: newIncidentCount > 0 ? newIncidentCount : null },
-                    ] as { value: MobilePane; label: string; count: number | null }[]).map(p => (
-                        <button key={p.value} type="button" role="tab"
-                            aria-selected={mobilePane === p.value}
-                            onClick={() => setMobilePane(p.value)}
-                            className="tad-tab flex-1 justify-center">
-                            {p.label}
-                            {p.count != null && <span className="tad-tab__count">{p.count}</span>}
-                        </button>
-                    ))}
+                <div className="tad-tabs tad-tabs--pill flex-1" role="tablist" aria-label="Views">
+                    <button type="button" role="tab"
+                        aria-selected={mobilePane === 'map'}
+                        onClick={() => setMobilePane('map')}
+                        className="tad-tab flex-1 justify-center">
+                        Map
+                    </button>
+                    <Link href="/my/devices?view=list" role="tab"
+                        aria-selected={mobilePane === 'list' && activeTab === 'assets'}
+                        onClick={() => setMobilePane('list')}
+                        className="tad-tab flex-1 justify-center" style={{ textDecoration: 'none' }}>
+                        Devices
+                        {devices.length > 0 && <span className="tad-tab__count">{devices.length}</span>}
+                    </Link>
+                    <Link href="/my/beats?view=list" role="tab"
+                        aria-selected={mobilePane === 'list' && activeTab === 'beats'}
+                        onClick={() => setMobilePane('list')}
+                        className="tad-tab flex-1 justify-center" style={{ textDecoration: 'none' }}>
+                        Beats
+                        {beats.length > 0 && <span className="tad-tab__count">{beats.length}</span>}
+                    </Link>
+                    <button type="button" role="tab"
+                        aria-selected={mobilePane === 'alerts'}
+                        onClick={() => setMobilePane('alerts')}
+                        className="tad-tab flex-1 justify-center">
+                        Incidents
+                        {newIncidentCount > 0 && <span className="tad-tab__count">{newIncidentCount}</span>}
+                    </button>
                 </div>
             </div>
 
@@ -633,7 +651,7 @@ export default function DevicesView({
                 <div className={`${mobilePane === 'list' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
                 <Card flushBody
                     className="tad-card--fill min-h-0 flex-1 lg:flex-none">
-                    <div className="shrink-0 overflow-x-auto" style={{ padding: '12px 14px 0' }}>
+                    <div className="hidden shrink-0 overflow-x-auto lg:block" style={{ padding: '12px 14px 0' }}>
                         {/* Pill tabs are real links — each view (Assets / Beats / Trips) is its own route.
                             On narrow screens the row scrolls horizontally instead of wrapping/overflowing. */}
                         <div className="tad-tabs tad-tabs--pill w-max min-w-full" role="tablist">
@@ -788,7 +806,7 @@ export default function DevicesView({
                 <Card flushBody style={{ overflow: 'hidden' }}
                     className="tad-card--fill min-h-0 flex-1 lg:flex-none">
                     {/* Fills the pane on mobile; fixed 460px in the desktop split. */}
-                    <div className="relative min-h-0 flex-1 lg:h-[460px] lg:flex-none">
+                    <div className="relative flex-1 min-h-[70vh] lg:min-h-0 lg:h-[460px] lg:flex-none">
                         {!MAPS_KEY ? (
                             <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
                                 <div className="flex flex-col items-center gap-3">
@@ -798,7 +816,7 @@ export default function DevicesView({
                                     </p>
                                 </div>
                             </div>
-                        ) : <div ref={mapRef} className="w-full h-full" />}
+                        ) : <div ref={mapRef} className="absolute inset-0" />}
 
                         {/* Map toggles: Show trail + Beats */}
                         {mapsReady && (
