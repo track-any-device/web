@@ -7,7 +7,7 @@ import { HeroGlobe } from './hero-globe';
    portal's route-segment loading.tsx, so it sits inside the layout: the header/footer/sidebar stay
    visible and only the page/map region shows the loader. */
 
-export function PortalLoader({ label = 'Locating…' }: { label?: string }) {
+export function PortalLoader({ label = 'Locating…', fill = false }: { label?: string; fill?: boolean }) {
   return (
     <div
       aria-busy="true"
@@ -15,7 +15,9 @@ export function PortalLoader({ label = 'Locating…' }: { label?: string }) {
       style={{
         flex: 1,
         width: '100%',
-        minHeight: '70vh',
+        // Standalone: reserve 70vh of height. As an overlay (fill) it just fills the
+        // positioned parent via flex:1 — forcing 70vh there overflows short panes onto the footer.
+        minHeight: fill ? 0 : '70vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
