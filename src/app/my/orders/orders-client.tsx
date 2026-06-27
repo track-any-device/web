@@ -62,7 +62,7 @@ export default function OrdersClient() {
     if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
-        <div className="mx-auto max-w-5xl p-4 space-y-6 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-[1240px] px-4 py-6 space-y-6 sm:px-6 lg:px-7">
 
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">

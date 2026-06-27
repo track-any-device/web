@@ -31,7 +31,9 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/my/devices') ||
     pathname.startsWith('/my/stream') ||
     pathname === '/my/trips' ||
-    pathname === '/my/beats';
+    pathname === '/my/beats' ||
+    pathname === '/my/orders' ||
+    pathname === '/my/profile';
 
   return (
     <div className="tad" style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
