@@ -610,7 +610,7 @@ export default function DevicesView({
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}>
                 <div className="tad-tabs tad-tabs--pill flex-1" role="tablist" aria-label="View">
                     {([
-                        { value: 'list',   label: activeTab === 'beats' ? 'Beats' : activeTab === 'trips' ? 'Trips' : 'Assets', count: activeTab === 'assets' ? devices.length : activeTab === 'beats' ? beats.length : null },
+                        { value: 'list',   label: 'List',   count: activeTab === 'assets' ? devices.length : activeTab === 'beats' ? beats.length : null },
                         { value: 'map',    label: 'Map',    count: null },
                         { value: 'alerts', label: 'Alerts', count: newIncidentCount > 0 ? newIncidentCount : null },
                     ] as { value: MobilePane; label: string; count: number | null }[]).map(p => (
