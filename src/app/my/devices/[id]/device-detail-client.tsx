@@ -141,7 +141,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
     if (!device) {
         return (
-            <div className="mx-auto max-w-3xl px-6 py-8 space-y-4">
+            <div className="mx-auto max-w-[1240px] px-4 py-6 space-y-4 sm:px-6 lg:px-7">
                 <Link href="/my/devices" className="inline-flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
                     <ChevronLeft className="w-4 h-4" /> My things
                 </Link>
@@ -177,7 +177,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     ];
 
     return (
-        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-[1240px] px-4 py-6 space-y-4 sm:px-6 lg:px-7">
 
             {/* Back link */}
             <Link href="/my/devices" className="inline-flex items-center gap-1"
