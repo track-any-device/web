@@ -114,10 +114,11 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
               zIndex: 30,
               display: 'flex',
               flexDirection: 'column',
+              overflow: 'hidden',
               background: 'var(--bg)',
             }}
           >
-            <PortalLoader />
+            <PortalLoader fill />
           </motion.div>
         )}
       </AnimatePresence>
