@@ -2,9 +2,11 @@
 
 import React from 'react';
 
-/* Device summary headline — thing name, current speed, last-fix age (live-ticking), and the device's
-   public product SKU (TAD-prefixed) as a footer tag. Falls back to the device-type name when the
-   product isn't mapped; shows "—" for unknown values. Real data only. */
+/* Customer device summary headline — thing name, current speed, last-fix age (live-ticking),
+   online/offline, and the device type as a footer tag. Shows "—" for unknown values. Real data only.
+
+   The /my Device shape exposes neither a public product SKU nor a separate model string, so the
+   footer tag falls back to the device-type name. */
 
 function relFix(iso: string | null): { value: string; unit: string } {
   if (!iso) return { value: '—', unit: '' };
@@ -24,21 +26,24 @@ function Stat({ label, value, unit }: { label: string; value: string; unit: stri
     <div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>{label}</div>
       <div style={{ marginTop: 2, display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{value}</span>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{value}</span>
         {unit && <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{unit}</span>}
       </div>
     </div>
   );
 }
 
-export function DeviceSummaryCard({ name, speed, lastSeenAt, online, productSku, productName, model }: {
+export function DeviceSummaryCard({ name, speed, lastSeenAt, online, battery, statusLabel, statusColor, productTag }: {
   name: string | null;
   speed: number | null;
   lastSeenAt: string | null;
   online?: boolean;
-  productSku?: string | null;
-  productName?: string | null;
-  model?: string | null;
+  battery?: number | null;
+  /** Customer-facing status word (Moving / Idle / Offline). Falls back to live/offline. */
+  statusLabel?: string;
+  statusColor?: string;
+  /** Footer tag — the device-type name (no public SKU on the /my shape). */
+  productTag?: string | null;
 }) {
   // Re-render every second so the "last fix" age stays current.
   const [, setTick] = React.useState(0);
@@ -48,7 +53,9 @@ export function DeviceSummaryCard({ name, speed, lastSeenAt, online, productSku,
   }, []);
 
   const fix = relFix(lastSeenAt);
-  const tag = productSku ?? model ?? '—';
+  const tag = productTag ?? '—';
+  const dot = statusColor ?? (online ? 'var(--success)' : 'var(--text-subtle)');
+  const word = statusLabel ?? (online ? 'live' : 'offline');
 
   return (
     <div className="tad-card" style={{ padding: 0, overflow: 'hidden', alignSelf: 'start' }}>
@@ -59,17 +66,22 @@ export function DeviceSummaryCard({ name, speed, lastSeenAt, online, productSku,
 
         <div style={{ height: 1, background: 'var(--border-subtle)', margin: '14px 0' }} />
 
-        <Stat label="Speed" value={speed != null ? String(Math.round(speed)) : '—'} unit={speed != null ? 'km/h' : ''} />
-        <div style={{ height: 14 }} />
-        <Stat label="Last fix" value={fix.value} unit={fix.unit} />
-        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: 99, background: online ? 'var(--success)' : 'var(--text-subtle)' }} />
-          {online ? 'live' : 'offline'}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 14, columnGap: 12 }}>
+          <Stat label="Speed" value={speed != null ? String(Math.round(speed)) : '—'} unit={speed != null ? 'km/h' : ''} />
+          <Stat label="Last fix" value={fix.value} unit={fix.unit} />
+          <Stat label="Battery" value={battery != null ? String(Math.round(battery)) : '—'} unit={battery != null ? '%' : ''} />
+          <div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>Status</div>
+            <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, color: statusColor ?? 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 99, background: dot }} />
+              {word}
+            </div>
+          </div>
         </div>
       </div>
 
       <div style={{ background: 'var(--surface-sunken, var(--bg-subtle))', borderTop: '1px solid var(--border-subtle)', padding: '12px var(--space-5)' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--brand)', fontSize: 13, letterSpacing: '0.02em' }} title={productName ?? undefined}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--brand)', fontSize: 13, letterSpacing: '0.02em' }}>
           {tag}
         </span>
       </div>

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     Smartphone, MapPin, Camera, AlertTriangle, Bell, BellOff,
     Navigation, Route, ChevronLeft, Send, CheckCircle2, Battery, BatteryLow,
+    LayoutGrid, SlidersHorizontal, Settings2, Activity,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useTrackLoading } from '@/components/tad/loading-provider';
@@ -14,7 +15,8 @@ import type {
     Device, Incident, Beat, NotificationPreference,
     DeviceCapabilities, DeviceCommand, DeviceTrackingMode,
 } from '@/lib/api-client';
-import { Card, Button, Switch, Input } from '@/components/ui';
+import { Card, Button, Switch, Input, Tabs } from '@/components/ui';
+import { DeviceSummaryCard } from './device-summary-card';
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
@@ -59,6 +61,8 @@ function fmtWhen(iso: string | null): string {
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+type TabKey = 'overview' | 'timeline' | 'settings' | 'manage';
+
 export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     const { token } = useAuth();
     const router    = useRouter();
@@ -69,6 +73,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     const [timeline,     setTimeline]     = useState<TimelineEvent[]>([]);
     const [loading,      setLoading]      = useState(true);
     const [loadError,    setLoadError]    = useState<string | null>(null);
+    const [tab,          setTab]          = useState<TabKey>('overview');
 
     // ── Initial load ──────────────────────────────────────────────────────────
     useEffect(() => {
@@ -156,6 +161,21 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
         ? `${Number(device.last_lat).toFixed(4)}, ${Number(device.last_lon).toFixed(4)}`
         : 'No location yet';
 
+    // Current speed comes from the most-recent trail point (the Device shape has no speed field).
+    const latestSpeed = (() => {
+        for (let i = trail.length - 1; i >= 0; i--) {
+            if (trail[i].t != null) return trail[i].speed;
+        }
+        return trail.length ? trail[trail.length - 1].speed : null;
+    })();
+
+    const tabItems = [
+        { value: 'overview', label: 'Overview', icon: <LayoutGrid /> },
+        { value: 'timeline', label: 'Timeline', icon: <Route />, count: timeline.length || undefined },
+        { value: 'settings', label: 'Settings', icon: <SlidersHorizontal /> },
+        { value: 'manage',   label: 'Manage',   icon: <Settings2 /> },
+    ];
+
     return (
         <div className="mx-auto max-w-3xl px-4 py-6 space-y-4 sm:px-6 sm:py-8">
 
@@ -188,49 +208,80 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                 </span>
             </div>
 
-            {/* 1 ── Live location */}
-            <LiveLocationCard device={device} trail={trail} status={status} />
-
-            {/* 1b ── Activity + battery graphs */}
-            <ActivityCard trail={trail} />
-
-            {/* 2 ── Trip timeline */}
-            <Card title="Trip timeline">
-                {timeline.length === 0 ? (
-                    <div className="flex flex-col items-center text-center py-6" style={{ gap: 8 }}>
-                        <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips or events yet.</p>
-                    </div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {timeline.map((e, i) => <TimelineRow key={e.id} event={e} last={i === timeline.length - 1} />)}
-                    </div>
-                )}
-            </Card>
-
-            {/* 3 ── Commands (driven entirely by capabilities) */}
-            <CommandsCard token={token!} deviceId={deviceId} commands={capabilities?.commands ?? null} />
-
-            {/* 4 ── Tracking mode (omitted if none) */}
-            {capabilities && capabilities.trackingModes.length > 0 && (
-                <TrackingModeCard
-                    token={token!}
-                    deviceId={deviceId}
-                    modes={capabilities.trackingModes}
-                    current={capabilities.trackingMode}
+            {/* Tabs — pill variant; scrolls horizontally on narrow phones rather than wrapping. */}
+            <div className="-mx-1 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                <Tabs
+                    variant="pill"
+                    items={tabItems}
+                    value={tab}
+                    onChange={(v) => setTab(v as TabKey)}
+                    style={{ display: 'flex' }}
                 />
+            </div>
+
+            {/* ── Overview ───────────────────────────────────────────────────── */}
+            {tab === 'overview' && (
+                <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+                        <DeviceSummaryCard
+                            name={device.name}
+                            speed={latestSpeed}
+                            lastSeenAt={device.last_seen_at}
+                            online={status === 'online'}
+                            battery={device.battery_percent}
+                            statusLabel={chip.label}
+                            statusColor={chip.color}
+                            productTag={device.device_type?.name ?? null}
+                        />
+                        <LiveLocationCard device={device} trail={trail} status={status} />
+                    </div>
+                    <ActivityCard token={token!} deviceId={deviceId} initialTrail={trail} />
+                </div>
             )}
 
-            {/* 5 ── Notifications (per-device SMS alerts + thresholds) */}
-            <NotificationsCard token={token!} deviceId={deviceId} />
+            {/* ── Timeline ───────────────────────────────────────────────────── */}
+            {tab === 'timeline' && (
+                <Card title="Trip timeline">
+                    {timeline.length === 0 ? (
+                        <div className="flex flex-col items-center text-center py-6" style={{ gap: 8 }}>
+                            <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips or events yet.</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            {timeline.map((e, i) => <TimelineRow key={e.id} event={e} last={i === timeline.length - 1} />)}
+                        </div>
+                    )}
+                </Card>
+            )}
 
-            {/* Manage — all the real actions that used to live in the drawer */}
-            <ManageCard
-                token={token!}
-                device={device}
-                onDeviceChange={setDevice}
-                onUnlinked={() => router.push('/my/devices')}
-            />
+            {/* ── Settings — tracking mode + notifications ───────────────────── */}
+            {tab === 'settings' && (
+                <div className="space-y-4">
+                    {capabilities && capabilities.trackingModes.length > 0 && (
+                        <TrackingModeCard
+                            token={token!}
+                            deviceId={deviceId}
+                            modes={capabilities.trackingModes}
+                            current={capabilities.trackingMode}
+                        />
+                    )}
+                    <NotificationsCard token={token!} deviceId={deviceId} />
+                </div>
+            )}
+
+            {/* ── Manage — remote commands (Locate now, etc.) + device admin ──── */}
+            {tab === 'manage' && (
+                <div className="space-y-4">
+                    <CommandsCard token={token!} deviceId={deviceId} commands={capabilities?.commands ?? null} />
+                    <ManageCard
+                        token={token!}
+                        device={device}
+                        onDeviceChange={setDevice}
+                        onUnlinked={() => router.push('/my/devices')}
+                    />
+                </div>
+            )}
         </div>
     );
 }
@@ -308,7 +359,7 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
 
     return (
         <Card title="Live location" flushBody>
-            <div style={{ height: 320, position: 'relative', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', overflow: 'hidden' }}>
+            <div style={{ height: 280, position: 'relative', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', overflow: 'hidden' }}>
                 {!MAPS_KEY ? (
                     <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
                         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
@@ -394,18 +445,143 @@ function SparkLine({ values, color, unit, label, format }: { values: Array<numbe
     );
 }
 
-function ActivityCard({ trail }: { trail: TrailPoint[] }) {
-    const ordered = [...trail].sort((a, b) => (a.t ? new Date(a.t).getTime() : 0) - (b.t ? new Date(b.t).getTime() : 0));
-    const speeds = ordered.map(p => p.speed);
-    const batteries = ordered.map(p => p.battery);
-    if (!speeds.some(v => v != null) && !batteries.some(v => v != null)) return null;
+// Reporting cadence — real points-per-hour bars (honest heartbeat stand-in; mirrors admin).
+function ReportingBars({ buckets, label }: { buckets: number[]; label: string }) {
+    const W = 240, H = 56, pad = 4;
+    const max = Math.max(...buckets, 0);
+    const total = buckets.reduce((s, n) => s + n, 0);
+
+    let chart: React.ReactNode;
+    if (buckets.length === 0 || max === 0) {
+        chart = <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', margin: 0 }}>Not enough data yet.</p>;
+    } else {
+        const n = buckets.length;
+        const gap = n > 60 ? 0 : 1;
+        const bw = (W - 2 * pad - gap * (n - 1)) / n;
+        chart = (
+            <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: 'block' }}>
+                {buckets.map((c, i) => {
+                    const h = c === 0 ? 0 : Math.max(2, (c / max) * (H - 2 * pad));
+                    const x = pad + i * (bw + gap);
+                    return <rect key={i} x={x.toFixed(2)} y={(H - pad - h).toFixed(2)} width={Math.max(bw, 0.5).toFixed(2)} height={h.toFixed(2)} rx={bw > 3 ? 1 : 0} fill="var(--brand)" opacity={c === 0 ? 0.12 : 0.55} />;
+                })}
+            </svg>
+        );
+    }
+
     return (
-        <Card title="Activity & battery">
-            <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginBottom: 12 }}>Last 24 hours</div>
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                <SparkLine values={speeds} color="var(--brand)" unit=" km/h" label="Activity (speed)" />
-                <SparkLine values={batteries} color="#1F9462" unit="%" label="Battery" />
+        <div style={{ flex: 1, minWidth: 150 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <span style={{ fontSize: 'var(--text-2xs)', textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-subtle)' }}>{label}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)' }}>{total} pts</span>
             </div>
+            {chart}
+        </div>
+    );
+}
+
+// Bucket trail points into per-hour counts across the whole window (quiet hours read as gaps).
+function hourlyBuckets(points: TrailPoint[], hours: number): number[] {
+    const now = Date.now();
+    const start = now - hours * 3_600_000;
+    const buckets = new Array(hours).fill(0);
+    for (const p of points) {
+        if (!p.t) continue;
+        const ms = new Date(p.t).getTime();
+        if (Number.isNaN(ms) || ms < start || ms > now) continue;
+        const idx = Math.min(hours - 1, Math.floor((ms - start) / 3_600_000));
+        buckets[idx] += 1;
+    }
+    return buckets;
+}
+
+type ActivityWindow = 24 | 168; // 24h or 7d
+
+/* Activity, battery & reporting cadence over a window. Real telemetry only — sourced from the
+   /my device trail (ApiClient.deviceTrail → GET /api/my/devices/{id}/trail?hours=N), the same
+   InfluxDB-backed series the admin activity card uses. Empty trail → one friendly empty state. */
+function ActivityCard({ token, deviceId, initialTrail }: { token: string; deviceId: number; initialTrail: TrailPoint[] }) {
+    const [hours, setHours]     = useState<ActivityWindow>(24);
+    // Seed the 24h window from the trail the page already fetched, so the chart paints instantly.
+    const [points, setPoints]   = useState<TrailPoint[] | null>(initialTrail.length ? initialTrail : null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError]     = useState(false);
+    const fetchedWide = useRef(false);
+
+    useEffect(() => {
+        // 24h is already loaded by the page; only fetch when the user expands to 7d.
+        if (hours === 24 && initialTrail.length) { setPoints(initialTrail); return; }
+        if (hours === 168 && fetchedWide.current && points) return;
+        let cancelled = false;
+        setLoading(true);
+        setError(false);
+        new ApiClient(token).deviceTrail(deviceId, hours)
+            .then(res => {
+                if (cancelled) return;
+                const pts = (res.points ?? [])
+                    .filter(p => p != null)
+                    .map(p => ({ lat: p.lat, lng: p.lng, t: p.t, speed: p.speed, battery: p.battery ?? null }));
+                setPoints(pts);
+                if (hours === 168) fetchedWide.current = true;
+            })
+            .catch(() => { if (!cancelled) { setPoints([]); setError(true); } })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hours, deviceId, token]);
+
+    const ordered = useMemo(
+        () => [...(points ?? [])].sort((a, b) => (a.t ? new Date(a.t).getTime() : 0) - (b.t ? new Date(b.t).getTime() : 0)),
+        [points],
+    );
+    const speeds    = ordered.map(p => p.speed);
+    const batteries = ordered.map(p => p.battery);
+    const buckets   = useMemo(() => hourlyBuckets(ordered, hours), [ordered, hours]);
+    const hasAny    = (points?.length ?? 0) > 0;
+
+    const toggle = (
+        <div role="group" aria-label="Time window" style={{ display: 'inline-flex', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+            {([[24, '24h'], [168, '7d']] as const).map(([val, lbl]) => {
+                const on = hours === val;
+                return (
+                    <button key={val} type="button" onClick={() => setHours(val)} disabled={loading}
+                        style={{
+                            padding: '4px 12px', cursor: loading ? 'default' : 'pointer',
+                            fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)',
+                            fontFamily: 'var(--font-mono)',
+                            border: 'none', background: on ? 'var(--brand)' : 'transparent',
+                            color: on ? '#fff' : 'var(--text-secondary)',
+                        }}>
+                        {lbl}
+                    </button>
+                );
+            })}
+        </div>
+    );
+
+    return (
+        <Card title="Activity & battery" action={toggle}>
+            {loading && points === null ? (
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>Loading activity…</p>
+            ) : !hasAny ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '24px 0', gap: 8 }}>
+                    <Activity style={{ width: 28, height: 28, color: 'var(--text-subtle)' }} />
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                        {error ? 'Activity data is unavailable right now.' : 'No activity data yet.'}
+                    </p>
+                </div>
+            ) : (
+                <>
+                    <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginBottom: 12 }}>
+                        {hours === 24 ? 'Last 24 hours' : 'Last 7 days'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                        <SparkLine values={speeds} color="var(--brand)" unit=" km/h" label="Activity (speed)" />
+                        <SparkLine values={batteries} color="#1F9462" unit="%" label="Battery" />
+                        <ReportingBars buckets={buckets} label="Reporting activity" />
+                    </div>
+                </>
+            )}
         </Card>
     );
 }
