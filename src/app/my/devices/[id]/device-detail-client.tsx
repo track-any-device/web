@@ -5,15 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
     Smartphone, MapPin, Camera, AlertTriangle, Bell, BellOff,
-    Navigation, Route, ChevronLeft, Send, CheckCircle2, Battery, BatteryLow,
+    Navigation, Route, ChevronLeft, ChevronRight, Send, CheckCircle2, Battery, BatteryLow,
     LayoutGrid, SlidersHorizontal, Settings2, Activity,
+    Play, Pause, Clock, Gauge, Flag, X, Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type {
     Device, Incident, Beat, NotificationPreference,
-    DeviceCapabilities, DeviceCommand, DeviceTrackingMode,
+    DeviceCapabilities, DeviceCommand, DeviceTrackingMode, Trip,
 } from '@/lib/api-client';
 import { Card, Button, Switch, Input, Tabs } from '@/components/ui';
 import { DeviceSummaryCard } from './device-summary-card';
@@ -41,24 +42,52 @@ const STATUS_PIN: Record<MyStatus, string> = {
     online: '#1F9462', offline: '#F0463C', unavailable: '#8A7E6C',
 };
 
-// ── Timeline event (merged trips + incidents) ─────────────────────────────────
-type TimelineEvent = {
-    id:    string;
-    kind:  'departed' | 'arrived' | 'incident';
-    label: string;
-    at:    number;        // epoch ms for sorting
-    when:  string;        // formatted display
-    href?: string;        // incidents link to their detail page
-};
-
-// A trail point with the fields needed for the activity + battery graphs.
+// A trail point with the fields needed for the activity + battery graphs and playback.
 type TrailPoint = { lat: number; lng: number; t: string | null; speed: number | null; battery: number | null };
+
+// ── Grouped timeline stream — trips with nested incidents + standalone incidents ──
+type TimelineEntry =
+    | { kind: 'trip';     at: number; trip: Trip; incidents: Incident[] }
+    | { kind: 'incident'; at: number; incident: Incident };
+
+// What's currently playing on the map. `trip` plays a trip's GPS trail;
+// `incident` replays an incident's captured signals.
+type Playback =
+    | { mode: 'trip';     trip: Trip; incidents: Incident[] }
+    | { mode: 'incident'; incident: Incident };
 
 function fmtWhen(iso: string | null): string {
     if (!iso) return '—';
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function fmtTime(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function fmtDay(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function fmtDuration(seconds: number | null): string {
+    if (seconds == null || seconds < 0) return '—';
+    const m = Math.round(seconds / 60);
+    if (m < 60) return `${m} min`;
+    const h = Math.floor(m / 60);
+    const rem = m % 60;
+    return rem ? `${h}h ${rem}m` : `${h}h`;
+}
+
+function incidentLabel(i: Incident): string {
+    return i.display_label ?? i.event_type.replace(/_/g, ' ');
 }
 
 type TabKey = 'overview' | 'timeline' | 'settings' | 'manage';
@@ -70,10 +99,20 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     const [device,       setDevice]       = useState<Device | null>(null);
     const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
     const [trail,        setTrail]        = useState<TrailPoint[]>([]);
-    const [timeline,     setTimeline]     = useState<TimelineEvent[]>([]);
     const [loading,      setLoading]      = useState(true);
     const [loadError,    setLoadError]    = useState<string | null>(null);
     const [tab,          setTab]          = useState<TabKey>('overview');
+
+    // Active map playback (a trip's GPS trail, or an incident's archived signals).
+    // Tapping Play in the Timeline tab sets this and switches to the Overview map.
+    const [playback,     setPlayback]     = useState<Playback | null>(null);
+
+    const startPlayback = useCallback((pb: Playback) => {
+        setPlayback(pb);
+        setTab('overview');
+        // Bring the map into view on phones where the timeline list is long.
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, []);
 
     // ── Initial load ──────────────────────────────────────────────────────────
     useEffect(() => {
@@ -85,9 +124,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
             api.device(deviceId),
             api.deviceCapabilities(deviceId),
             api.deviceTrail(deviceId, 24),
-            api.deviceTrips(deviceId),
-            api.incidents({ device_id: String(deviceId), per_page: '50' }),
-        ]).then(([dev, caps, tr, trips, inc]) => {
+        ]).then(([dev, caps, tr]) => {
             if (cancelled) return;
             if (dev.status === 'fulfilled') {
                 setDevice(dev.value);
@@ -101,33 +138,6 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                     .filter(p => p.lat != null && p.lng != null)
                     .map(p => ({ lat: p.lat, lng: p.lng, t: p.t, speed: p.speed, battery: p.battery ?? null })));
             }
-
-            // Merge trips (Departed/Arrived) + incidents into one chronological timeline.
-            const events: TimelineEvent[] = [];
-            if (trips.status === 'fulfilled') {
-                trips.value.trips.forEach(t => {
-                    if (t.startedAt) {
-                        events.push({ id: `trip-${t.id}-start`, kind: 'departed', label: 'Departed', at: new Date(t.startedAt).getTime(), when: fmtWhen(t.startedAt) });
-                    }
-                    if (t.endedAt) {
-                        events.push({ id: `trip-${t.id}-end`, kind: 'arrived', label: 'Arrived', at: new Date(t.endedAt).getTime(), when: fmtWhen(t.endedAt) });
-                    }
-                });
-            }
-            if (inc.status === 'fulfilled') {
-                inc.value.data.forEach(i => {
-                    events.push({
-                        id:    `inc-${i.id}`,
-                        kind:  'incident',
-                        label: i.display_label ?? i.event_type.replace(/_/g, ' '),
-                        at:    new Date(i.triggered_at).getTime(),
-                        when:  fmtWhen(i.triggered_at),
-                        href:  `/my/incidents/${i.id}`,
-                    });
-                });
-            }
-            events.sort((a, b) => b.at - a.at); // newest first
-            setTimeline(events);
         }).finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [token, deviceId]);
@@ -171,7 +181,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
     const tabItems = [
         { value: 'overview', label: 'Overview', icon: <LayoutGrid /> },
-        { value: 'timeline', label: 'Timeline', icon: <Route />, count: timeline.length || undefined },
+        { value: 'timeline', label: 'Timeline', icon: <Route /> },
         { value: 'settings', label: 'Settings', icon: <SlidersHorizontal /> },
         { value: 'manage',   label: 'Manage',   icon: <Settings2 /> },
     ];
@@ -222,6 +232,14 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
             {/* ── Overview ───────────────────────────────────────────────────── */}
             {tab === 'overview' && (
                 <div className="space-y-4">
+                    {playback && (
+                        <PlaybackCard
+                            token={token!}
+                            deviceId={deviceId}
+                            playback={playback}
+                            onExit={() => setPlayback(null)}
+                        />
+                    )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
                         <DeviceSummaryCard
                             name={device.name}
@@ -239,20 +257,14 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                 </div>
             )}
 
-            {/* ── Timeline ───────────────────────────────────────────────────── */}
+            {/* ── Timeline — trips (with nested incidents) + standalone incidents ── */}
             {tab === 'timeline' && (
-                <Card title="Trip timeline">
-                    {timeline.length === 0 ? (
-                        <div className="flex flex-col items-center text-center py-6" style={{ gap: 8 }}>
-                            <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips or events yet.</p>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            {timeline.map((e, i) => <TimelineRow key={e.id} event={e} last={i === timeline.length - 1} />)}
-                        </div>
-                    )}
-                </Card>
+                <TimelineTab
+                    token={token!}
+                    deviceId={deviceId}
+                    activePlayback={playback}
+                    onPlay={startPlayback}
+                />
             )}
 
             {/* ── Settings — tracking mode + notifications ───────────────────── */}
@@ -377,34 +389,648 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
     );
 }
 
-// ── 2. Timeline row ────────────────────────────────────────────────────────────
-function TimelineRow({ event, last }: { event: TimelineEvent; last: boolean }) {
-    const icon = event.kind === 'incident'
-        ? <AlertTriangle width={14} height={14} />
-        : event.kind === 'departed'
-            ? <Navigation width={14} height={14} />
-            : <MapPin width={14} height={14} />;
-    const iconColor = event.kind === 'incident' ? 'var(--danger)' : 'var(--brand)';
-    const body = (
-        <div style={{ paddingBottom: last ? 0 : 16, minWidth: 0 }}>
-            <div className="capitalize" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>
-                {event.label}{event.href && <ChevronLeft width={13} height={13} style={{ transform: 'rotate(180deg)', verticalAlign: 'middle', marginLeft: 2, opacity: 0.5 }} />}
+// ── 2. Timeline tab — trip grouping, infinite scroll, standalone incidents ───────
+const TRIPS_PER_PAGE = 20;
+const INCIDENTS_PER_PAGE = 50;
+
+function severity(i: Incident): { color: string; bg: string } {
+    const p = i.priority;
+    if (p === 'critical') return { color: 'var(--danger)',  bg: 'var(--danger-bg)' };
+    if (p === 'high' || p === 'medium') return { color: 'var(--warning)', bg: 'var(--warning-bg)' };
+    return { color: 'var(--text-secondary)', bg: 'var(--surface-sunken)' };
+}
+
+function TimelineTab({ token, deviceId, activePlayback, onPlay }: {
+    token: string;
+    deviceId: number;
+    activePlayback: Playback | null;
+    onPlay: (pb: Playback) => void;
+}) {
+    const [trips, setTrips]         = useState<Trip[]>([]);
+    const [incidents, setIncidents] = useState<Incident[]>([]);
+    const [tripsPage, setTripsPage] = useState(0);     // last loaded trips page (0 = none)
+    const [tripsLast, setTripsLast] = useState(1);
+    const [incPage, setIncPage]     = useState(0);     // last loaded incidents page
+    const [incLast, setIncLast]     = useState(1);
+    const [loading, setLoading]     = useState(false); // a page fetch is in flight
+    const [error, setError]         = useState(false);
+    const [initialDone, setInitialDone] = useState(false);
+
+    const sentinelRef = useRef<HTMLDivElement>(null);
+    const loadingRef  = useRef(false);                 // guards against double-fire
+
+    // Fetch one more page of trips, plus enough incidents to cover the trips' time span.
+    const loadMore = useCallback(async () => {
+        if (loadingRef.current) return;
+        const nextTrips = tripsPage + 1;
+        const hasMoreTrips = nextTrips <= tripsLast;
+        const hasMoreInc   = incPage < incLast;
+        if (initialDone && !hasMoreTrips && !hasMoreInc) return;
+
+        loadingRef.current = true;
+        setLoading(true);
+        setError(false);
+        const api = new ApiClient(token);
+        try {
+            // Next trips page (if any remain).
+            const tripsTask = hasMoreTrips
+                ? api.deviceTrips(deviceId, { page: nextTrips, per_page: TRIPS_PER_PAGE })
+                : null;
+
+            // Pull incidents alongside trips so we can both nest and surface standalone ones.
+            // Keep loading incident pages until they reach past the oldest loaded trip.
+            const nextInc = incPage + 1;
+            const incTask = (incPage === 0 || hasMoreInc)
+                ? api.incidents({ device_id: String(deviceId), page: String(nextInc), per_page: String(INCIDENTS_PER_PAGE) })
+                : null;
+
+            const [tripsRes, incRes] = await Promise.all([tripsTask, incTask]);
+
+            if (tripsRes) {
+                setTrips(prev => [...prev, ...tripsRes.trips]);
+                setTripsPage(nextTrips);
+                setTripsLast(tripsRes.last_page);
+            }
+            if (incRes) {
+                setIncidents(prev => [...prev, ...incRes.data]);
+                setIncPage(nextInc);
+                setIncLast(incRes.last_page);
+            }
+        } catch {
+            setError(true);
+        } finally {
+            setInitialDone(true);
+            setLoading(false);
+            loadingRef.current = false;
+        }
+    }, [token, deviceId, tripsPage, tripsLast, incPage, incLast, initialDone]);
+
+    // Initial page.
+    useEffect(() => {
+        loadMore();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [deviceId]);
+
+    // Infinite-scroll sentinel.
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(
+            (entries) => { if (entries[0].isIntersecting) loadMore(); },
+            { rootMargin: '320px' },
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [loadMore]);
+
+    // Build the grouped, reverse-chronological stream.
+    const { entries, oldestTripAt } = useMemo(() => {
+        const oldest = trips.reduce((min, t) => {
+            const s = t.startedAt ? new Date(t.startedAt).getTime() : Infinity;
+            return Math.min(min, s);
+        }, Infinity);
+
+        const tripEntries: TimelineEntry[] = trips.map(t => ({
+            kind: 'trip' as const,
+            at:   t.startedAt ? new Date(t.startedAt).getTime() : 0,
+            trip: t,
+            incidents: [] as Incident[],
+        }));
+
+        // Nest each incident into the trip whose window contains its triggered_at.
+        const used = new Set<number>();
+        for (const inc of incidents) {
+            const at = new Date(inc.triggered_at).getTime();
+            if (Number.isNaN(at)) continue;
+            const host = tripEntries.find(te => {
+                if (te.kind !== 'trip') return false;
+                const s = te.trip.startedAt ? new Date(te.trip.startedAt).getTime() : null;
+                const e = te.trip.endedAt   ? new Date(te.trip.endedAt).getTime()   : null;
+                if (s == null) return false;
+                return at >= s && at <= (e ?? Date.now());
+            });
+            if (host && host.kind === 'trip') {
+                host.incidents.push(inc);
+                used.add(inc.id);
+            }
+        }
+
+        // Standalone incidents = not nested in any loaded trip.
+        const standalone: TimelineEntry[] = incidents
+            .filter(i => !used.has(i.id))
+            .map(i => ({ kind: 'incident' as const, at: new Date(i.triggered_at).getTime(), incident: i }));
+
+        const all = [...tripEntries, ...standalone].sort((a, b) => b.at - a.at);
+        return { entries: all, oldestTripAt: oldest };
+    }, [trips, incidents]);
+
+    // If we've loaded all trips but still have older incidents un-surfaced, keep pulling
+    // incident pages so standalone older incidents appear (the sentinel drives this too).
+    const moreToLoad = (tripsPage < tripsLast) || (incPage < incLast);
+
+    // Trim standalone incidents that are OLDER than the oldest loaded trip while more trips
+    // remain — they might still get nested once their trip page loads. Avoids flicker.
+    const visible = useMemo(() => {
+        if (tripsPage >= tripsLast) return entries; // all trips loaded → show everything
+        return entries.filter(e => {
+            if (e.kind === 'trip') return true;
+            return e.at >= oldestTripAt; // keep standalone incidents within the loaded trip span
+        });
+    }, [entries, tripsPage, tripsLast, oldestTripAt]);
+
+    const isEmpty = initialDone && visible.length === 0;
+
+    return (
+        <Card title="Timeline" flushBody>
+            <div className="px-4 py-4 sm:px-5">
+                {isEmpty && !error ? (
+                    <div className="flex flex-col items-center text-center py-8" style={{ gap: 8 }}>
+                        <Route className="w-7 h-7" style={{ color: 'var(--text-subtle)' }} />
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No trips or events yet.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {visible.map(entry => entry.kind === 'trip' ? (
+                            <TripCard
+                                key={`trip-${entry.trip.id}`}
+                                trip={entry.trip}
+                                incidents={entry.incidents}
+                                playing={activePlayback?.mode === 'trip' && activePlayback.trip.id === entry.trip.id}
+                                onPlay={() => onPlay({ mode: 'trip', trip: entry.trip, incidents: entry.incidents })}
+                            />
+                        ) : (
+                            <StandaloneIncidentCard
+                                key={`inc-${entry.incident.id}`}
+                                incident={entry.incident}
+                                playing={activePlayback?.mode === 'incident' && activePlayback.incident.id === entry.incident.id}
+                                onPlay={() => onPlay({ mode: 'incident', incident: entry.incident })}
+                            />
+                        ))}
+
+                        {/* Loader / sentinel */}
+                        {(moreToLoad || !initialDone) && (
+                            <div ref={sentinelRef} className="flex items-center justify-center py-4" style={{ color: 'var(--text-muted)' }}>
+                                {loading && (
+                                    <span className="inline-flex items-center gap-2" style={{ fontSize: 'var(--text-xs)' }}>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading more…
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="flex flex-col items-center text-center py-4" style={{ gap: 8 }}>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)' }}>Could not load more of the timeline.</p>
+                                <button onClick={() => loadMore()} className="tad-btn tad-btn--secondary tad-btn--sm">Retry</button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{event.when}</div>
+        </Card>
+    );
+}
+
+// ── Trip card — Departed → Arrived, stats, nested incidents, Play ────────────────
+function TripCard({ trip, incidents, playing, onPlay }: {
+    trip: Trip;
+    incidents: Incident[];
+    playing: boolean;
+    onPlay: () => void;
+}) {
+    const canPlay = trip.points >= 2 && !!trip.startedAt && !!trip.endedAt;
+    return (
+        <div className="rounded-2xl overflow-hidden"
+            style={{ border: `1px solid ${playing ? 'var(--brand)' : 'var(--border)'}`, background: 'var(--surface)' }}>
+            {/* Header row */}
+            <div className="flex items-start gap-3 px-3.5 py-3 sm:px-4">
+                <span className="shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: 'var(--brand-bg, var(--surface-sunken))', color: 'var(--brand)' }}>
+                    <Route className="w-4 h-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25 }}>
+                        <Navigation className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
+                        {fmtTime(trip.startedAt)}
+                        <ChevronRight className="w-3.5 h-3.5" style={{ color: 'var(--text-subtle)' }} />
+                        <MapPin className="w-3.5 h-3.5" style={{ color: 'var(--brand)' }} />
+                        {trip.endedAt ? fmtTime(trip.endedAt) : 'In progress'}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {fmtDay(trip.startedAt)}
+                    </div>
+                </div>
+                <button onClick={onPlay} disabled={!canPlay}
+                    aria-label={playing ? 'Playing' : 'Play trip'}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full"
+                    style={{
+                        padding: '7px 14px', minHeight: 36,
+                        border: 'none', cursor: canPlay ? 'pointer' : 'default',
+                        fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)',
+                        background: playing ? 'var(--brand)' : (canPlay ? 'var(--brand)' : 'var(--surface-sunken)'),
+                        color: canPlay ? '#fff' : 'var(--text-subtle)',
+                        opacity: playing ? 0.85 : 1,
+                    }}>
+                    <Play className="w-3.5 h-3.5" fill="currentColor" />
+                    {playing ? 'Playing' : 'Play'}
+                </button>
+            </div>
+
+            {/* Stats strip */}
+            <div className="flex flex-wrap gap-x-5 gap-y-1 px-3.5 pb-2.5 sm:px-4" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" style={{ color: 'var(--text-subtle)' }} /> {fmtDuration(trip.durationS)}</span>
+                <span className="inline-flex items-center gap-1"><Route className="w-3 h-3" style={{ color: 'var(--text-subtle)' }} /> {trip.distanceKm.toFixed(1)} km</span>
+                {trip.maxSpeed != null && (
+                    <span className="inline-flex items-center gap-1"><Gauge className="w-3 h-3" style={{ color: 'var(--text-subtle)' }} /> {Math.round(trip.maxSpeed)} km/h max</span>
+                )}
+            </div>
+
+            {/* Nested incidents */}
+            {incidents.length > 0 && (
+                <div className="px-3.5 pb-3 sm:px-4 space-y-1.5" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
+                    {incidents
+                        .slice()
+                        .sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime())
+                        .map(inc => {
+                            const sev = severity(inc);
+                            return (
+                                <Link key={inc.id} href={`/my/incidents/${inc.id}`}
+                                    className="flex items-center gap-2.5 rounded-xl px-2.5 py-2"
+                                    style={{ background: sev.bg, textDecoration: 'none' }}>
+                                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: sev.color }} />
+                                    <span className="flex-1 min-w-0 truncate capitalize" style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: sev.color }}>
+                                        {incidentLabel(inc)}
+                                    </span>
+                                    <span className="shrink-0" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: sev.color, opacity: 0.85 }}>{fmtTime(inc.triggered_at)}</span>
+                                    <ChevronRight className="w-3.5 h-3.5 shrink-0" style={{ color: sev.color, opacity: 0.6 }} />
+                                </Link>
+                            );
+                        })}
+                </div>
+            )}
         </div>
     );
+}
+
+// ── Standalone incident card — its own stream entry with archived-signals replay ──
+function StandaloneIncidentCard({ incident, playing, onPlay }: {
+    incident: Incident;
+    playing: boolean;
+    onPlay: () => void;
+}) {
+    const sev = severity(incident);
+    const hasFix = incident.lat != null && incident.lng != null;
     return (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', alignSelf: 'stretch' }}>
-                <span style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor, flex: 'none' }}>
-                    {icon}
+        <div className="rounded-2xl overflow-hidden"
+            style={{ border: `1px solid ${playing ? sev.color : 'color-mix(in srgb, ' + sev.color + ' 35%, var(--border))'}`, background: 'var(--surface)' }}>
+            <div className="flex items-start gap-3 px-3.5 py-3 sm:px-4">
+                <span className="shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center"
+                    style={{ background: sev.bg, color: sev.color }}>
+                    <AlertTriangle className="w-4 h-4" />
                 </span>
-                {!last && <span style={{ flex: 1, width: 2, background: 'var(--border-subtle)', minHeight: 14, marginTop: 2 }} />}
+                <Link href={`/my/incidents/${incident.id}`} className="min-w-0 flex-1" style={{ textDecoration: 'none' }}>
+                    <div className="capitalize truncate" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.25 }}>
+                        {incidentLabel(incident)}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {fmtWhen(incident.triggered_at)} · <span className="capitalize" style={{ color: sev.color }}>{incident.status}</span>
+                    </div>
+                </Link>
+                <button onClick={onPlay}
+                    aria-label={playing ? 'Playing' : 'Play archived signals'}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full"
+                    style={{
+                        padding: '7px 12px', minHeight: 36,
+                        border: `1px solid ${sev.color}`, cursor: 'pointer',
+                        fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)',
+                        background: playing ? sev.color : 'transparent',
+                        color: playing ? '#fff' : sev.color,
+                    }}>
+                    <Play className="w-3.5 h-3.5" fill="currentColor" />
+                    {playing ? 'Playing' : 'Replay'}
+                </button>
             </div>
-            {event.href
-                ? <Link href={event.href} style={{ textDecoration: 'none', flex: 1, minWidth: 0 }}>{body}</Link>
-                : body}
+            {!hasFix && (
+                <div className="px-3.5 pb-2.5 sm:px-4" style={{ fontSize: 10.5, color: 'var(--text-subtle)' }}>
+                    Replays the captured signals around this event.
+                </div>
+            )}
         </div>
+    );
+}
+
+// ── Map playback — animated marker along a trip / incident trail + scrubber ───────
+type PlayPoint = { lat: number; lng: number; t: number | null; speed: number | null };
+
+function PlaybackCard({ token, deviceId, playback, onExit }: {
+    token: string;
+    deviceId: number;
+    playback: Playback;
+    onExit: () => void;
+}) {
+    const mapRef   = useRef<HTMLDivElement>(null);
+    const gmapRef  = useRef<google.maps.Map | null>(null);
+    const moverRef = useRef<{ setMap: (m: google.maps.Map | null) => void; position?: unknown } | null>(null);
+    const rafRef   = useRef<number | null>(null);
+    const overlaysRef = useRef<Array<{ setMap: (m: google.maps.Map | null) => void }>>([]);
+
+    const [ready, setReady]     = useState(false);
+    const [points, setPoints]   = useState<PlayPoint[] | null>(null);
+    const [incPts, setIncPts]   = useState<Array<{ lat: number; lng: number; label: string }>>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError]     = useState<string | null>(null);
+
+    const [pos, setPos]         = useState(0);    // 0..1 along the path
+    const [isPlaying, setPlay]  = useState(false);
+
+    const title = playback.mode === 'trip'
+        ? `Trip · ${fmtTime(playback.trip.startedAt)} → ${playback.trip.endedAt ? fmtTime(playback.trip.endedAt) : '—'}`
+        : `Replay · ${incidentLabel(playback.incident)}`;
+
+    // Load the Maps script once (shared loader; same as the live map).
+    useEffect(() => {
+        if (typeof google !== 'undefined' && google.maps) { setReady(true); return; }
+        if (!MAPS_KEY) return;
+        const existing = document.querySelector<HTMLScriptElement>('script[data-tad-maps]');
+        if (existing) { existing.addEventListener('load', () => setReady(true)); return; }
+        const s = document.createElement('script');
+        s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=marker`;
+        s.async = true;
+        s.dataset.tadMaps = '1';
+        s.onload = () => setReady(true);
+        document.head.appendChild(s);
+    }, []);
+
+    // Fetch the trail for the active playback.
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        setError(null);
+        setPoints(null);
+        setIncPts([]);
+        setPos(0);
+        setPlay(false);
+
+        const api = new ApiClient(token);
+
+        async function run() {
+            try {
+                if (playback.mode === 'trip') {
+                    const { trip, incidents } = playback;
+                    if (!trip.startedAt || !trip.endedAt) { setError('This trip has no recorded path.'); setPoints([]); return; }
+                    const res = await api.deviceTrail(deviceId, { from: trip.startedAt, to: trip.endedAt });
+                    if (cancelled) return;
+                    const pts = res.points
+                        .filter(p => p.lat != null && p.lng != null)
+                        .map(p => ({ lat: p.lat, lng: p.lng, t: p.t ? new Date(p.t).getTime() : null, speed: p.speed }));
+                    setPoints(pts);
+                    setIncPts(incidents
+                        .filter(i => i.lat != null && i.lng != null)
+                        .map(i => ({ lat: i.lat as number, lng: i.lng as number, label: incidentLabel(i) })));
+                } else {
+                    const inc = playback.incident;
+                    // Prefer the captured trail from incidentDetail; fall back to a ±15 min trail window.
+                    const detail = await api.getIncident(inc.id).catch(() => null);
+                    if (cancelled) return;
+                    let pts: PlayPoint[] = [];
+                    if (detail && detail.locations?.length) {
+                        pts = detail.locations
+                            .filter(p => p.latitude != null && p.longitude != null)
+                            .map(p => ({ lat: Number(p.latitude), lng: Number(p.longitude), t: p.recorded_at ? new Date(p.recorded_at).getTime() : null, speed: p.speed }))
+                            .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+                    }
+                    if (pts.length < 2) {
+                        const base = new Date(inc.triggered_at).getTime();
+                        const from = new Date(base - 15 * 60_000).toISOString();
+                        const to   = new Date(base + 15 * 60_000).toISOString();
+                        const res = await api.deviceTrail(deviceId, { from, to }).catch(() => null);
+                        if (cancelled) return;
+                        if (res) {
+                            pts = res.points
+                                .filter(p => p.lat != null && p.lng != null)
+                                .map(p => ({ lat: p.lat, lng: p.lng, t: p.t ? new Date(p.t).getTime() : null, speed: p.speed }));
+                        }
+                    }
+                    setPoints(pts);
+                    const ilat = inc.lat ?? (detail?.latitude != null ? Number(detail.latitude) : null);
+                    const ilng = inc.lng ?? (detail?.longitude != null ? Number(detail.longitude) : null);
+                    if (ilat != null && ilng != null) {
+                        setIncPts([{ lat: ilat, lng: ilng, label: incidentLabel(inc) }]);
+                    }
+                }
+            } catch {
+                if (!cancelled) { setError('Could not load the playback path.'); setPoints([]); }
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        }
+        run();
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, deviceId, playback]);
+
+    const path = points ?? [];
+    const hasPath = path.length >= 2;
+
+    // Interpolate a lat/lng at a given 0..1 position along the path (by index fraction).
+    const at = useCallback((p: number): { lat: number; lng: number; speed: number | null } | null => {
+        if (path.length === 0) return null;
+        if (path.length === 1) return { lat: path[0].lat, lng: path[0].lng, speed: path[0].speed };
+        const clamped = Math.min(1, Math.max(0, p));
+        const f = clamped * (path.length - 1);
+        const i = Math.floor(f);
+        const frac = f - i;
+        const a = path[i];
+        const b = path[Math.min(path.length - 1, i + 1)];
+        return {
+            lat: a.lat + (b.lat - a.lat) * frac,
+            lng: a.lng + (b.lng - a.lng) * frac,
+            speed: a.speed,
+        };
+    }, [path]);
+
+    // Init map + static overlays (route, start/end, incident markers) once data is ready.
+    useEffect(() => {
+        if (!ready || !mapRef.current || !hasPath) return;
+
+        // Clear any previous overlays.
+        overlaysRef.current.forEach(o => o.setMap(null));
+        overlaysRef.current = [];
+
+        const map = gmapRef.current ?? new google.maps.Map(mapRef.current, {
+            zoom: 15,
+            mapId: 'my-device-playback-map',
+            fullscreenControl: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+        });
+        gmapRef.current = map;
+
+        // Fit to the whole route.
+        const bounds = new google.maps.LatLngBounds();
+        path.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
+        incPts.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }));
+        map.fitBounds(bounds, 48);
+
+        // Route polyline.
+        const line = new google.maps.Polyline({
+            path: path.map(p => ({ lat: p.lat, lng: p.lng })),
+            map, geodesic: true, strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 4,
+        });
+        overlaysRef.current.push(line as unknown as { setMap: (m: google.maps.Map | null) => void });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const AdvMarker = (google.maps as any).marker?.AdvancedMarkerElement;
+        const makeDot = (color: string, size = 13, ring = '#fff') => {
+            const d = document.createElement('div');
+            d.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid ${ring};box-shadow:0 1px 4px rgba(0,0,0,.45)`;
+            return d;
+        };
+        const place = (lat: number, lng: number, color: string, size?: number) => {
+            let m: { setMap: (mm: google.maps.Map | null) => void };
+            if (AdvMarker) {
+                m = new AdvMarker({ map, position: { lat, lng }, content: makeDot(color, size) });
+            } else {
+                m = new google.maps.Marker({
+                    position: { lat, lng }, map,
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: (size ?? 12) / 2.4, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+                }) as unknown as { setMap: (mm: google.maps.Map | null) => void };
+            }
+            overlaysRef.current.push(m);
+        };
+
+        // Start (green), End (red), incidents (amber/red).
+        place(path[0].lat, path[0].lng, '#1F9462', 15);
+        place(path[path.length - 1].lat, path[path.length - 1].lng, '#F0463C', 15);
+        incPts.forEach(p => place(p.lat, p.lng, '#E8902E', 14));
+
+        return () => {
+            overlaysRef.current.forEach(o => o.setMap(null));
+            overlaysRef.current = [];
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ready, hasPath, points, incPts]);
+
+    // Moving marker — repositioned whenever `pos` changes.
+    useEffect(() => {
+        if (!ready || !gmapRef.current || !hasPath) return;
+        const map = gmapRef.current;
+        const here = at(pos);
+        if (!here) return;
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const AdvMarker = (google.maps as any).marker?.AdvancedMarkerElement;
+        if (!moverRef.current) {
+            const dot = document.createElement('div');
+            dot.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#01411C;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5)';
+            if (AdvMarker) {
+                moverRef.current = new AdvMarker({ map, position: { lat: here.lat, lng: here.lng }, content: dot, zIndex: 999 });
+            } else {
+                moverRef.current = new google.maps.Marker({
+                    position: { lat: here.lat, lng: here.lng }, map, zIndex: 999,
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#01411C', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 },
+                }) as unknown as { setMap: (m: google.maps.Map | null) => void };
+            }
+        } else {
+            const m = moverRef.current;
+            // AdvancedMarkerElement uses `.position`; legacy Marker uses setPosition().
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((m as any).setPosition) (m as any).setPosition({ lat: here.lat, lng: here.lng });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            else (m as any).position = { lat: here.lat, lng: here.lng };
+        }
+    }, [ready, hasPath, pos, at]);
+
+    // Cleanup the mover on unmount.
+    useEffect(() => () => { moverRef.current?.setMap(null); moverRef.current = null; }, []);
+
+    // Animation loop (≈ constant duration regardless of point count).
+    useEffect(() => {
+        if (!isPlaying || !hasPath) return;
+        const DURATION = Math.min(30_000, Math.max(6_000, path.length * 250)); // 6–30s
+        let start: number | null = null;
+        let from = pos >= 1 ? 0 : pos;
+        if (pos >= 1) setPos(0);
+
+        const tick = (ts: number) => {
+            if (start == null) start = ts;
+            const elapsed = ts - start;
+            const next = Math.min(1, from + elapsed / DURATION);
+            setPos(next);
+            if (next >= 1) { setPlay(false); return; }
+            rafRef.current = requestAnimationFrame(tick);
+        };
+        rafRef.current = requestAnimationFrame(tick);
+        return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isPlaying, hasPath]);
+
+    const here = at(pos);
+    const curTime = (() => {
+        if (!path.length) return '—';
+        const f = pos * (path.length - 1);
+        const t = path[Math.round(f)]?.t;
+        return t ? fmtTime(new Date(t).toISOString()) : '—';
+    })();
+
+    return (
+        <Card title={title} flushBody
+            action={
+                <button onClick={onExit} aria-label="Exit playback"
+                    className="inline-flex items-center gap-1.5 rounded-full"
+                    style={{ padding: '5px 12px', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', cursor: 'pointer' }}>
+                    <X className="w-3.5 h-3.5" /> Exit
+                </button>
+            }>
+            <div style={{ height: 300, position: 'relative', overflow: 'hidden' }}>
+                {!MAPS_KEY ? (
+                    <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
+                            Set <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--surface-sunken)', padding: '1px 5px', borderRadius: 'var(--radius-xs)' }}>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable playback.
+                        </p>
+                    </div>
+                ) : loading ? (
+                    <div className="h-full flex flex-col items-center justify-center" style={{ background: 'var(--bg-sunken)', gap: 8, color: 'var(--text-muted)' }}>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        <p style={{ fontSize: 'var(--text-sm)' }}>Loading path…</p>
+                    </div>
+                ) : !hasPath ? (
+                    <div className="h-full flex flex-col items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)', gap: 8 }}>
+                        <MapPin className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{error ?? 'No recorded path to replay.'}</p>
+                    </div>
+                ) : <div ref={mapRef} className="w-full h-full" />}
+            </div>
+
+            {/* Controls */}
+            {hasPath && (
+                <div className="px-4 py-3 sm:px-5" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setPlay(p => !p)}
+                            aria-label={isPlaying ? 'Pause' : 'Play'}
+                            className="shrink-0 inline-flex items-center justify-center rounded-full"
+                            style={{ width: 44, height: 44, border: 'none', background: 'var(--brand)', color: '#fff', cursor: 'pointer' }}>
+                            {isPlaying ? <Pause className="w-5 h-5" fill="currentColor" /> : <Play className="w-5 h-5" fill="currentColor" style={{ marginLeft: 2 }} />}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                            <input type="range" min={0} max={1000} step={1}
+                                value={Math.round(pos * 1000)}
+                                onChange={e => { setPlay(false); setPos(Number(e.target.value) / 1000); }}
+                                aria-label="Seek"
+                                style={{ width: '100%', accentColor: 'var(--brand)', height: 28, cursor: 'pointer' }} />
+                            <div className="flex items-center justify-between" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: -2 }}>
+                                <span>{curTime}</span>
+                                <span className="inline-flex items-center gap-3">
+                                    {here?.speed != null && <span><Gauge className="inline w-3 h-3" style={{ marginRight: 2, verticalAlign: '-1px' }} />{Math.round(here.speed)} km/h</span>}
+                                    <span className="inline-flex items-center gap-1"><Flag className="w-3 h-3" />{path.length} pts</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </Card>
     );
 }
 

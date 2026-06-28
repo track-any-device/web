@@ -117,12 +117,28 @@ export class ApiClient {
         return this.get<Device>(`/devices/${id}`);
     }
 
-    async deviceTrail(id: number, hours = 12) {
-        return this.get<{ deviceId: string; hours: number; count: number; points: Array<{ lat: number; lng: number; t: string | null; speed: number | null; battery: number | null }> }>(`/devices/${id}/trail`, { hours: String(hours) });
+    /**
+     * Device trail (telemetry points).
+     *  - Recent mode  → pass a number of hours (default 12) or `{ hours }`.
+     *  - Range mode   → pass `{ from, to }` (both ISO strings) to fetch an exact window.
+     * Back-compat: existing callers passing a bare `hours` number keep working.
+     */
+    async deviceTrail(id: number, opts: number | TrailQuery = 12) {
+        const q: TrailQuery = typeof opts === 'number' ? { hours: opts } : opts;
+        const params: Record<string, string> =
+            q.from != null && q.to != null
+                ? { from: q.from, to: q.to }
+                : { hours: String(q.hours ?? 12) };
+        return this.get<TrailResponse>(`/devices/${id}/trail`, params);
     }
 
-    async deviceTrips(id: number) {
-        return this.get<{ deviceId: string; count: number; trips: Array<{ id: number; startedAt: string | null; endedAt: string | null; durationS: number | null; distanceM: number; distanceKm: number; maxSpeed: number | null; points: number; start: { lat: number; lng: number }; end: { lat: number; lng: number } | null }> }>(`/devices/${id}/trips`);
+    /** Paginated trips. Defaults to page 1, 20 per page. */
+    async deviceTrips(id: number, opts: { page?: number; per_page?: number } = {}) {
+        const params: Record<string, string> = {
+            page:     String(opts.page ?? 1),
+            per_page: String(opts.per_page ?? 20),
+        };
+        return this.get<TripsResponse>(`/devices/${id}/trips`, params);
     }
 
     async updateDevice(id: number, data: UpdateDeviceData) {
@@ -369,6 +385,10 @@ export interface Incident {
     /** Live metric for an OPEN incident (null once closed): overspeed → speed (km/h),
      *  low_battery → battery (%), beat_violation → distanceM (metres from the assigned beat). */
     current?: { speed: number | null; battery: number | null; distanceM: number | null } | null;
+    /** Where the incident fired (null when no GPS fix was captured). Used to place an
+     *  incident marker on the trip-playback map and the standalone-incident replay. */
+    lat?: number | null;
+    lng?: number | null;
 }
 
 export interface IncidentLocation {
@@ -452,6 +472,55 @@ export interface UserProfile {
 export interface LatLng {
     lat: number;
     lng: number;
+}
+
+/** Query for ApiClient.deviceTrail — range mode when both from+to are set, else recent (hours). */
+export interface TrailQuery {
+    hours?: number;
+    from?: string;
+    to?: string;
+}
+
+export interface TrailPoint {
+    lat: number;
+    lng: number;
+    t: string | null;
+    speed: number | null;
+    battery: number | null;
+}
+
+export interface TrailResponse {
+    deviceId: string;
+    /** present in recent mode */
+    hours?: number;
+    /** present in range mode */
+    from?: string;
+    to?: string;
+    count: number;
+    points: TrailPoint[];
+}
+
+export interface Trip {
+    id: number;
+    startedAt: string | null;
+    endedAt: string | null;
+    durationS: number | null;
+    distanceM: number;
+    distanceKm: number;
+    maxSpeed: number | null;
+    points: number;
+    start: { lat: number; lng: number };
+    end: { lat: number; lng: number } | null;
+}
+
+export interface TripsResponse {
+    deviceId: string;
+    trips: Trip[];
+    page: number;
+    per_page: number;
+    last_page: number;
+    total: number;
+    count: number;
 }
 
 export interface Beat {
