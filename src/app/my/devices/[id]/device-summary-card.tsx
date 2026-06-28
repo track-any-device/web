@@ -80,8 +80,9 @@ export function DeviceSummaryCard({ name, speed, lastSeenAt, online, battery, st
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface-sunken, var(--bg-subtle))', borderTop: '1px solid var(--border-subtle)', padding: '12px var(--space-5)' }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: 'var(--brand)', fontSize: 13, letterSpacing: '0.02em' }}>
+      <div style={{ background: 'var(--surface-sunken, var(--bg-subtle))', borderTop: '1px solid var(--border-subtle)', padding: '12px var(--space-5)', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-subtle)' }}>Device type</span>
+        <span style={{ fontWeight: 700, color: 'var(--brand)', fontSize: 13 }}>
           {tag}
         </span>
       </div>
