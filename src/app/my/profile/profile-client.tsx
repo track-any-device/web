@@ -124,7 +124,7 @@ export default function ProfileClient() {
     const moveTargetTenant = tenants.find(t => String(t.id) === moveTenantId);
 
     return (
-        <div className="mx-auto max-w-[1240px] px-4 py-6 space-y-6 sm:px-6 lg:px-7">
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-6 space-y-6 sm:px-6 lg:px-7">
 
             {/* Header */}
             <div className="flex items-center justify-between">
