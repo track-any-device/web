@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useTrackLoading } from '@/components/tad/loading-provider';
@@ -39,7 +40,7 @@ export default function BeatEditClient({ id }: { id: string }) {
         return (
             <div className="p-8" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
                 Beat not found.{' '}
-                <a href="/my/beats" style={{ color: 'var(--brand)' }}>Back to my beats</a>
+                <Link href="/my/beats" style={{ color: 'var(--brand)' }}>Back to my beats</Link>
             </div>
         );
     }
@@ -51,10 +52,10 @@ export default function BeatEditClient({ id }: { id: string }) {
             <div className="max-w-3xl space-y-6">
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <a href="/my/devices" className="inline-flex items-center gap-1.5"
+                        <Link href="/my/devices" className="inline-flex items-center gap-1.5"
                             style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)' }}>
                             <ArrowLeft className="w-3.5 h-3.5" /> My devices
-                        </a>
+                        </Link>
                         <h1 className="mt-2" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{beat.name}</h1>
                         {beat.description && (
                             <p className="mt-0.5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{beat.description}</p>

@@ -1157,10 +1157,10 @@ export default function DevicesView({
                                                 <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-subtle)', marginTop: 2 }}>{assigned.name}</div>
                                             )}
                                         </button>
-                                        <a href={`/my/beats/${beat.id}`} aria-label={`Edit ${beat.name}`} title="Edit / delete beat"
+                                        <Link href={`/my/beats/${beat.id}`} aria-label={`Edit ${beat.name}`} title="Edit / delete beat"
                                             style={{ flex: 'none', padding: '0 14px', alignSelf: 'stretch', display: 'inline-flex', alignItems: 'center', color: 'var(--text-subtle)' }}>
                                             <Pencil width={15} height={15} />
-                                        </a>
+                                        </Link>
                                     </div>
                                 );
                             })
@@ -1168,10 +1168,10 @@ export default function DevicesView({
 
                         {activeTab === 'beats' && (
                             <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <a href="/my/beats/create" className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
+                                <Link href="/my/beats/create" className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
                                     <Plus className="w-3.5 h-3.5" />
                                     Create beat
-                                </a>
+                                </Link>
                                 <button onClick={() => setShowImport(true)} className="tad-btn tad-btn--ghost tad-btn--sm tad-btn--block">
                                     <Upload className="w-3.5 h-3.5" />
                                     Import KML / KMZ
