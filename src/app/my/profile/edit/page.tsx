@@ -85,7 +85,8 @@ export default function EditProfilePage() {
     }
 
     return (
-        <div className="mx-auto max-w-lg px-4 py-6 space-y-6 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-7">
+            <div className="max-w-lg space-y-6">
 
             {/* Header */}
             <div className="flex items-center gap-3">
@@ -190,6 +191,7 @@ export default function EditProfilePage() {
                     </div>
                 </form>
             )}
+            </div>
         </div>
     );
 }
