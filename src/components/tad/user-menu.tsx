@@ -7,6 +7,7 @@ import {
   Smartphone,
   Package,
   CircleUser,
+  Building2,
   Wrench,
   ShieldCheck,
   LogOut,
@@ -29,6 +30,9 @@ export interface UserMenuProps {
   initials?: string;
   /** Where the panel opens. Use 'up' when the trigger sits low (the sidebar bottom); 'down' for top bars. */
   placement?: 'up' | 'down';
+  /** Show the "My tenants" link. Only the /my shell sets this (after a live /api/my/tenants probe);
+   *  the ops/admin shells leave it default-false so the link never appears there. */
+  hasTenants?: boolean;
 }
 
 function deriveInitials(name: string): string {
@@ -38,7 +42,7 @@ function deriveInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuProps) {
+export function UserMenu({ name, role, initials, placement = 'down', hasTenants = false }: UserMenuProps) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const firstItemRef = React.useRef<HTMLAnchorElement>(null);
@@ -127,6 +131,12 @@ export function UserMenu({ name, role, initials, placement = 'down' }: UserMenuP
             <CircleUser size={16} strokeWidth={2} aria-hidden />
             My profile
           </Link>
+          {hasTenants && (
+            <Link href="/my/tenants" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
+              <Building2 size={16} strokeWidth={2} aria-hidden />
+              My tenants
+            </Link>
+          )}
           {isOps && (
             <Link href="/operations" className="tad-usermenu__item" role="menuitem" onClick={() => setOpen(false)}>
               <Wrench size={16} strokeWidth={2} aria-hidden />

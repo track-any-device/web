@@ -463,7 +463,8 @@ export interface TenantSummary {
     id: number;
     name: string;
     slug: string;
-    portal_url: string;
+    /** Number of devices on this tenant. Drives the inline-accordion (<=3) vs dedicated-page (>3) split. */
+    device_count: number;
     /** No longer returned by the slim /my/tenants API — optional for back-compat with older UI. */
     app_name?: string | null;
     logo_url?: string | null;
