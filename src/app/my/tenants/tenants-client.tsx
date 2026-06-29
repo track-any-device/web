@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Building2, ExternalLink, ChevronDown, ChevronRight, Smartphone, MapPin, BatteryMedium, ArrowDownToLine, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Building2, ChevronDown, ChevronRight, Smartphone, ArrowDownToLine, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useTrackLoading } from '@/components/tad/loading-provider';
 import { ApiClient } from '@/lib/api-client';
 import type { TenantSummary, Device } from '@/lib/api-client';
 import Image from 'next/image';
+import { TenantDeviceRow } from './tenant-device-list';
 
 interface TenantDevicesState {
     loading: boolean;
@@ -14,21 +16,12 @@ interface TenantDevicesState {
     devices: Device[] | null;
 }
 
-function timeAgo(iso: string | null): string {
-    if (!iso) return 'never';
-    const then = new Date(iso).getTime();
-    if (Number.isNaN(then)) return 'never';
-    const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
-    if (secs < 60) return 'just now';
-    const mins = Math.round(secs / 60);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.round(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.round(hrs / 24)}d ago`;
-}
+/** Tenants with this many devices or fewer expand inline; larger ones get a dedicated page. */
+const INLINE_DEVICE_LIMIT = 3;
 
 export default function TenantsClient() {
     const { token } = useAuth();
+    const router = useRouter();
     const [tenants, setTenants] = useState<TenantSummary[]>([]);
     const [apiError, setApiError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -80,6 +73,8 @@ export default function TenantsClient() {
                     if (!cur?.devices) return prev;
                     return { ...prev, [tenantId]: { ...cur, devices: cur.devices.filter((d) => d.id !== device.id) } };
                 });
+                // Keep the card's device_count badge honest.
+                setTenants((prev) => prev.map((t) => t.id === tenantId ? { ...t, device_count: Math.max(0, t.device_count - 1) } : t));
             })
             .catch((e) => setApiError(e instanceof Error ? e.message : String(e)))
             .finally(() => setClaiming((prev) => ({ ...prev, [device.id]: false })));
@@ -94,7 +89,7 @@ export default function TenantsClient() {
                     My organisations ({tenants.length})
                 </h1>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                    Expand an organisation to see its devices. You can move any of them into your personal account.
+                    Open an organisation to see its devices. You can move any of them into your personal account.
                 </p>
             </div>
 
@@ -124,17 +119,22 @@ export default function TenantsClient() {
             {!apiError && tenants.length > 0 && (
                 <div className="space-y-4">
                     {tenants.map((tenant) => {
-                        const isOpen = !!expanded[tenant.id];
+                        const isInline = tenant.device_count <= INLINE_DEVICE_LIMIT;
+                        const isOpen = isInline && !!expanded[tenant.id];
                         const state = devicesByTenant[tenant.id];
+                        // Small tenants expand inline; large tenants navigate to a dedicated page.
+                        const onActivate = isInline
+                            ? () => toggle(tenant.id)
+                            : () => router.push(`/my/tenants/${tenant.id}`);
                         return (
                             <div key={tenant.id} className="tad-card overflow-hidden">
-                                {/* Header — click to expand devices; portal link is a separate action */}
-                                <div className="tad-card__body flex items-center gap-4">
+                                {/* Header — click to expand (small) or open the tenant page (large). */}
+                                <div className="tad-card__body">
                                     <button
                                         type="button"
-                                        onClick={() => toggle(tenant.id)}
-                                        aria-expanded={isOpen}
-                                        className="flex items-center gap-4 flex-1 min-w-0 text-left">
+                                        onClick={onActivate}
+                                        aria-expanded={isInline ? isOpen : undefined}
+                                        className="flex items-center gap-4 w-full min-w-0 text-left">
                                         {tenant.logo_url ? (
                                             <Image src={tenant.logo_url} alt={tenant.name} width={48} height={48}
                                                 className="rounded-lg object-contain shrink-0" />
@@ -150,22 +150,20 @@ export default function TenantsClient() {
                                             <p className="truncate" style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--text)' }}>
                                                 {tenant.app_name ?? tenant.name}
                                             </p>
-                                            <p className="truncate" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>
-                                                {tenant.slug}.track-any-device.com
+                                            <p className="truncate inline-flex items-center gap-1.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                                                <Smartphone className="w-3 h-3 shrink-0" />
+                                                {tenant.device_count} {tenant.device_count === 1 ? 'device' : 'devices'}
                                             </p>
                                         </div>
-                                        {isOpen
-                                            ? <ChevronDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                                        {isInline
+                                            ? (isOpen
+                                                ? <ChevronDown className="w-5 h-5 shrink-0" style={{ color: 'var(--text-muted)' }} />
+                                                : <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'var(--text-muted)' }} />)
                                             : <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'var(--text-muted)' }} />}
                                     </button>
-                                    <a href={tenant.portal_url} target="_blank" rel="noopener noreferrer"
-                                        className="tad-btn tad-btn--secondary tad-btn--sm shrink-0 inline-flex items-center gap-1.5"
-                                        title="Open organisation portal">
-                                        Portal <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
                                 </div>
 
-                                {/* Devices */}
+                                {/* Inline devices (small tenants only) */}
                                 {isOpen && (
                                     <div style={{ borderTop: '1px solid var(--border)' }}>
                                         {state?.loading && (
@@ -188,36 +186,12 @@ export default function TenantsClient() {
                                         {!state?.loading && !state?.error && state?.devices && state.devices.length > 0 && (
                                             <ul>
                                                 {state.devices.map((d) => (
-                                                    <li key={d.id} className="px-5 py-3 flex items-center gap-3"
-                                                        style={{ borderTop: '1px solid var(--border-subtle, var(--border))' }}>
-                                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                                                            style={{ background: 'var(--surface-sunken)' }}>
-                                                            {d.image_url
-                                                                ? <Image src={d.image_url} alt="" width={36} height={36} className="rounded-lg object-cover" />
-                                                                : <Smartphone className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="truncate" style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text)' }}>{d.name}</p>
-                                                            <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                                                                <span className="font-mono">{d.imei}</span>
-                                                                {(d.last_lat != null && d.last_lon != null) && (
-                                                                    <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {timeAgo(d.last_seen_at)}</span>
-                                                                )}
-                                                                {d.battery_percent != null && (
-                                                                    <span className="inline-flex items-center gap-1"><BatteryMedium className="w-3 h-3" /> {d.battery_percent}%</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => claim(tenant.id, d)}
-                                                            disabled={!!claiming[d.id]}
-                                                            className="tad-btn tad-btn--secondary tad-btn--sm shrink-0 inline-flex items-center gap-1.5">
-                                                            {claiming[d.id]
-                                                                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Moving…</>
-                                                                : <><ArrowDownToLine className="w-3.5 h-3.5" /> Move to my account</>}
-                                                        </button>
-                                                    </li>
+                                                    <TenantDeviceRow
+                                                        key={d.id}
+                                                        device={d}
+                                                        claiming={!!claiming[d.id]}
+                                                        onClaim={(device) => claim(tenant.id, device)}
+                                                    />
                                                 ))}
                                             </ul>
                                         )}

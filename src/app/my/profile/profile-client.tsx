@@ -243,11 +243,11 @@ export default function ProfileClient() {
                                                 <span className="capitalize" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{tenant.status}</span>
                                             </>
                                         )}
-                                        <a href={tenant.portal_url} target="_blank" rel="noopener noreferrer"
+                                        <Link href={`/my/tenants/${tenant.id}`}
                                             className="ml-2 inline-flex items-center gap-1"
                                             style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)' }}>
                                             Open <ExternalLink className="w-3 h-3" />
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>

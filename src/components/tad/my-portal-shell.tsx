@@ -7,9 +7,10 @@ import { Logo } from '@/components/tad/logo';
 import { SiteFooter } from '@/components/tad/site-footer';
 import { UserMenu } from '@/components/tad/user-menu';
 import { CartButton } from '@/components/tad/cart-button';
-import { getAuthUser } from '@/lib/auth-store';
+import { getAuthUser, getAuthToken } from '@/lib/auth-store';
 import { SITE_NAV } from '@/components/tad/site-nav';
 import { LoadingProvider } from '@/components/tad/loading-provider';
+import { ApiClient } from '@/lib/api-client';
 
 /* Customer portal chrome (/my) — TAD-PAK web header (the consistent site nav) + shared web footer.
    Personal links (My devices / orders / profile) live in the avatar UserMenu, not the header nav. */
@@ -17,9 +18,21 @@ import { LoadingProvider } from '@/components/tad/loading-provider';
 export function MyPortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? '';
   const [user, setUser] = React.useState<{ name: string; role: string }>({ name: 'My account', role: '' });
+  // useAuth reads a STORED user (no /me call), so "has tenants" can't ride on the session. Probe the
+  // live /api/my/tenants endpoint once on mount and pass the result to UserMenu so the "My tenants"
+  // link only appears for members of ≥1 organisation.
+  const [hasTenants, setHasTenants] = React.useState(false);
   React.useEffect(() => {
     const u = getAuthUser();
     setUser({ name: String(u?.name ?? 'My account'), role: String(u?.role ?? '') });
+
+    const token = getAuthToken();
+    if (!token) return;
+    let active = true;
+    new ApiClient(token).tenants()
+      .then((tenants) => { if (active) setHasTenants(tenants.length > 0); })
+      .catch(() => { /* ignore — leave the link hidden on failure */ });
+    return () => { active = false; };
   }, []);
   // The devices/stream pages are full-bleed map apps — they manage their own height and must not
   // sit inside the centered, padded content container the other /my pages use. /my/trips and
@@ -54,7 +67,7 @@ export function MyPortalShell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="tad-shell__actions">
             <CartButton />
-            <UserMenu name={user.name} role={user.role} />
+            <UserMenu name={user.name} role={user.role} hasTenants={hasTenants} />
           </div>
         </div>
       </header>
