@@ -31,6 +31,8 @@ export interface Tenant {
   id: number | string; name: string; slug: string;
   devices: number; members: number;
   hasKey?: boolean; lastUsed?: string | null; createdAt?: string | null;
+  // true for the single public-tracker tenant; delete is blocked while set
+  isDefault?: boolean;
   // present only on a create / rotate-key response — the plain key, shown once
   key?: string; tenantId?: number | string;
 }

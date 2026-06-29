@@ -2,11 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Globe, Radio, Waypoints, KeyRound, ArrowUpRight } from 'lucide-react';
+import { Globe, Radio, Waypoints, KeyRound, ArrowUpRight, Pencil, Trash2, Star } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { StatRow } from '@/components/tad/data-table';
 import { PortalTopbar } from '@/components/tad/portal-shell';
-import { Badge, Button, Input, Card } from '@/components/ui';
+import { Badge, Button, Input, Card, Switch } from '@/components/ui';
 
 /* Admin organisations listing (Wave E).
    Each org is a card showing a per-transport protocol badge plus, depending on transport:
@@ -42,6 +42,8 @@ export interface TenantRow {
   hasKey?: boolean;
   lastUsed?: string | null;
   createdAt?: string | null;
+  // true for the single public-tracker (default) tenant — its delete is disabled
+  isDefault?: boolean;
   // ── Frozen contract additions (optional → graceful degrade) ──
   transport?: Transport;
   forwardingEnabled?: boolean;
@@ -80,6 +82,8 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [revealed, setRevealed] = React.useState<Revealed | null>(null);
+  const [editing, setEditing] = React.useState<TenantRow | null>(null);
+  const [deleting, setDeleting] = React.useState<TenantRow | null>(null);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -117,6 +121,37 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
       setRevealed({ id: t.id, name: t.name, key: data.key });
       setRows((r) => r.map((x) => (x.id === t.id ? { ...x, hasKey: true } : x)));
     }
+  }
+
+  /** PATCH name + default flag. Returns an error message on failure (kept inside the dialog). */
+  async function save(t: TenantRow, name: string, isDefault: boolean): Promise<string | null> {
+    const res = await fetch(`/api/admin/tenants/${t.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), is_default: isDefault }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return data?.message ?? 'Could not save the organisation.';
+    // Update in place. When this one becomes the default, demote any other row that held it.
+    setRows((r) => r.map((x) => {
+      if (x.id === t.id) return { ...x, name: data.name ?? name.trim(), isDefault: data.isDefault ?? isDefault };
+      return isDefault ? { ...x, isDefault: false } : x;
+    }));
+    setEditing(null);
+    return null;
+  }
+
+  /** DELETE a tenant. Surfaces a 403 (non-admin) / 422 (default) message inside the dialog. */
+  async function remove(t: TenantRow): Promise<string | null> {
+    const res = await fetch(`/api/admin/tenants/${t.id}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 403) return data?.message ?? 'You do not have permission to delete organisations.';
+      return data?.message ?? 'Could not delete the organisation.';
+    }
+    setRows((r) => r.filter((x) => x.id !== t.id));
+    setDeleting(null);
+    return null;
   }
 
   const tad101Count = rows.filter(isTad101).length;
@@ -162,11 +197,21 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
         </Card>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 'var(--space-4)' }}>
-          {rows.map((t) => <OrgCard key={t.id} t={t} onRotate={() => rotate(t)} />)}
+          {rows.map((t) => (
+            <OrgCard
+              key={t.id}
+              t={t}
+              onRotate={() => rotate(t)}
+              onEdit={() => setEditing(t)}
+              onDelete={() => setDeleting(t)}
+            />
+          ))}
         </div>
       )}
 
       {revealed && <KeyDialog data={revealed} onClose={() => setRevealed(null)} />}
+      {editing && <EditDialog t={editing} onSave={save} onClose={() => setEditing(null)} />}
+      {deleting && <DeleteDialog t={deleting} onConfirm={remove} onClose={() => setDeleting(null)} />}
     </div>
     </>
   );
@@ -174,7 +219,7 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
 
 /* ── One organisation card ─────────────────────────────────────────────── */
 
-function OrgCard({ t, onRotate }: { t: TenantRow; onRotate: () => void }) {
+function OrgCard({ t, onRotate, onEdit, onDelete }: { t: TenantRow; onRotate: () => void; onEdit: () => void; onDelete: () => void }) {
   const transport = transportOf(t);
   const theme = THEME[transport];
   const tad101 = transport === 'tad101_channel';
@@ -197,6 +242,12 @@ function OrgCard({ t, onRotate }: { t: TenantRow; onRotate: () => void }) {
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {t.slug}
             </div>
+            {t.isDefault && (
+              <Badge variant="success" style={{ marginTop: 6 }}>
+                <Star size={12} strokeWidth={2.4} aria-hidden />
+                Public tracker
+              </Badge>
+            )}
           </div>
           <ProtocolBadge theme={theme} />
         </div>
@@ -232,9 +283,17 @@ function OrgCard({ t, onRotate }: { t: TenantRow; onRotate: () => void }) {
         )}
 
         {/* Footer actions */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4 }}>
+        <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
           {tad101 && (
             <Button variant="ghost" size="sm" onClick={onRotate}>{t.hasKey ? 'New key' : 'Issue key'}</Button>
+          )}
+          <Button variant="ghost" size="sm" icon={<Pencil size={14} strokeWidth={2.2} aria-hidden />} onClick={onEdit}>Edit</Button>
+          {t.isDefault ? (
+            <span title="Unset the public-tracker default first" style={{ display: 'inline-flex' }}>
+              <Button variant="ghost" size="sm" icon={<Trash2 size={14} strokeWidth={2.2} aria-hidden />} disabled>Delete</Button>
+            </span>
+          ) : (
+            <Button variant="danger" size="sm" icon={<Trash2 size={14} strokeWidth={2.2} aria-hidden />} onClick={onDelete}>Delete</Button>
           )}
           <Link href={`/admin/organisations/${t.id}`} style={{ marginLeft: 'auto' }}>
             <Button variant="ghost" size="sm">Manage</Button>
@@ -389,5 +448,115 @@ function KeyField({ label, value }: { label: string; value: string }) {
       <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, background: 'var(--surface-sunken, #f3efe7)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', wordBreak: 'break-all' }}>{value}</div>
     </div>
+  );
+}
+
+/* ── Modal shell (mirrors KeyDialog) ───────────────────────────────────── */
+
+function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: 20 }}>
+      <Card onClick={(e: React.MouseEvent) => e.stopPropagation()} style={{ maxWidth: 480, width: '100%' }}>
+        {children}
+      </Card>
+    </div>
+  );
+}
+
+/* ── Edit organisation (name + public-tracker default toggle) ──────────── */
+
+function EditDialog({
+  t,
+  onSave,
+  onClose,
+}: {
+  t: TenantRow;
+  onSave: (t: TenantRow, name: string, isDefault: boolean) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const [name, setName] = React.useState(t.name);
+  const [isDefault, setIsDefault] = React.useState(!!t.isDefault);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    const err = await onSave(t, name, isDefault);
+    if (err) { setError(err); setBusy(false); }
+    // On success the parent closes the dialog.
+  }
+
+  return (
+    <ModalShell onClose={onClose}>
+      <form onSubmit={submit}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Edit organisation</div>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+          The slug (<span style={{ fontFamily: 'var(--font-mono)' }}>{t.slug}</span>) identifies this tenant to its server and can’t be changed.
+        </p>
+        <div style={{ display: 'grid', gap: 16 }}>
+          <Input label="Organisation name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          <div style={{ display: 'grid', gap: 6 }}>
+            <Switch checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} label="Public tracker tenant (default)" />
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Only one organisation can be the public tracker — turning this on moves it here from whichever org currently holds it.
+            </div>
+          </div>
+        </div>
+        {error && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" loading={busy} disabled={busy || !name.trim()}>Save changes</Button>
+        </div>
+      </form>
+    </ModalShell>
+  );
+}
+
+/* ── Delete organisation (confirm + device-unassign warning) ───────────── */
+
+function DeleteDialog({
+  t,
+  onConfirm,
+  onClose,
+}: {
+  t: TenantRow;
+  onConfirm: (t: TenantRow) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const count = t.devices || 0;
+
+  async function confirm() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const err = await onConfirm(t);
+    if (err) { setError(err); setBusy(false); }
+    // On success the parent removes the row + closes the dialog.
+  }
+
+  return (
+    <ModalShell onClose={onClose}>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Delete {t.name}?</div>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.6 }}>
+        This permanently removes the organisation and its connection key. This can’t be undone.
+      </p>
+      <div style={{ fontSize: 13, lineHeight: 1.6, background: 'color-mix(in srgb, var(--warning) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--warning) 40%, transparent)', borderRadius: 10, padding: '10px 12px' }}>
+        {count > 0 ? (
+          <><strong>{count}</strong> {count === 1 ? 'device' : 'devices'} assigned to this organisation will be <strong>unassigned</strong> (not deleted) and fall back to unassigned.</>
+        ) : (
+          <>No devices are assigned to this organisation.</>
+        )}
+      </div>
+      {error && <div style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12 }}>{error}</div>}
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
+        <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="danger" loading={busy} disabled={busy} onClick={confirm}>Delete organisation</Button>
+      </div>
+    </ModalShell>
   );
 }
