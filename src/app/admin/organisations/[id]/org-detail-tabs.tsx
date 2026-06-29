@@ -8,12 +8,13 @@ import { type TenantDetail, type TenantDeviceRow } from '@/lib/portal-data';
 import { TenantLogs } from './tenant-logs';
 import { ForwardingConfig } from './forwarding-config';
 import { ForwardingActivity } from './forwarding-activity';
+import { OrgMembers } from './org-members';
 
 const DEVICE_STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   active: 'success', pending: 'warning', blocked: 'danger',
 };
 
-type Tab = 'devices' | 'settings' | 'logs';
+type Tab = 'devices' | 'members' | 'settings' | 'logs';
 
 export function OrgDetailTabs({
   tenant,
@@ -38,6 +39,7 @@ export function OrgDetailTabs({
         onChange={(v) => setTab(v as Tab)}
         items={[
           { value: 'devices', label: 'Devices', count: tenant.deviceCount ?? 0 },
+          { value: 'members', label: 'Members', count: tenant.members ?? 0 },
           { value: 'settings', label: 'Settings' },
           { value: 'logs', label: 'Logs' },
         ]}
@@ -67,6 +69,10 @@ export function OrgDetailTabs({
             />
           </div>
         </>
+      )}
+
+      {tab === 'members' && (
+        <OrgMembers tenantId={tenant.id} />
       )}
 
       {tab === 'settings' && (

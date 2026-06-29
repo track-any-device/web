@@ -204,6 +204,12 @@ export class ApiClient {
         return this.post<AssignTenantResult>(`/devices/${deviceId}/assign-tenant`, { tenant_id: tenantId });
     }
 
+    /** Claim a device from one of the user's organisations into their personal account.
+     *  The device must currently sit on a tenant the user is a member of. */
+    async deviceClaim(deviceId: number) {
+        return this.post<ClaimDeviceResult>(`/devices/${deviceId}/claim`, {});
+    }
+
     // ── Notification Preferences ─────────────────────────────────────────────
 
     async getNotificationPreferences(deviceId: number) {
@@ -244,6 +250,11 @@ export class ApiClient {
 
     async tenants() {
         return this.get<TenantSummary[]>('/tenants');
+    }
+
+    /** Devices belonging to one of the user's organisations (the user must be a member). */
+    async tenantDevices(tenantId: number) {
+        return this.get<TenantDevicesResult>(`/tenants/${tenantId}/devices`);
     }
 
     async requestTenant(data: { org_name: string; message?: string }): Promise<{ message: string }> {
@@ -452,10 +463,22 @@ export interface TenantSummary {
     id: number;
     name: string;
     slug: string;
-    app_name: string | null;
-    logo_url: string | null;
-    status: string;
     portal_url: string;
+    /** No longer returned by the slim /my/tenants API — optional for back-compat with older UI. */
+    app_name?: string | null;
+    logo_url?: string | null;
+    status?: string;
+}
+
+export interface TenantDevicesResult {
+    tenant: { id: number; name: string; slug: string };
+    devices: Device[];
+    count: number;
+}
+
+export interface ClaimDeviceResult {
+    message: string;
+    device: Device;
 }
 
 export interface UserProfile {
