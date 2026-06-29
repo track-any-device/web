@@ -2,10 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { Badge, Button, Card } from '@/components/ui';
-import { fetchPortalOne } from '@/lib/admin-api';
+import { fetchPortal, fetchPortalOne } from '@/lib/admin-api';
 import { type AdminDeviceDetail } from '@/lib/portal-data';
 import { DeviceMapCard } from './device-map-card';
 import { DeviceActivityCard } from './device-activity-card';
+import { OwnershipCard, type UserOption, type TenantOption } from './ownership-card';
 
 const STATUS: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = { active: 'success', pending: 'warning', blocked: 'danger' };
 
@@ -21,6 +22,12 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 export default async function AdminDeviceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data: d, error } = await fetchPortalOne<AdminDeviceDetail>(`/admin/devices/${id}`);
+
+  // Lightweight picker data for the editable Ownership card — reuse the existing admin list endpoints.
+  const [{ data: users }, { data: tenants }] = await Promise.all([
+    fetchPortal<UserOption>('/admin/users'),
+    fetchPortal<TenantOption>('/admin/tenants'),
+  ]);
 
   if (!d) {
     return (
@@ -60,13 +67,7 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
           </div>
         </Card>
 
-        <Card title="Ownership">
-          <div style={{ display: 'grid', gap: 12 }}>
-            <Field label="Owner" value={d.owner ? `${d.owner.name} · ${d.owner.email}` : <span style={{ color: 'var(--text-muted)' }}>Unassigned</span>} />
-            <Field label="Organisation" value={d.tenant ? <Link href={`/admin/organisations/${d.tenant.id}`}>{d.tenant.name}</Link> : <span style={{ color: 'var(--text-muted)' }}>—</span>} />
-            <Field label="Registered" value={d.createdAt} />
-          </div>
-        </Card>
+        <OwnershipCard device={d} users={users} tenants={tenants} />
 
         <Card title="Live status">
           <div style={{ display: 'grid', gap: 12 }}>
