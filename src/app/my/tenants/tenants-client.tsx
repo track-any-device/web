@@ -33,7 +33,7 @@ export default function TenantsClient() {
     if (loading) return null; // the portal LoadingProvider overlay covers this area
 
     return (
-        <div className="mx-auto max-w-5xl p-4 space-y-6 sm:p-6 lg:p-8">
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-6 space-y-6 sm:p-6 lg:p-8">
             <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
                 My tenants ({tenants.length})
             </h1>

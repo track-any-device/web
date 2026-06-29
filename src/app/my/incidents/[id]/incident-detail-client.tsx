@@ -105,16 +105,18 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
 
     if (!incident) {
         return (
-            <div className="mx-auto max-w-3xl px-6 py-8 space-y-4">
-                <Link href="/my/incidents" className="inline-flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                    <ChevronLeft className="w-4 h-4" /> Incidents
-                </Link>
-                <Card>
-                    <div className="flex flex-col items-center text-center py-8" style={{ gap: 10 }}>
-                        <AlertTriangle className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loadError ?? 'Incident not found.'}</p>
-                    </div>
-                </Card>
+            <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-7">
+                <div className="max-w-3xl space-y-4">
+                    <Link href="/my/incidents" className="inline-flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                        <ChevronLeft className="w-4 h-4" /> Incidents
+                    </Link>
+                    <Card>
+                        <div className="flex flex-col items-center text-center py-8" style={{ gap: 10 }}>
+                            <AlertTriangle className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loadError ?? 'Incident not found.'}</p>
+                        </div>
+                    </Card>
+                </div>
             </div>
         );
     }
@@ -133,7 +135,8 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
         .map(p => ({ lat: Number(p.latitude), lng: Number(p.longitude) }));
 
     return (
-        <div className="mx-auto max-w-3xl px-4 py-6 space-y-5 sm:px-6 sm:py-8">
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-7">
+            <div className="max-w-3xl space-y-5">
 
             {/* Back link */}
             <Link href="/my/incidents" className="inline-flex items-center gap-1"
@@ -228,6 +231,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
                     </div>
                 )}
             </Card>
+            </div>
         </div>
     );
 }
