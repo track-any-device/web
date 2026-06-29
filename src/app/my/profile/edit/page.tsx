@@ -29,7 +29,7 @@ const TIMEZONES = [
 
 interface ProfileData {
     name: string;
-    email: string;
+    date_of_birth: string;
     phone: string;
     timezone: string;
 }
@@ -38,7 +38,7 @@ export default function EditProfilePage() {
     const router = useRouter();
     const { token } = useAuth();
 
-    const [form, setForm]     = useState<ProfileData>({ name: '', email: '', phone: '', timezone: '' });
+    const [form, setForm]     = useState<ProfileData>({ name: '', date_of_birth: '', phone: '', timezone: '' });
     const [loading, setLoading]   = useState(true);
     const [saving, setSaving]     = useState(false);
     const [error, setError]       = useState<string | null>(null);
@@ -49,10 +49,10 @@ export default function EditProfilePage() {
         new ApiClient(token).profile()
             .then((data) => {
                 setForm({
-                    name:     data.name     ?? '',
-                    email:    data.email    ?? '',
-                    phone:    data.phone    ?? '',
-                    timezone: data.timezone ?? '',
+                    name:          data.name          ?? '',
+                    date_of_birth: data.date_of_birth ?? '',
+                    phone:         data.phone         ?? '',
+                    timezone:      data.timezone      ?? '',
                 });
             })
             .catch(() => setError('Could not load profile.'))
@@ -71,7 +71,7 @@ export default function EditProfilePage() {
         try {
             await new ApiClient(token!).updateProfile({
                 name: form.name,
-                phone: form.phone,
+                date_of_birth: form.date_of_birth || null,
                 timezone: form.timezone,
             });
             setSuccess(true);
@@ -132,32 +132,35 @@ export default function EditProfilePage() {
                             />
                         </div>
 
-                        {/* Email (read-only) */}
+                        {/* Date of birth */}
                         <div className="tad-field">
-                            <label className="tad-field__label">
-                                Email
-                                <span className="ml-2" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-subtle)', fontWeight: 'var(--weight-regular)' }}>(managed via SSO)</span>
+                            <label htmlFor="date_of_birth" className="tad-field__label">
+                                Date of birth
                             </label>
                             <input
-                                type="email"
-                                value={form.email}
-                                disabled
+                                id="date_of_birth"
+                                type="date"
+                                value={form.date_of_birth}
+                                onChange={e => setForm(f => ({ ...f, date_of_birth: e.target.value }))}
+                                max={new Date().toISOString().slice(0, 10)}
+                                min="1900-01-01"
                                 className="tad-input"
                             />
                         </div>
 
-                        {/* Phone */}
+                        {/* Phone (read-only — login identity) */}
                         <div className="tad-field">
                             <label htmlFor="phone" className="tad-field__label">
                                 Phone
+                                <span className="ml-2" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-subtle)', fontWeight: 'var(--weight-regular)' }}>(your login number — contact support to change)</span>
                             </label>
                             <input
                                 id="phone"
                                 type="tel"
                                 value={form.phone}
-                                onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                                disabled
                                 className="tad-input tad-input--mono"
-                                placeholder="+92 300 0000000"
+                                placeholder="—"
                             />
                         </div>
 

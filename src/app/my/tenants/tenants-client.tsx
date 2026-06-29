@@ -33,6 +33,33 @@ export default function TenantsClient() {
     const [claiming, setClaiming] = useState<Record<number, boolean>>({});
     const [claimed, setClaimed] = useState<string | null>(null);
 
+    // Request-a-tenant-account flow (relocated from the profile page).
+    const [showRequest, setShowRequest] = useState(false);
+    const [orgName, setOrgName]         = useState('');
+    const [reqMessage, setReqMessage]   = useState('');
+    const [submitting, setSubmitting]   = useState(false);
+    const [reqSuccess, setReqSuccess]   = useState(false);
+    const [reqError, setReqError]       = useState<string | null>(null);
+
+    const submitRequest = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!orgName.trim() || !token) return;
+        setSubmitting(true);
+        setReqError(null);
+        try {
+            await new ApiClient(token).requestTenant({
+                org_name: orgName.trim(),
+                message:  reqMessage.trim() || undefined,
+            });
+            setReqSuccess(true);
+            setShowRequest(false);
+        } catch (err) {
+            setReqError((err as { message?: string })?.message ?? 'Failed to submit request.');
+        } finally {
+            setSubmitting(false);
+        }
+    }, [orgName, reqMessage, token]);
+
     useEffect(() => {
         if (!token) return;
         const api = new ApiClient(token);
@@ -202,6 +229,82 @@ export default function TenantsClient() {
                     })}
                 </div>
             )}
+
+            {/* Request a tenant account — relocated from /my/profile. The tenants page is the home
+                for organisation features, so the CTA to create a new one lives here. */}
+            <div className="rounded-2xl px-5 py-4"
+                style={{ border: '1px solid var(--border)', background: 'var(--brand-subtle)' }}>
+                <div className="flex items-start gap-3">
+                    <div className="mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                        style={{ background: 'var(--surface)', color: 'var(--brand)' }}>
+                        <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)', color: 'var(--brand-on-subtle)' }}>
+                            Need an organisation account?
+                        </p>
+                        <p className="mt-0.5" style={{ fontSize: 'var(--text-xs)', color: 'var(--brand-on-subtle)' }}>
+                            A dedicated tenant account gives you team access, custom branding, and advanced controls for your fleet.
+                        </p>
+                    </div>
+                </div>
+
+                {reqSuccess ? (
+                    <div className="mt-4 rounded-xl px-4 py-3"
+                        style={{ fontSize: 'var(--text-sm)', color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid color-mix(in srgb, var(--success) 28%, transparent)' }}>
+                        Request submitted — our team will contact you shortly.
+                    </div>
+                ) : !showRequest ? (
+                    <button onClick={() => setShowRequest(true)} className="tad-btn tad-btn--primary tad-btn--sm mt-4">
+                        Request tenant account
+                    </button>
+                ) : (
+                    <form onSubmit={submitRequest} className="mt-4 space-y-3">
+                        {reqError && (
+                            <div className="rounded-lg px-3 py-2"
+                                style={{ fontSize: 'var(--text-xs)', color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid color-mix(in srgb, var(--danger) 28%, transparent)' }}>
+                                {reqError}
+                            </div>
+                        )}
+                        <div className="tad-field">
+                            <label className="tad-field__label">
+                                Organisation / company name<span className="tad-field__req">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={orgName}
+                                onChange={e => setOrgName(e.target.value)}
+                                required
+                                placeholder="e.g. City police department"
+                                className="tad-input"
+                            />
+                        </div>
+                        <div className="tad-field">
+                            <label className="tad-field__label">
+                                Additional notes (optional)
+                            </label>
+                            <textarea
+                                value={reqMessage}
+                                onChange={e => setReqMessage(e.target.value)}
+                                rows={3}
+                                placeholder="Tell us about your use case, team size, or special requirements…"
+                                className="tad-input resize-none"
+                                style={{ height: 'auto', padding: '8px 12px' }}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => setShowRequest(false)}
+                                className="tad-btn tad-btn--secondary tad-btn--sm">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={submitting || !orgName.trim()}
+                                className="tad-btn tad-btn--primary tad-btn--sm">
+                                {submitting ? 'Submitting…' : 'Submit request'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </div>
         </div>
     );
 }
