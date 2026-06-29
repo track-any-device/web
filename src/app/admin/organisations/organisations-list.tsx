@@ -6,7 +6,7 @@ import { Globe, Radio, Waypoints, KeyRound, ArrowUpRight, Pencil, Trash2, Star }
 import type { LucideIcon } from 'lucide-react';
 import { StatRow } from '@/components/tad/data-table';
 import { PortalTopbar } from '@/components/tad/portal-shell';
-import { Badge, Button, Input, Card, Switch } from '@/components/ui';
+import { Badge, Button, IconButton, Input, Card, Switch } from '@/components/ui';
 
 /* Admin organisations listing (Wave E).
    Each org is a card showing a per-transport protocol badge plus, depending on transport:
@@ -282,18 +282,25 @@ function OrgCard({ t, onRotate, onEdit, onDelete }: { t: TenantRow; onRotate: ()
           <ActivitySparkline data={activity} accent={theme.accent} hasActivity={hasActivity} />
         )}
 
-        {/* Footer actions */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+        {/* Footer actions — Edit/Delete are icon-only so the row stays on one line and the footers
+            align across the grid whether or not the card has a "New key" button. */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 4, alignItems: 'center' }}>
           {tad101 && (
             <Button variant="ghost" size="sm" onClick={onRotate}>{t.hasKey ? 'New key' : 'Issue key'}</Button>
           )}
-          <Button variant="ghost" size="sm" icon={<Pencil size={14} strokeWidth={2.2} aria-hidden />} onClick={onEdit}>Edit</Button>
+          <IconButton size="sm" label="Edit organisation" onClick={onEdit}>
+            <Pencil strokeWidth={2.2} aria-hidden />
+          </IconButton>
           {t.isDefault ? (
-            <span title="Unset the public-tracker default first" style={{ display: 'inline-flex' }}>
-              <Button variant="ghost" size="sm" icon={<Trash2 size={14} strokeWidth={2.2} aria-hidden />} disabled>Delete</Button>
+            <span title="Unset the public-tracker default first to delete" style={{ display: 'inline-flex' }}>
+              <IconButton size="sm" label="Delete organisation" disabled>
+                <Trash2 strokeWidth={2.2} aria-hidden />
+              </IconButton>
             </span>
           ) : (
-            <Button variant="danger" size="sm" icon={<Trash2 size={14} strokeWidth={2.2} aria-hidden />} onClick={onDelete}>Delete</Button>
+            <IconButton size="sm" className="tad-iconbtn--danger" label="Delete organisation" onClick={onDelete}>
+              <Trash2 strokeWidth={2.2} aria-hidden />
+            </IconButton>
           )}
           <Link href={`/admin/organisations/${t.id}`} style={{ marginLeft: 'auto' }}>
             <Button variant="ghost" size="sm">Manage</Button>

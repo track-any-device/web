@@ -178,6 +178,8 @@
 .tad-iconbtn--lg{ --_s:46px; }
 .tad-iconbtn--solid{ background:var(--brand); color:var(--text-on-brand); }
 .tad-iconbtn--solid:hover:not([disabled]){ background:var(--brand-hover); }
+.tad-iconbtn--danger{ color:var(--danger); }
+.tad-iconbtn--danger:hover:not([disabled]){ background:var(--danger-bg); color:var(--danger); }
 .tad-iconbtn--outline{ border-color:var(--border-strong); }
 .tad-iconbtn--outline:hover:not([disabled]){ border-color:var(--text-subtle); background:var(--surface-hover); }
 .tad-iconbtn--active{ background:var(--brand-subtle); color:var(--brand-on-subtle); }
