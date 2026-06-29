@@ -41,6 +41,17 @@ interface SignalCreated {
   imei?: string;
   signal?: Record<string, unknown>;
 }
+// Per-signal event on private-tenant.{id}.device-logs — the main TAD101-forwarded traffic
+// (DeviceSignalReceived, broadcastAs 'device.signal.received'; the same event server-tenant consumes).
+interface SignalReceived {
+  device_id?: number;
+  imei?: string;
+  lat?: number;
+  lng?: number;
+  battery?: number | null;
+  is_online?: boolean;
+  last_seen_at?: string;
+}
 
 const ACCENT = 'var(--brand)'; // TAD101 channel theme — Pakistan green, matches forwarding-activity.
 
@@ -101,6 +112,22 @@ export function TenantLogs({ tenantId }: { tenantId: number | string }) {
     const logsChannel = pusher.subscribe(logsName);
     logsChannel.bind('pusher:subscription_error', onSubError(logsName));
     logsChannel.bind('device-log', (data: LogEvent) => { push(data); bump('frames'); });
+    // Forwarded per-signal events — the main TAD101 traffic for tenant devices (raw `device-log`
+    // frames are only emitted on the protocol path, not the TAD101/REST ingest, so without this the
+    // tab looked empty even while signals were flowing).
+    logsChannel.bind('device.signal.received', (data: SignalReceived) => {
+      const coords = data?.lat != null && data?.lng != null ? `${data.lat},${data.lng}` : '—';
+      const bat = data?.battery != null ? ` · ${data.battery}%` : '';
+      push({
+        ts: data?.last_seen_at,
+        source: 'tad101',
+        direction: 'in',
+        summary: `signal · ${data?.imei ?? '#' + (data?.device_id ?? '?')} · ${coords}${bat}`,
+        imei: data?.imei ?? null,
+        device_id: data?.device_id,
+      });
+      bump('frames');
+    });
 
     // Locations channel — TCP fixes (most traffic) and per-signal events.
     const locName = `private-tenant.${tenantId}.locations`;
