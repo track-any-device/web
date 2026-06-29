@@ -25,17 +25,19 @@ export default function BeatCreateClient() {
     }
 
     return (
-        <div className="mx-auto max-w-3xl p-4 space-y-6 sm:p-6 lg:p-8">
-            <div>
-                <a href="/my/devices" className="inline-flex items-center gap-1.5"
-                    style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)' }}>
-                    <ArrowLeft className="w-3.5 h-3.5" /> My devices
-                </a>
-                <h1 className="mt-2" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>New beat</h1>
-                <p className="mt-0.5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Draw a geofence polygon on the map.</p>
-            </div>
+        <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-7">
+            <div className="max-w-3xl space-y-6">
+                <div>
+                    <a href="/my/devices" className="inline-flex items-center gap-1.5"
+                        style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)' }}>
+                        <ArrowLeft className="w-3.5 h-3.5" /> My devices
+                    </a>
+                    <h1 className="mt-2" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>New beat</h1>
+                    <p className="mt-0.5" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Draw a geofence polygon on the map.</p>
+                </div>
 
-            <BeatForm token={token} />
+                <BeatForm token={token} />
+            </div>
         </div>
     );
 }
