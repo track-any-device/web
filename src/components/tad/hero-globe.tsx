@@ -2,10 +2,35 @@
 
 import React, { useEffect, useRef } from 'react';
 
-/* TAD-PAK hero globe — ported verbatim from the design pack
-   (track-any-device-ui-guidelines › ui_kits/website/Website.jsx › Globe).
-   2D-canvas dotted globe whose dots form continents (point-in-polygon land test), with city
-   pins, orbiting satellites and signal arcs. Brand green, scroll-reactive. */
+/* TAD-PAK hero globe — ported from the design pack (track-any-device-ui-guidelines › Globe).
+   2D-canvas dotted globe whose dots form continents (point-in-polygon land test), with city pins
+   across every continent, 31 orbiting satellites and signal arcs. Brand green, scroll-reactive.
+   Hovering a satellite freezes its orbit and shows its name. */
+
+// Satellite display names. The real 31-name list will be supplied later; until then each satellite
+// shows SAT-01 … SAT-31. To label them, fill this array in order (index 0 = first satellite).
+const SATELLITE_NAMES: string[] = [];
+const SAT_COUNT = 31;
+const satName = (i: number) => SATELLITE_NAMES[i] ?? `SAT-${String(i + 1).padStart(2, '0')}`;
+
+// Draws a satellite's name in a brand-green pill beside it. Canvas can't read CSS vars, so the
+// font/colours are literal; the pill flips to the left of the marker near the right edge.
+function drawSatLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, dpr: number, w: number) {
+  const fs = 11 * dpr;
+  ctx.font = `600 ${fs}px "DM Mono", ui-monospace, monospace`;
+  ctx.textBaseline = 'middle';
+  const padX = 7 * dpr, padY = 5 * dpr, gap = 12 * dpr, rr = 6 * dpr;
+  const bw = ctx.measureText(text).width + padX * 2, bh = fs + padY * 2;
+  let bx = x + gap;
+  if (bx + bw > w) bx = x - gap - bw;
+  const by = y - bh / 2;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, rr); else ctx.rect(bx, by, bw, bh);
+  ctx.fillStyle = 'rgba(1,65,28,0.94)';
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, bx + padX, by + bh / 2 + 0.5 * dpr);
+}
 
 export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?: number; radiusFactor?: number } = {}) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -61,16 +86,53 @@ export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?:
     const pins = [
       // Pakistan (brand home — kept dense)
       [31.5, 74.3], [24.8, 67.0], [33.6, 73.0], [34.0, 71.5], [30.2, 67.0], [30.2, 71.5], [31.4, 73.1], [25.4, 68.4],
-      // regional hubs
-      [25.2, 55.3], [24.7, 46.7], [25.3, 51.5], [21.5, 39.2], [19, 72], [28, 77], [13, 100], [3.1, 101.7], [1.3, 103], [-6, 107], [13.7, 100.5], [22.3, 114.2], [31.2, 121.5], [35, 139], [41, 29], [30, 31],
-      // wider world
-      [40, -100], [37, -122], [34, -118.2], [41.9, -87.6], [43.7, -79.4], [51, 0.1], [48, 2.3], [52.5, 13.4], [40.4, -3.7], [43, 13], [55, 37], [-1, 36], [-6.8, 39.3], [6, 3], [-26, 28], [-23, -46], [-34, -58], [19, -99], [-33, 151],
+      // Asia / Middle East
+      [25.2, 55.3], [24.7, 46.7], [25.3, 51.5], [21.5, 39.2], [19.1, 72.9], [28.6, 77.2], [13.7, 100.5], [3.1, 101.7], [1.3, 103.8], [-6.2, 106.8], [22.3, 114.2], [31.2, 121.5], [35.7, 139.7], [37.6, 127.0], [39.9, 116.4], [14.6, 121.0], [23.8, 90.4], [41.0, 29.0], [35.7, 51.4],
+      // Europe
+      [51.5, -0.1], [48.9, 2.3], [52.5, 13.4], [40.4, -3.7], [41.9, 12.5], [55.8, 37.6], [52.4, 4.9], [59.3, 18.1], [52.2, 21.0], [38.7, -9.1], [38.0, 23.7],
+      // Africa
+      [-1.3, 36.8], [-6.8, 39.3], [6.5, 3.4], [-26.2, 28.0], [30.0, 31.2], [33.6, -7.6], [5.6, -0.2], [9.0, 38.7], [-33.9, 18.4], [14.7, -17.4],
+      // North America
+      [40.7, -74.0], [37.8, -122.4], [34.0, -118.2], [41.9, -87.6], [43.7, -79.4], [47.6, -122.3], [29.8, -95.4], [25.8, -80.2], [19.4, -99.1], [45.5, -73.6], [49.3, -123.1],
+      // South America
+      [-23.5, -46.6], [-34.6, -58.4], [4.7, -74.1], [-12.0, -77.0], [-33.4, -70.7], [10.5, -66.9], [-22.9, -43.2],
+      // Oceania
+      [-33.9, 151.2], [-37.8, 144.9], [-36.8, 174.8], [-31.9, 115.9], [-27.5, 153.0],
     ].map((p) => toXYZ(p[0], p[1]));
+    // 31 satellites: [speed (signed → direction), orbit-radius factor, inclination y-offset, phase].
+    const SATS: number[][] = Array.from({ length: SAT_COUNT }, (_, i) => {
+      const dir = i % 2 === 0 ? 1 : -1;
+      const speed = dir * (0.7 + (i % 5) * 0.12);
+      const radiusF = 1.04 + ((i * 7) % 12) / 18;     // ~1.04 .. 1.65
+      const yOff = -0.62 + ((i * 13) % 25) / 19;       // ~-0.62 .. 0.69
+      const phase = (i * 2.3999632) % (Math.PI * 2);   // golden-angle spread
+      return [speed, radiusF, yOff, phase];
+    });
+    // Per-satellite orbit angle, advanced each frame — a hovered satellite stops advancing (freezes).
+    const satAngles = SATS.map((S) => S[3]);
+    let hovered = -1;                  // satellite index under the cursor, or -1
+    const satScreen: number[][] = [];  // latest [x, y, index] of each visible satellite, for hit-testing
+
     let raf = 0, t = 0;
 
     const resize = () => { canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr; };
     resize();
     window.addEventListener('resize', resize);
+
+    // The canvas stays pointer-events:none (so it never blocks the hero copy/CTAs); we hit-test the
+    // satellites against a window-level mousemove using the canvas bounding rect.
+    const onMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) { hovered = -1; return; }
+      const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+      const hit = 16 * dpr; let best = -1, bd = hit * hit;
+      for (const s of satScreen) { const dx = s[0] - mx, dy = s[1] - my, d2 = dx * dx + dy * dy; if (d2 < bd) { bd = d2; best = s[2]; } }
+      hovered = best;
+    };
+    const onLeave = () => { hovered = -1; };
+    window.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseleave', onLeave);
 
     const draw = () => {
       t += 0.0033;
@@ -98,18 +160,24 @@ export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?:
       }
       const op = 1 - st * 0.7;
       const others: Array<[number[], boolean]> = [];
-      for (let i = 1; i < pins.length; i++) { const q = proj(pins[i]); others.push([q, q[2] > 0.06]); }
-      const SATS = [[1.25, 1.5, 0.14, 0], [-0.9, 1.26, -0.34, 2.1], [1.6, 1.06, 0.4, 4.0], [1.05, 1.4, -0.5, 1.0], [-1.3, 1.18, 0.5, 5.2], [0.8, 1.34, 0.6, 3.0], [-1.1, 1.62, -0.2, 1.7], [1.42, 1.2, -0.62, 0.6], [-0.72, 1.48, 0.32, 4.6]];
+      for (let i = 0; i < pins.length; i++) { const q = proj(pins[i]); others.push([q, q[2] > 0.06]); }
+      // Advance each satellite's orbit; the hovered one freezes in place.
+      for (let i = 0; i < SATS.length; i++) { if (i !== hovered) satAngles[i] += 0.0033 * SATS[i][0]; }
       const sop = 1 - st * 0.6; const satsVis: number[][] = [];
-      for (const S of SATS) {
-        const oa = t * S[0] + S[3];
+      satScreen.length = 0;
+      for (let i = 0; i < SATS.length; i++) {
+        const S = SATS[i];
+        const oa = satAngles[i];
         const px = Math.cos(oa) * R * S[1], py0 = S[2] * R, pz0 = Math.sin(oa) * R * S[1];
         const ssx = cx + px, ssy = cy + (py0 * cosT - pz0 * sinT), depth = py0 * sinT + pz0 * cosT;
         if (sop <= 0.05 || (depth < 0 && Math.hypot(ssx - cx, ssy - cy) < Rg * 0.96)) continue;
-        const bs = 4.4 * dpr;
+        const hov = i === hovered;
+        const bs = (hov ? 5.2 : 4.4) * dpr;
         ctx.fillStyle = 'rgba(91,164,121,' + sop.toFixed(3) + ')'; ctx.fillRect(ssx - bs * 3.2, ssy - bs * 0.5, bs * 1.8, bs); ctx.fillRect(ssx + bs * 1.4, ssy - bs * 0.5, bs * 1.8, bs);
-        ctx.fillStyle = 'rgba(1,65,28,' + sop.toFixed(3) + ')'; ctx.fillRect(ssx - bs, ssy - bs * 0.6, bs * 2, bs * 1.2);
+        ctx.fillStyle = (hov ? 'rgba(47,182,122,' : 'rgba(1,65,28,') + sop.toFixed(3) + ')'; ctx.fillRect(ssx - bs, ssy - bs * 0.6, bs * 2, bs * 1.2);
+        if (hov) { ctx.strokeStyle = 'rgba(47,182,122,' + sop.toFixed(3) + ')'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.arc(ssx, ssy, bs * 2.4, 0, 6.2832); ctx.stroke(); }
         satsVis.push([ssx, ssy]);
+        satScreen.push([ssx, ssy, i]);
       }
       if (op > 0.02) {
         for (const it of others) {
@@ -129,11 +197,18 @@ export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?:
           ctx.beginPath(); ctx.fillStyle = 'rgba(255,255,255,' + op.toFixed(3) + ')'; ctx.arc(q[0], q[1], pr * 0.4, 0, 6.2832); ctx.fill();
         }
       }
+      // Hovered satellite's name label, drawn on top of everything.
+      if (hovered >= 0) { const s = satScreen.find((p) => p[2] === hovered); if (s) drawSatLabel(ctx, s[0], s[1], satName(hovered), dpr, w); }
       raf = requestAnimationFrame(draw);
     };
     draw();
 
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseleave', onLeave);
+    };
   }, [cxFactor, radiusFactor]);
 
   return <canvas ref={ref} className="tad-hero-globe" aria-hidden="true" />;
