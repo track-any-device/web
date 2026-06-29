@@ -44,6 +44,11 @@ export interface TenantDeviceRow {
 export interface TenantDetail extends Omit<Tenant, 'devices'> {
   deviceCount: number; devices: TenantDeviceRow[];
 }
+/** /api/admin/tenants/{id}/members row — a user in the organisation's tenant_users pivot. */
+export interface TenantMember {
+  id: number | string; name: string; email: string | null;
+  primary_contact: string | null; role: string | null; joinedAt: string | null;
+}
 export interface PortalUser {
   id: number | string; name: string; email: string; role: string; phone: string | null; verified: boolean;
   blocked?: boolean;

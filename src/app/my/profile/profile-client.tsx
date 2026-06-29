@@ -237,8 +237,12 @@ export default function ProfileClient() {
                                         <p className="truncate" style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-subtle)' }}>{tenant.slug}</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: TENANT_STATUS_DOT[tenant.status] ?? 'var(--text-muted)' }} />
-                                        <span className="capitalize" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{tenant.status}</span>
+                                        {tenant.status && (
+                                            <>
+                                                <span className="w-1.5 h-1.5 rounded-full" style={{ background: TENANT_STATUS_DOT[tenant.status] ?? 'var(--text-muted)' }} />
+                                                <span className="capitalize" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>{tenant.status}</span>
+                                            </>
+                                        )}
                                         <a href={tenant.portal_url} target="_blank" rel="noopener noreferrer"
                                             className="ml-2 inline-flex items-center gap-1"
                                             style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)' }}>
