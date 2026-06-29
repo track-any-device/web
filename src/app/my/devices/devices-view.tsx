@@ -12,6 +12,7 @@ import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
     useArrow,
+    splitTrailIntoSegments,
 } from '@/lib/map-markers';
 
 type DevicesTab = 'assets' | 'beats' | 'trips';
@@ -308,6 +309,13 @@ const TOOLTIP_FONT  = "'Plus Jakarta Sans', system-ui, sans-serif";
 const TOOLTIP_MONO  = "'DM Mono', ui-monospace, monospace";
 const TOOLTIP_TEXT  = '#241F17';
 const TOOLTIP_MUTED = '#8A7E6C';
+const TOOLTIP_BRAND = '#01411C';
+
+// Footer "View details →" link for the InfoWindow ('tooltip' variant). InfoWindow content is
+// reparented outside React, so a plain <a href> (full navigation) is the correct behaviour.
+function tooltipDetailsLink(href: string): string {
+    return `<a href="${href}" style="display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-family:${TOOLTIP_FONT};font-size:12px;font-weight:600;color:${TOOLTIP_BRAND};text-decoration:none">View details <span aria-hidden="true">&rarr;</span></a>`;
+}
 
 function deviceTooltipHtml(device: Device): string {
     const status = getMyStatus(device);
@@ -333,6 +341,7 @@ function deviceTooltipHtml(device: Device): string {
                 <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_TEXT}">${seen}</div></div>
         </div>
         <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_MUTED}">${coords}</div>
+        ${tooltipDetailsLink(`/my/devices/${device.id}`)}
     </div>`;
 }
 
@@ -352,6 +361,7 @@ function incidentTooltipHtml(incident: Incident): string {
         <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_MUTED};margin-bottom:${dev || metric ? '4px' : '0'}">${when}</div>
         ${dev ? `<div style="font-size:11.5px;color:${TOOLTIP_TEXT}">${dev}</div>` : ''}
         ${metric ? `<div style="margin-top:3px;font-family:${TOOLTIP_MONO};font-size:13px;font-weight:600;color:${color}">${escapeHtml(metric)}</div>` : ''}
+        ${incident.device ? tooltipDetailsLink(`/my/devices/${incident.device.id}`) : ''}
     </div>`;
 }
 
@@ -425,8 +435,12 @@ export default function DevicesView({
     // One shared InfoWindow for the 'tooltip' variant (only one open at a time).
     const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
-    const trailRef    = useRef<google.maps.Polyline | null>(null);
-    const [showTrail,  setShowTrail]  = useState(false);
+    // The trail is drawn as ONE polyline PER continuous segment (so a missing/delayed connection
+    // never gets bridged by a straight line). Hold them all so we can clear the whole set.
+    const trailRef    = useRef<google.maps.Polyline[]>([]);
+    // The 24h trail is shown by DEFAULT so selecting a device auto-reveals its recent path; the
+    // "Show trail" toggle still lets users hide it.
+    const [showTrail,  setShowTrail]  = useState(true);
     const [trailEmpty, setTrailEmpty] = useState(false);
     const [showBeats,  setShowBeats]  = useState(true);
     const beatsRef    = useRef<Beat[]>(initialBeats);
@@ -602,7 +616,7 @@ export default function DevicesView({
         const map = gmapRef.current;
         if (!map || !mapsReady) return;
 
-        const clear = () => { trailRef.current?.setMap(null); trailRef.current = null; };
+        const clear = () => { trailRef.current.forEach(p => p.setMap(null)); trailRef.current = []; };
 
         if (!showTrail || !selectedDev) { clear(); setTrailEmpty(false); return; }
 
@@ -611,15 +625,22 @@ export default function DevicesView({
             try {
                 const res = await new ApiClient(token).deviceTrail(selectedDev, 24);
                 if (cancelled) return;
-                const path = res.points
+                // Keep the timestamp `t` on each point so we can split the path at connection gaps.
+                const points = res.points
                     .filter(p => p.lat != null && p.lng != null)
-                    .map(p => ({ lat: p.lat, lng: p.lng }));
+                    .map(p => ({ lat: p.lat, lng: p.lng, t: p.t }));
                 clear();
-                if (path.length < 2) { setTrailEmpty(true); return; }
+                if (points.length < 2) { setTrailEmpty(true); return; }
                 setTrailEmpty(false);
-                trailRef.current = new google.maps.Polyline({
-                    path, map: gmapRef.current, geodesic: true,
-                    strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
+                // Draw each continuous segment as its own polyline — no line bridges a gap where
+                // the device went dark (time gap > 15 min, or a > 3 km jump when `t` is missing).
+                const segments = splitTrailIntoSegments(points);
+                segments.forEach(seg => {
+                    if (seg.length < 2) return;
+                    trailRef.current.push(new google.maps.Polyline({
+                        path: seg, map: gmapRef.current, geodesic: true,
+                        strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
+                    }));
                 });
             } catch { /* trail unavailable — leave the map as-is */ }
         })();
@@ -1191,20 +1212,8 @@ export default function DevicesView({
                     </div>
                 </Card>
 
-                {/* ── Pinned selected-device card (sits ON TOP of the incidents) ───────────
-                    Only on the Assets view; reuses the device-detail DeviceSummaryCard. */}
-                {activeTab === 'assets' && selectedDevice && (
-                    <DeviceSummaryCard
-                        name={selectedDevice.name}
-                        speed={null}
-                        lastSeenAt={selectedDevice.last_seen_at}
-                        online={selectedStatus === 'online'}
-                        battery={selectedDevice.battery_percent}
-                        statusLabel={selectedStatus ? STATUS_CHIP[selectedStatus].label : undefined}
-                        statusColor={selectedStatus ? STATUS_CHIP[selectedStatus].color : undefined}
-                        productTag={selectedDevice.device_type?.name ?? null}
-                    />
-                )}
+                {/* The selected-device card now lives ON the map (tooltip / panel variants),
+                    so the duplicate pinned card that used to sit above the incidents is gone. */}
 
                 {/* ── Incidents & alerts (infinite scroll) ─────────────────────────────────
                     All devices' incidents by default; a selected device filters server-side. */}
@@ -1401,26 +1410,38 @@ export default function DevicesView({
                                                 {metric && (
                                                     <div style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, color }}>{metric}</div>
                                                 )}
-                                                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', textTransform: 'capitalize', borderRadius: 'var(--radius-pill)', padding: '3px 9px', background: badge?.background ?? 'var(--surface-sunken)', color: badge?.color ?? 'var(--text-secondary)' }}>
                                                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />
                                                         {selectedIncident.status}
                                                     </span>
+                                                    {selectedIncident.device && (
+                                                        <Link href={`/my/devices/${selectedIncident.device.id}`}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-semibold)', color: 'var(--brand)', textDecoration: 'none', flex: 'none' }}>
+                                                            View details <ChevronRight width={13} height={13} />
+                                                        </Link>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
                                     })()
                                 ) : selectedDevice ? (
-                                    <DeviceSummaryCard
-                                        name={selectedDevice.name}
-                                        speed={null}
-                                        lastSeenAt={selectedDevice.last_seen_at}
-                                        online={selectedStatus === 'online'}
-                                        battery={selectedDevice.battery_percent}
-                                        statusLabel={selectedStatus ? STATUS_CHIP[selectedStatus].label : undefined}
-                                        statusColor={selectedStatus ? STATUS_CHIP[selectedStatus].color : undefined}
-                                        productTag={selectedDevice.device_type?.name ?? null}
-                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <DeviceSummaryCard
+                                            name={selectedDevice.name}
+                                            speed={null}
+                                            lastSeenAt={selectedDevice.last_seen_at}
+                                            online={selectedStatus === 'online'}
+                                            battery={selectedDevice.battery_percent}
+                                            statusLabel={selectedStatus ? STATUS_CHIP[selectedStatus].label : undefined}
+                                            statusColor={selectedStatus ? STATUS_CHIP[selectedStatus].color : undefined}
+                                            productTag={selectedDevice.device_type?.name ?? null}
+                                        />
+                                        <button type="button" onClick={() => goToDevice(selectedDevice.id)}
+                                            className="tad-btn tad-btn--subtle tad-btn--sm tad-btn--block">
+                                            View details <ChevronRight width={14} height={14} />
+                                        </button>
+                                    </div>
                                 ) : null}
                             </div>
                         )}

@@ -17,6 +17,7 @@ import type {
     DeviceCapabilities, DeviceCommand, DeviceTrackingMode, Trip,
 } from '@/lib/api-client';
 import { Card, Button, Switch, Input, Tabs } from '@/components/ui';
+import { splitTrailIntoSegments } from '@/lib/map-markers';
 import { DeviceSummaryCard } from './device-summary-card';
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
@@ -109,8 +110,9 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
     const startPlayback = useCallback((pb: Playback) => {
         setPlayback(pb);
-        setTab('overview');
-        // Bring the map into view on phones where the timeline list is long.
+        // Play IN PLACE — don't yank the user off the Timeline tab. The PlaybackCard renders at the
+        // top of whichever tab is active (Overview keeps its own; Timeline renders it inline).
+        // Bring the player into view on phones where the timeline list is long.
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
     }, []);
 
@@ -264,6 +266,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                     deviceId={deviceId}
                     activePlayback={playback}
                     onPlay={startPlayback}
+                    onExitPlayback={() => setPlayback(null)}
                 />
             )}
 
@@ -299,7 +302,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 }
 
 // ── 1. Live location map ───────────────────────────────────────────────────────
-function LiveLocationCard({ device, trail, status }: { device: Device; trail: Array<{ lat: number; lng: number }>; status: MyStatus }) {
+function LiveLocationCard({ device, trail, status }: { device: Device; trail: Array<{ lat: number; lng: number; t: string | null }>; status: MyStatus }) {
     const mapRef  = useRef<HTMLDivElement>(null);
     const gmapRef = useRef<google.maps.Map | null>(null);
     const [ready, setReady] = useState(false);
@@ -357,16 +360,21 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
             }) as unknown as { setMap: (m: google.maps.Map | null) => void };
         }
 
-        // Trail polyline — keep the view close on the device (no fit-to-bounds, which zooms out).
-        let line: google.maps.Polyline | null = null;
+        // Trail polylines — keep the view close on the device (no fit-to-bounds, which zooms out).
+        // Draw ONE polyline per continuous segment so no straight line bridges a connection gap
+        // (time gap > 15 min, or a > 3 km jump when a timestamp is missing).
+        const lines: google.maps.Polyline[] = [];
         if (trail.length >= 2) {
-            line = new google.maps.Polyline({
-                path: trail, map, geodesic: true,
-                strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
+            splitTrailIntoSegments(trail).forEach(seg => {
+                if (seg.length < 2) return;
+                lines.push(new google.maps.Polyline({
+                    path: seg, map, geodesic: true,
+                    strokeColor: '#01411C', strokeOpacity: 0.85, strokeWeight: 3,
+                }));
             });
         }
 
-        return () => { marker.setMap(null); line?.setMap(null); };
+        return () => { marker.setMap(null); lines.forEach(l => l.setMap(null)); };
     }, [ready, hasLocation, lat, lng, status, trail, device.name]);
 
     return (
@@ -400,11 +408,12 @@ function severity(i: Incident): { color: string; bg: string } {
     return { color: 'var(--text-secondary)', bg: 'var(--surface-sunken)' };
 }
 
-function TimelineTab({ token, deviceId, activePlayback, onPlay }: {
+function TimelineTab({ token, deviceId, activePlayback, onPlay, onExitPlayback }: {
     token: string;
     deviceId: number;
     activePlayback: Playback | null;
     onPlay: (pb: Playback) => void;
+    onExitPlayback: () => void;
 }) {
     const [trips, setTrips]         = useState<Trip[]>([]);
     const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -541,6 +550,16 @@ function TimelineTab({ token, deviceId, activePlayback, onPlay }: {
     const isEmpty = initialDone && visible.length === 0;
 
     return (
+        <div className="space-y-4">
+        {/* Tapping Play on a trip/incident plays IN PLACE here, without leaving the Timeline tab. */}
+        {activePlayback && (
+            <PlaybackCard
+                token={token}
+                deviceId={deviceId}
+                playback={activePlayback}
+                onExit={onExitPlayback}
+            />
+        )}
         <Card title="Timeline" flushBody>
             <div className="px-4 py-4 sm:px-5">
                 {isEmpty && !error ? (
@@ -588,6 +607,7 @@ function TimelineTab({ token, deviceId, activePlayback, onPlay }: {
                 )}
             </div>
         </Card>
+        </div>
     );
 }
 
