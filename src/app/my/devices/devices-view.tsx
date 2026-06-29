@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil, X } from 'lucide-react';
+import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, Flag, Pencil, X } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat } from '@/lib/api-client';
-import { Badge, Card, Button } from '@/components/ui';
+import { Badge, Card } from '@/components/ui';
 import { DeviceSummaryCard } from './[id]/device-summary-card';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
@@ -220,6 +220,141 @@ function makeSelectedMarkerElement(device: Device): HTMLElement {
     return makeMarkerElement(device, true);
 }
 
+// Build an incident map marker — a flag glyph inside a rounded "pin" tag, coloured by the
+// incident status (same palette as the list-row dot). `selected` enlarges + ringed-emphasises it.
+// Concrete hex fallbacks resolve even if Google reparents the marker outside the .tad scope.
+const INCIDENT_PIN_HEX: Record<string, string> = {
+    open:         '#F0463C',
+    acknowledged: '#C9821B',
+    escalated:    '#C9821B',
+    resolved:     '#1F9462',
+    closed:       '#8A7E6C',
+};
+
+function makeIncidentMarkerElement(incident: Incident, selected = false): HTMLElement {
+    const color = INCIDENT_PIN_HEX[incident.status] ?? '#8A7E6C';
+    const size  = selected ? 30 : 24;
+
+    const wrap = document.createElement('div');
+    wrap.title = incident.display_label ?? incident.event_type.replace(/_/g, ' ');
+    wrap.style.cssText = `position:relative;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;cursor:pointer`;
+
+    if (selected) {
+        const halo = document.createElement('div');
+        halo.style.cssText = `position:absolute;left:50%;top:50%;width:${size}px;height:${size}px;margin:${-size / 2}px 0 0 ${-size / 2}px;border-radius:50%;background:${color};opacity:.35;animation:tad-pin-pulse 1.8s ease-out infinite;pointer-events:none`;
+        wrap.appendChild(halo);
+    }
+
+    const pin = document.createElement('div');
+    pin.style.cssText = `position:relative;display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:${color};border:${selected ? 2.5 : 2}px solid #fff;box-shadow:${selected ? `0 0 0 2px ${color}, ` : ''}0 1px 4px rgba(0,0,0,.35)`;
+
+    // Flag glyph (lucide "flag" path), un-rotated to sit upright inside the rotated pin.
+    pin.innerHTML = `<svg viewBox="0 0 24 24" width="${selected ? 14 : 12}" height="${selected ? 14 : 12}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(45deg)"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+    wrap.appendChild(pin);
+
+    return wrap;
+}
+
+// Escape user/text content before injecting into InfoWindow HTML strings.
+function escapeHtml(s: string): string {
+    return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Short relative-time label ("3m ago", "2h ago") for tooltip/panel timestamps.
+function relTime(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    const sec = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+    if (sec < 60) return `${sec}s ago`;
+    const min = Math.round(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.round(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    return `${Math.round(hr / 24)}d ago`;
+}
+
+// Plain-text live metric ("62 km/h", "12% battery", "340 m from beat") for tooltip/panel.
+function incidentLiveMetricText(incident: Incident): string | null {
+    if (!ACTIVE_INCIDENT_STATUSES.includes(incident.status)) return null;
+    const current = incident.current;
+    if (!current) return null;
+    if (incident.event_type === 'overspeed' && current.speed != null) {
+        return `${current.speed.toFixed(0)} km/h`;
+    }
+    if (incident.event_type === 'low_battery' && current.battery != null) {
+        return `${current.battery}% battery`;
+    }
+    if (incident.event_type === 'beat_violation' && current.distanceM != null) {
+        const m = current.distanceM;
+        return m < 1000 ? `${m.toFixed(0)} m from beat` : `${(m / 1000).toFixed(1)} km from beat`;
+    }
+    return null;
+}
+
+// Customer-facing incident label (display_label, else humanised event_type).
+function incidentLabel(incident: Incident): string {
+    return incident.display_label ?? incident.event_type.replace(/_/g, ' ');
+}
+
+// ── InfoWindow ('tooltip' variant) HTML content ───────────────────────────────
+// Google reparents InfoWindow content outside the .tad scope, so use concrete colours/fonts.
+const TOOLTIP_FONT  = "'Plus Jakarta Sans', system-ui, sans-serif";
+const TOOLTIP_MONO  = "'DM Mono', ui-monospace, monospace";
+const TOOLTIP_TEXT  = '#241F17';
+const TOOLTIP_MUTED = '#8A7E6C';
+
+function deviceTooltipHtml(device: Device): string {
+    const status = getMyStatus(device);
+    const chip   = STATUS_CHIP[status];
+    const color  = STATUS_PIN[status];
+    const name   = escapeHtml(device.name);
+    const seen   = device.last_seen_at ? escapeHtml(new Date(device.last_seen_at).toLocaleString()) : '—';
+    const coords = device.last_lat != null && device.last_lon != null
+        ? `${Number(device.last_lat).toFixed(4)}, ${Number(device.last_lon).toFixed(4)}` : 'No location yet';
+    const battery = device.battery_percent != null ? `${Math.round(device.battery_percent)}%` : '—';
+
+    return `<div style="font-family:${TOOLTIP_FONT};min-width:172px;max-width:240px;padding:2px 2px 4px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="font-size:14px;font-weight:700;color:${TOOLTIP_TEXT};line-height:1.25">${name}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:${chip.color}">
+                <span style="width:7px;height:7px;border-radius:50%;background:${color}"></span>${escapeHtml(chip.label)}
+            </span>
+        </div>
+        <div style="display:flex;gap:14px;margin-bottom:5px">
+            <div><div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:${TOOLTIP_MUTED}">Battery</div>
+                <div style="font-family:${TOOLTIP_MONO};font-size:13px;font-weight:600;color:${TOOLTIP_TEXT}">${battery}</div></div>
+            <div><div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:${TOOLTIP_MUTED}">Last seen</div>
+                <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_TEXT}">${seen}</div></div>
+        </div>
+        <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_MUTED}">${coords}</div>
+    </div>`;
+}
+
+function incidentTooltipHtml(incident: Incident): string {
+    const color  = INCIDENT_PIN_HEX[incident.status] ?? '#8A7E6C';
+    const label  = escapeHtml(incidentLabel(incident));
+    const when   = escapeHtml(new Date(incident.triggered_at).toLocaleString());
+    const dev    = incident.device ? escapeHtml(incident.device.name) : null;
+    const metric = incidentLiveMetricText(incident);
+    const flag   = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
+
+    return `<div style="font-family:${TOOLTIP_FONT};min-width:172px;max-width:240px;padding:2px 2px 4px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+            ${flag}
+            <span style="font-size:14px;font-weight:700;color:${TOOLTIP_TEXT};text-transform:capitalize;line-height:1.25">${label}</span>
+        </div>
+        <div style="font-family:${TOOLTIP_MONO};font-size:11px;color:${TOOLTIP_MUTED};margin-bottom:${dev || metric ? '4px' : '0'}">${when}</div>
+        ${dev ? `<div style="font-size:11.5px;color:${TOOLTIP_TEXT}">${dev}</div>` : ''}
+        ${metric ? `<div style="margin-top:3px;font-family:${TOOLTIP_MONO};font-size:13px;font-weight:600;color:${color}">${escapeHtml(metric)}</div>` : ''}
+    </div>`;
+}
+
 export default function DevicesView({
     devices: incomingDevices,
     incidents,
@@ -243,8 +378,27 @@ export default function DevicesView({
     const [beats,           setBeats]           = useState<Beat[]>(initialBeats);
     const [selectedDev,     setSelectedDev]     = useState<number | null>(null);
     const [selectedBeat,    setSelectedBeat]    = useState<number | null>(null);
+    const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
     const [mapsReady,       setMapsReady]       = useState(false);
     const [showImport,      setShowImport]      = useState(false);
+
+    // How the SELECTED device's / incident's card is presented ON the map:
+    //  'tooltip' → a single shared google.maps.InfoWindow anchored to the pin.
+    //  'panel'   → an absolutely-positioned overlay at the map's top-right corner.
+    // Persisted so a customer's preference survives reloads.
+    type CardVariant = 'tooltip' | 'panel';
+    const CARD_VARIANT_KEY = 'tad:my-devices:card-variant';
+    const [cardVariant, setCardVariant] = useState<CardVariant>('tooltip');
+    useEffect(() => {
+        try {
+            const stored = window.localStorage.getItem(CARD_VARIANT_KEY);
+            if (stored === 'tooltip' || stored === 'panel') setCardVariant(stored);
+        } catch { /* localStorage unavailable — keep default */ }
+    }, []);
+    const pickCardVariant = useCallback((v: CardVariant) => {
+        setCardVariant(v);
+        try { window.localStorage.setItem(CARD_VARIANT_KEY, v); } catch { /* ignore */ }
+    }, []);
 
     // Mobile-only: which single pane is shown (the desktop lg+ layout shows both columns at once).
     // 'list' = the LEFT column (device list + selected card + incidents, or the Beats list) ·
@@ -265,6 +419,11 @@ export default function DevicesView({
     const gmapRef     = useRef<google.maps.Map | null>(null);
     const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; addListener?: (ev: string, fn: () => void) => void; position?: { lat: number; lng: number } }>>(new Map());
     const markerSigRef = useRef<Map<number, string>>(new Map());
+    // Incident flag pins live in their OWN ref-map (separate from device markers) so they can be
+    // rebuilt/cleared independently as visibleIncidents or the selection changes.
+    const incidentMarkersRef = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; addListener?: (ev: string, fn: () => void) => void; position?: { lat: number; lng: number } }>>(new Map());
+    // One shared InfoWindow for the 'tooltip' variant (only one open at a time).
+    const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
     const polysRef    = useRef<Map<number, google.maps.Polygon>>(new Map());
     const trailRef    = useRef<google.maps.Polyline | null>(null);
     const [showTrail,  setShowTrail]  = useState(false);
@@ -407,6 +566,36 @@ export default function DevicesView({
             }
         });
     }, [devices, selectedDev, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Sync incident flag pins (own ref-map) when visibleIncidents / selection change ──
+    // Rebuild ALL incident markers so stale ones are removed and the selected one is emphasised.
+    // Only incidents with a numeric lat/lng get a pin (no fabricated locations).
+    useEffect(() => {
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+
+        // Clear the previous set to avoid leaks (markers stay referenced via the map otherwise).
+        incidentMarkersRef.current.forEach(mk => mk.setMap(null));
+        incidentMarkersRef.current.clear();
+
+        visibleIncidents.forEach(incident => {
+            if (incident.lat == null || incident.lng == null) return;
+            const lat = Number(incident.lat);
+            const lng = Number(incident.lng);
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            const selected = selectedIncidentId === incident.id;
+            const marker   = createIncidentMarker(map, incident, lat, lng, selected);
+            marker.addListener?.('click', () => selectIncident(incident.id));
+            incidentMarkersRef.current.set(incident.id, marker);
+        });
+    }, [visibleIncidents, selectedIncidentId, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Drop a selected incident that scrolled/filtered out of the visible set.
+    useEffect(() => {
+        if (selectedIncidentId == null) return;
+        if (!visibleIncidents.some(i => i.id === selectedIncidentId)) setSelectedIncidentId(null);
+    }, [visibleIncidents, selectedIncidentId]);
 
     // ── Trail: draw the selected device's recent path when "Show trail" is on ──
     useEffect(() => {
@@ -568,6 +757,67 @@ export default function DevicesView({
         return mk as unknown as ReturnType<typeof markersRef.current.get> & object;
     }
 
+    // ── Create an incident flag marker (AdvancedMarkerElement, legacy-Marker fallback) ──
+    function createIncidentMarker(
+        map: google.maps.Map,
+        incident: Incident,
+        lat: number,
+        lng: number,
+        selected: boolean,
+    ): ReturnType<typeof incidentMarkersRef.current.get> & object {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const AdvMarker = (google.maps as any).marker?.AdvancedMarkerElement as
+            | (new (o: object) => object & { addListener?: (ev: string, fn: () => void) => void; setMap: (m: google.maps.Map | null) => void; content: HTMLElement; position: { lat: number; lng: number }; zIndex?: number })
+            | undefined;
+
+        if (AdvMarker) {
+            return new AdvMarker({
+                map, position: { lat, lng },
+                content: makeIncidentMarkerElement(incident, selected),
+                zIndex: selected ? 1000 : 5,
+            });
+        }
+
+        // Fallback to legacy Marker
+        const color = INCIDENT_PIN_HEX[incident.status] ?? '#8A7E6C';
+        const mk    = new google.maps.Marker({
+            position: { lat, lng },
+            map,
+            title: incidentLabel(incident),
+            zIndex: selected ? 1000 : 5,
+            icon: {
+                path:         google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                scale:        selected ? 7 : 5,
+                fillColor:    color,
+                fillOpacity:  1,
+                strokeColor:  '#fff',
+                strokeWeight: selected ? 3 : 2,
+            },
+        });
+        return mk as unknown as ReturnType<typeof incidentMarkersRef.current.get> & object;
+    }
+
+    // ── Select an incident (highlight row + pin, pan/zoom map, show its on-map card) ──
+    // Clicking the already-selected incident clears it (mirrors the row toggle behaviour).
+    const selectIncident = useCallback((id: number) => {
+        if (selectedIncidentId === id) { setSelectedIncidentId(null); return; }
+        const incident = visibleIncidents.find(i => i.id === id);
+        const m = gmapRef.current;
+        if (incident && m && incident.lat != null && incident.lng != null) {
+            const lat = Number(incident.lat);
+            const lng = Number(incident.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                m.panTo({ lat, lng });
+                if ((m.getZoom() ?? 10) < 16) setTimeout(() => m.setZoom(16), 220);
+            }
+        }
+        setSelectedIncidentId(id);
+        // Selecting an incident is its own focus — drop any device pin selection.
+        setSelectedDev(null);
+        // On phones the list and map are separate panes — jump to the map so the pin is visible.
+        setMobilePane('map');
+    }, [selectedIncidentId, visibleIncidents]);
+
     // ── Select a device (highlight + pan map, no drawer) ──────────────────────
     const selectDevice = useCallback((id: number, map?: google.maps.Map) => {
         const m      = map ?? gmapRef.current;
@@ -587,6 +837,7 @@ export default function DevicesView({
 
         setSelectedDev(id);
         setSelectedBeat(null);
+        setSelectedIncidentId(null);
         // On phones the list and map are separate panes — jump to the map so the pin is visible.
         setMobilePane('map');
         document.getElementById(`device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -645,6 +896,9 @@ export default function DevicesView({
         polysRef.current.forEach(poly => poly.setMap(showBeats ? map : null));
     }, [showBeats, mapsReady]);
 
+    // Tidy the shared InfoWindow on unmount.
+    useEffect(() => () => { infoWindowRef.current?.close(); }, []);
+
     // ── Reload beats (after import) ───────────────────────────────────────────
     function loadBeats() {
         new ApiClient(token).beats()
@@ -673,6 +927,7 @@ export default function DevicesView({
 
         setSelectedBeat(id);
         setSelectedDev(null);
+        setSelectedIncidentId(null);
         // On phones the list and map are separate panes — jump to the map so the zone is visible.
         setMobilePane('map');
         document.getElementById(`beat-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -680,11 +935,55 @@ export default function DevicesView({
 
     // ── Derived view data (presentation only) ────────────────────────────────
     const selectedDevice  = selectedDev != null ? devices.find(d => d.id === selectedDev) ?? null : null;
+    const selectedIncident = selectedIncidentId != null
+        ? visibleIncidents.find(i => i.id === selectedIncidentId) ?? null : null;
     // "New" = still-active incidents (open / acknowledged / escalated) across the visible set.
     const newIncidentCount = visibleIncidents.filter(i =>
         ['open', 'acknowledged', 'escalated'].includes(i.status)).length;
 
     const selectedStatus  = selectedDevice ? getMyStatus(selectedDevice) : null;
+
+    // ── 'tooltip' variant: a single shared InfoWindow anchored to the selected pin ──────
+    // Opens on the selected device OR selected incident marker; only one open at a time; closes
+    // when the variant flips to 'panel' or the selection clears. Re-runs as selection/data change
+    // so the live metric / last-seen stay current. (Declared after the derived selections above.)
+    useEffect(() => {
+        const map = gmapRef.current;
+        if (!map || !mapsReady) return;
+
+        const iw = (infoWindowRef.current ??= new google.maps.InfoWindow());
+
+        if (cardVariant !== 'tooltip') { iw.close(); return; }
+
+        // Incident takes precedence when one is selected (its selection clears the device pin).
+        if (selectedIncident && selectedIncident.lat != null && selectedIncident.lng != null) {
+            const lat = Number(selectedIncident.lat);
+            const lng = Number(selectedIncident.lng);
+            const marker = incidentMarkersRef.current.get(selectedIncident.id);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                iw.setContent(incidentTooltipHtml(selectedIncident));
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (marker) iw.open({ map, anchor: marker as any });
+                else { iw.setPosition({ lat, lng }); iw.open(map); }
+                return;
+            }
+        }
+
+        if (selectedDevice && selectedDevice.last_lat != null && selectedDevice.last_lon != null) {
+            const lat = Number(selectedDevice.last_lat);
+            const lng = Number(selectedDevice.last_lon);
+            const marker = markersRef.current.get(selectedDevice.id);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                iw.setContent(deviceTooltipHtml(selectedDevice));
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if (marker) iw.open({ map, anchor: marker as any });
+                else { iw.setPosition({ lat, lng }); iw.open(map); }
+                return;
+            }
+        }
+
+        iw.close();
+    }, [cardVariant, selectedIncident, selectedDevice, devices, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         // Fills the full-bleed <main> (flex:1; minHeight:0). On phones/tablets it's a single
@@ -758,7 +1057,7 @@ export default function DevicesView({
                     {/* Slim list. On mobile the whole LEFT column scrolls (parent has overflow-y-auto),
                         so the list grows to its natural height; on desktop the list scrolls within a
                         capped height so the pinned card + incidents below stay reachable in the column. */}
-                    <div className="mt-2.5 min-h-0 overflow-y-auto lg:max-h-[40vh]">
+                    <div className="mt-2.5 min-h-0 overflow-y-auto lg:min-h-[160px] lg:max-h-[40vh]">
 
                         {/* ── ASSETS ──────────────────────────────────────── */}
                         {activeTab === 'assets' && (
@@ -919,7 +1218,7 @@ export default function DevicesView({
                                         ? devices.find(d => d.id === selectedDev)?.name
                                         : beats.find(b => b.id === selectedBeat)?.name}
                                 </span>
-                                <button onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
+                                <button onClick={() => { setSelectedDev(null); setSelectedBeat(null); setSelectedIncidentId(null); }}
                                     style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', flex: 'none', marginLeft: 8 }}>
                                     <X width={12} height={12} />
                                     Show all
@@ -934,26 +1233,35 @@ export default function DevicesView({
                                 </p>
                             </div>
                         ) : (
-                            <div className="lg:max-h-[calc(100vh-30rem)] lg:overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                {visibleIncidents.map(incident => (
-                                    <div key={incident.id} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)', flex: 'none' }}>
-                                            <AlertTriangle width={15} height={15} />
-                                        </span>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
-                                                {incident.display_label ?? incident.event_type.replace(/_/g, ' ')}
+                            <div className="lg:min-h-[200px] lg:max-h-[calc(100vh-26rem)] lg:overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {visibleIncidents.map(incident => {
+                                    const on = selectedIncidentId === incident.id;
+                                    return (
+                                        <button key={incident.id} type="button" onClick={() => selectIncident(incident.id)}
+                                            style={{
+                                                display: 'flex', gap: 11, alignItems: 'flex-start', width: '100%', textAlign: 'left',
+                                                border: 'none', cursor: 'pointer', padding: '6px 8px', margin: '-6px -8px',
+                                                borderRadius: 'var(--radius-md)',
+                                                background: on ? 'var(--brand-subtle)' : 'transparent',
+                                            }}>
+                                            <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)', flex: 'none' }}>
+                                                <Flag width={15} height={15} />
+                                            </span>
+                                            <div style={{ minWidth: 0 }}>
+                                                <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
+                                                    {incidentLabel(incident)}
+                                                </div>
+                                                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                    {new Date(incident.triggered_at).toLocaleString()}
+                                                </div>
+                                                {incident.device && (
+                                                    <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
+                                                )}
+                                                {renderLiveMetric(incident)}
                                             </div>
-                                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                {new Date(incident.triggered_at).toLocaleString()}
-                                            </div>
-                                            {incident.device && (
-                                                <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
-                                            )}
-                                            {renderLiveMetric(incident)}
-                                        </div>
-                                    </div>
-                                ))}
+                                        </button>
+                                    );
+                                })}
                                 {/* Infinite-scroll sentinel + loading hint */}
                                 {incidentHasMore && (
                                     <div ref={incidentSentinelRef} style={{ padding: '6px 0', textAlign: 'center', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
@@ -970,8 +1278,8 @@ export default function DevicesView({
                 <div className={`${mobilePane === 'map' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
                 <Card flushBody style={{ overflow: 'hidden' }}
                     className="tad-card--fill min-h-0 flex-1 lg:flex-none">
-                    {/* Fills the pane on mobile; fixed 460px in the desktop split. */}
-                    <div className="relative flex-1 min-h-[70vh] lg:min-h-0 lg:h-[460px] lg:flex-none">
+                    {/* Fills the pane on mobile; a tall viewport-height panel in the desktop split. */}
+                    <div className="relative flex-1 min-h-[70vh] lg:min-h-[560px] lg:h-[calc(100vh-8rem)] lg:max-h-[820px] lg:flex-none">
                         {!MAPS_KEY ? (
                             <div className="h-full flex items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)' }}>
                                 <div className="flex flex-col items-center gap-3">
@@ -982,6 +1290,38 @@ export default function DevicesView({
                                 </div>
                             </div>
                         ) : <div ref={mapRef} className="absolute inset-0" />}
+
+                        {/* On-map card presentation toggle (top-right): Tooltip ↔ Card panel.
+                            Same pill styling as the trail/beats toggles. Persisted in localStorage. */}
+                        {mapsReady && (
+                            <div className="absolute top-4 right-4" style={{ zIndex: 2 }}>
+                                <div role="group" aria-label="On-map card style"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 2,
+                                        background: 'var(--surface)', border: '1px solid var(--border)',
+                                        borderRadius: 'var(--radius-pill)', padding: 2,
+                                        boxShadow: 'var(--shadow-sm)',
+                                    }}>
+                                    {([['tooltip', 'Tooltip'], ['panel', 'Card']] as const).map(([value, label]) => {
+                                        const active = cardVariant === value;
+                                        return (
+                                            <button key={value} type="button"
+                                                aria-pressed={active}
+                                                onClick={() => pickCardVariant(value)}
+                                                style={{
+                                                    border: 'none', cursor: 'pointer',
+                                                    borderRadius: 'var(--radius-pill)', padding: '5px 12px',
+                                                    fontSize: 'var(--text-xs)', fontWeight: 'var(--weight-medium)',
+                                                    background: active ? 'var(--brand)' : 'transparent',
+                                                    color: active ? 'var(--text-on-brand)' : 'var(--text-muted)',
+                                                }}>
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Map toggles: Show trail + Beats */}
                         {mapsReady && (
@@ -1028,23 +1368,60 @@ export default function DevicesView({
                             </div>
                         )}
 
-                        {/* Floating selected-device card */}
-                        {mapsReady && selectedDevice && (
-                            <div style={{ position: 'absolute', left: 16, right: 16, bottom: 16, background: 'var(--surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="truncate" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{selectedDevice.name}</div>
-                                    <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--text-muted)' }}>
-                                        {selectedDevice.last_lat != null && selectedDevice.last_lon != null
-                                            ? `${Number(selectedDevice.last_lat).toFixed(4)}, ${Number(selectedDevice.last_lon).toFixed(4)}`
-                                            : 'No location yet'}
-                                    </div>
-                                </div>
-                                {selectedDevice.battery_percent != null && (
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text)', flex: 'none' }}>
-                                        {selectedDevice.battery_percent}%
-                                    </span>
-                                )}
-                                <Button size="sm" variant="secondary" onClick={() => goToDevice(selectedDevice.id)}>Details</Button>
+                        {/* 'panel' variant — an absolutely-positioned overlay at the map top-right
+                            (sits below the Tooltip/Card toggle). Device → DeviceSummaryCard;
+                            incident → matching compact incident card. The 'tooltip' variant uses the
+                            shared InfoWindow instead (see the InfoWindow effect), so nothing renders here. */}
+                        {mapsReady && cardVariant === 'panel' && (selectedDevice || selectedIncident) && (
+                            <div style={{ position: 'absolute', top: 64, right: 16, width: 280, maxWidth: 'calc(100% - 32px)', zIndex: 2 }}>
+                                {selectedIncident ? (
+                                    (() => {
+                                        const color  = INCIDENT_STATUS_DOT[selectedIncident.status] ?? 'var(--text-muted)';
+                                        const metric = incidentLiveMetricText(selectedIncident);
+                                        const badge  = PRIORITY_BADGE[selectedIncident.priority];
+                                        return (
+                                            <div className="tad-card" style={{ padding: 14, position: 'relative' }}>
+                                                <button type="button" aria-label="Close"
+                                                    onClick={() => setSelectedIncidentId(null)}
+                                                    style={{ position: 'absolute', top: 8, right: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-subtle)', padding: 4 }}>
+                                                    <X width={14} height={14} />
+                                                </button>
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, paddingRight: 18 }}>
+                                                    <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color, flex: 'none' }}>
+                                                        <Flag width={15} height={15} />
+                                                    </span>
+                                                    <div style={{ minWidth: 0 }}>
+                                                        <div className="capitalize" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>{incidentLabel(selectedIncident)}</div>
+                                                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{relTime(selectedIncident.triggered_at)}</div>
+                                                    </div>
+                                                </div>
+                                                {selectedIncident.device && (
+                                                    <div className="truncate" style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: 8 }}>{selectedIncident.device.name}</div>
+                                                )}
+                                                {metric && (
+                                                    <div style={{ marginTop: 6, fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, color }}>{metric}</div>
+                                                )}
+                                                <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', textTransform: 'capitalize', borderRadius: 'var(--radius-pill)', padding: '3px 9px', background: badge?.background ?? 'var(--surface-sunken)', color: badge?.color ?? 'var(--text-secondary)' }}>
+                                                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />
+                                                        {selectedIncident.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                ) : selectedDevice ? (
+                                    <DeviceSummaryCard
+                                        name={selectedDevice.name}
+                                        speed={null}
+                                        lastSeenAt={selectedDevice.last_seen_at}
+                                        online={selectedStatus === 'online'}
+                                        battery={selectedDevice.battery_percent}
+                                        statusLabel={selectedStatus ? STATUS_CHIP[selectedStatus].label : undefined}
+                                        statusColor={selectedStatus ? STATUS_CHIP[selectedStatus].color : undefined}
+                                        productTag={selectedDevice.device_type?.name ?? null}
+                                    />
+                                ) : null}
                             </div>
                         )}
 
