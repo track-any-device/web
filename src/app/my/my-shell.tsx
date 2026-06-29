@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { clearAuth } from '@/lib/auth-store';
 import { PortalLoader } from '@/components/tad/portal-loader';
+import { RealtimeDevicesProvider } from './realtime-devices-context';
 
 export default function MyShell({ children }: { children: ReactNode }) {
     const { token, loading } = useAuth();
@@ -35,5 +36,7 @@ export default function MyShell({ children }: { children: ReactNode }) {
         );
     }
 
-    return <>{children}</>;
+    // Mounted ONCE inside the authenticated branch: the device list + Soketi socket
+    // load here and persist across client-side (Link) navigation between /my pages.
+    return <RealtimeDevicesProvider>{children}</RealtimeDevicesProvider>;
 }

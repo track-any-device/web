@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Pencil, Check, Trash2, MapPin } from 'lucide-react';
 import type { BeatDetail, LatLng } from '@/lib/api-client';
 
@@ -357,7 +358,7 @@ export default function BeatForm({ token, beat }: Props) {
                 <button type="submit" disabled={saving} className="tad-btn tad-btn--primary">
                     {saving ? 'Saving…' : beat ? 'Update beat' : 'Create beat'}
                 </button>
-                <a href="/my/devices" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Cancel</a>
+                <Link href="/my/devices" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>Cancel</Link>
             </div>
         </form>
     );

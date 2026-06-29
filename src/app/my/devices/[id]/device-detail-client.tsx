@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useTrackLoading } from '@/components/tad/loading-provider';
+import { useRealtimeDevicesContext } from '../../realtime-devices-context';
 import { ApiClient } from '@/lib/api-client';
 import type {
     Device, Incident, Beat, NotificationPreference,
@@ -97,6 +98,10 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     const { token } = useAuth();
     const router    = useRouter();
 
+    // Live device list from the persistent shell socket — used to merge real-time
+    // telemetry onto the device we fetched once below.
+    const { deviceList } = useRealtimeDevicesContext();
+
     const [device,       setDevice]       = useState<Device | null>(null);
     const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
     const [trail,        setTrail]        = useState<TrailPoint[]>([]);
@@ -147,11 +152,29 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
     // Keep the single portal satellite up until this page's data has loaded.
     useTrackLoading(loading);
 
+    // Merge live telemetry from the shell socket onto the device we fetched.
+    // The viewed device stays current (location/battery/status) without re-fetching:
+    // when `device.signal.received` / `device.updated` flow through the shared list,
+    // the matching entry's live fields are layered onto the base device here.
+    const liveDevice = useMemo<Device | null>(() => {
+        if (!device) return null;
+        const live = deviceList.find(d => d.id === device.id);
+        if (!live) return device;
+        return {
+            ...device,
+            last_lat:        live.last_lat        ?? device.last_lat,
+            last_lon:        live.last_lon        ?? device.last_lon,
+            battery_percent: live.battery_percent ?? device.battery_percent,
+            status:          live.status          ?? device.status,
+            last_seen_at:    live.last_seen_at    ?? device.last_seen_at,
+        };
+    }, [device, deviceList]);
+
     if (loading) {
         return null; // the portal LoadingProvider overlay covers this area
     }
 
-    if (!device) {
+    if (!device || !liveDevice) {
         return (
             <div className="mx-auto w-full max-w-[1240px] px-4 py-6 space-y-4 sm:px-6 lg:px-7">
                 <Link href="/my/devices" className="inline-flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
@@ -167,10 +190,10 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
         );
     }
 
-    const status   = getMyStatus(device);
+    const status   = getMyStatus(liveDevice);
     const chip     = STATUS_CHIP[status];
-    const location = device.last_lat != null && device.last_lon != null
-        ? `${Number(device.last_lat).toFixed(4)}, ${Number(device.last_lon).toFixed(4)}`
+    const location = liveDevice.last_lat != null && liveDevice.last_lon != null
+        ? `${Number(liveDevice.last_lat).toFixed(4)}, ${Number(liveDevice.last_lon).toFixed(4)}`
         : 'No location yet';
 
     // Current speed comes from the most-recent trail point (the Device shape has no speed field).
@@ -201,16 +224,16 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
             <div className="flex items-center gap-3 sm:gap-4">
                 <div className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden sm:w-14 sm:h-14"
                     style={{ background: 'var(--surface-sunken)', color: 'var(--text-secondary)' }}>
-                    {device.image_url
-                        ? <img src={device.image_url} alt="" className="w-full h-full object-cover" />
-                        : (device.map_icon ? <span style={{ fontSize: 26 }}>{device.map_icon}</span> : <Smartphone className="w-6 h-6" />)}
+                    {liveDevice.image_url
+                        ? <img src={liveDevice.image_url} alt="" className="w-full h-full object-cover" />
+                        : (liveDevice.map_icon ? <span style={{ fontSize: 26 }}>{liveDevice.map_icon}</span> : <Smartphone className="w-6 h-6" />)}
                 </div>
                 <div className="min-w-0 flex-1">
                     <h1 className="truncate" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 5.5vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', margin: 0 }}>
-                        {device.name}
+                        {liveDevice.name}
                     </h1>
                     <p className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {device.imei} · {location}
+                        {liveDevice.imei} · {location}
                     </p>
                 </div>
                 <span className="shrink-0 inline-flex items-center gap-2 px-3 py-1.5"
@@ -244,16 +267,16 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                     )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
                         <DeviceSummaryCard
-                            name={device.name}
+                            name={liveDevice.name}
                             speed={latestSpeed}
-                            lastSeenAt={device.last_seen_at}
+                            lastSeenAt={liveDevice.last_seen_at}
                             online={status === 'online'}
-                            battery={device.battery_percent}
+                            battery={liveDevice.battery_percent}
                             statusLabel={chip.label}
                             statusColor={chip.color}
-                            productTag={device.device_type?.name ?? null}
+                            productTag={liveDevice.device_type?.name ?? null}
                         />
-                        <LiveLocationCard device={device} trail={trail} status={status} />
+                        <LiveLocationCard device={liveDevice} trail={trail} status={status} />
                     </div>
                     <ActivityCard token={token!} deviceId={deviceId} initialTrail={trail} />
                 </div>

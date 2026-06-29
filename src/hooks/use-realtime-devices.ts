@@ -69,14 +69,15 @@ export function useRealtimeDevices(
         });
 
         pusherRef.current = pusher;
-        pusher.connection.bind('connected',    () => setConnected(true));
-        pusher.connection.bind('disconnected', () => setConnected(false));
-        pusher.connection.bind('failed',       () => setConnected(false));
+        pusher.connection.bind('connected',    () => { console.log('[TAD realtime] connection', 'connected');    setConnected(true);  });
+        pusher.connection.bind('disconnected', () => { console.log('[TAD realtime] connection', 'disconnected'); setConnected(false); });
+        pusher.connection.bind('failed',       () => { console.log('[TAD realtime] connection', 'failed');       setConnected(false); });
 
         // ── Channel 1: device metadata / status ────────────────────────────
         const devCh = pusher.subscribe(`private-user.${userId}.devices`);
 
         devCh.bind('device.updated', (data: DeviceUpdatedPayload) => {
+            console.log('[TAD realtime] device.updated', data);
             setDevices(prev => ({
                 ...prev,
                 [data.id]: {
@@ -89,6 +90,7 @@ export function useRealtimeDevices(
         });
 
         devCh.bind('device.onboarded', (data: DeviceUpdatedPayload) => {
+            console.log('[TAD realtime] device.onboarded', data);
             setDevices(prev => ({
                 ...prev,
                 [data.id]: { ...prev[data.id], ...data, status: 'active' },
@@ -100,6 +102,7 @@ export function useRealtimeDevices(
         const logCh = pusher.subscribe(`private-user.${userId}.device-logs`);
 
         logCh.bind('device.signal.received', (data: SignalPayload) => {
+            console.log('[TAD realtime] device.signal.received', data);
             setDevices(prev => {
                 const existing = prev[data.device_id];
                 if (!existing) return prev;
