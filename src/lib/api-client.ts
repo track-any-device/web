@@ -271,6 +271,24 @@ export class ApiClient {
         return this.patch<UserProfile>('/profile', data);
     }
 
+    /**
+     * Upload (or replace) the user's profile image. Posts multipart form-data to the BFF route,
+     * which forwards it to the app API with the session bearer token (FormData is never JSON-encoded).
+     */
+    async uploadAvatar(file: File): Promise<{ avatar_url: string }> {
+        const form = new FormData();
+        form.append('avatar', file);
+        const res = await fetch('/api/my/profile/avatar', {
+            method: 'POST',
+            body: form,
+        });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            this.throwApiError('POST', '/api/my/profile/avatar', res.status, text);
+        }
+        return res.json();
+    }
+
     // ── Beats ────────────────────────────────────────────────────────────────
 
     async beats() {
@@ -487,6 +505,7 @@ export interface UserProfile {
     name: string;
     email: string;
     phone: string | null;
+    date_of_birth: string | null;
     timezone: string | null;
     avatar_url: string | null;
     role: string;
@@ -571,7 +590,8 @@ export interface BeatPayload {
 
 export interface UpdateProfileData {
     name?: string;
-    phone?: string;
+    /** Y-m-d; `null`/'' clears it (profile simply stays incomplete). Phone is NOT editable here. */
+    date_of_birth?: string | null;
     timezone?: string;
 }
 
