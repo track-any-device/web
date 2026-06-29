@@ -43,6 +43,10 @@ export function useRealtimeDevices(
     );
     const [connected, setConnected] = useState(false);
     const [lastEvent, setLastEvent] = useState<string | null>(null);
+    // Per-device "just updated" counter. Each real-time event bumps the affected
+    // device's count; consumers (e.g. the map) compare against the last-seen value
+    // to briefly blink THAT device's marker only when a fresh update actually arrives.
+    const [pulses, setPulses] = useState<Record<number, number>>({});
     const pusherRef = useRef<Pusher | null>(null);
 
     // Re-seed when initial devices change (e.g. after a refetch)
@@ -86,6 +90,7 @@ export function useRealtimeDevices(
                     battery_percent: data.battery_level ?? prev[data.id]?.battery_percent ?? null,
                 },
             }));
+            setPulses(p => ({ ...p, [data.id]: (p[data.id] ?? 0) + 1 }));
             setLastEvent(`${data.name ?? `#${data.id}`} updated`);
         });
 
@@ -95,6 +100,7 @@ export function useRealtimeDevices(
                 ...prev,
                 [data.id]: { ...prev[data.id], ...data, status: 'active' },
             }));
+            setPulses(p => ({ ...p, [data.id]: (p[data.id] ?? 0) + 1 }));
             setLastEvent(`Device ${data.imei} onboarded`);
         });
 
@@ -118,6 +124,7 @@ export function useRealtimeDevices(
                     },
                 };
             });
+            setPulses(p => ({ ...p, [data.device_id]: (p[data.device_id] ?? 0) + 1 }));
             setLastEvent(`Signal from #${data.device_id}`);
         });
 
@@ -136,5 +143,6 @@ export function useRealtimeDevices(
         deviceList: Object.values(devices),
         connected,
         lastEvent,
+        pulses,
     };
 }

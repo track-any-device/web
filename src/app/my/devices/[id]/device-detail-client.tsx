@@ -100,7 +100,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 
     // Live device list from the persistent shell socket — used to merge real-time
     // telemetry onto the device we fetched once below.
-    const { deviceList } = useRealtimeDevicesContext();
+    const { deviceList, pulses } = useRealtimeDevicesContext();
 
     const [device,       setDevice]       = useState<Device | null>(null);
     const [capabilities, setCapabilities] = useState<DeviceCapabilities | null>(null);
@@ -276,7 +276,7 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
                             statusColor={chip.color}
                             productTag={liveDevice.device_type?.name ?? null}
                         />
-                        <LiveLocationCard device={liveDevice} trail={trail} status={status} />
+                        <LiveLocationCard device={liveDevice} trail={trail} status={status} pulse={pulses[deviceId]} />
                     </div>
                     <ActivityCard token={token!} deviceId={deviceId} initialTrail={trail} />
                 </div>
@@ -325,9 +325,13 @@ export default function DeviceDetailClient({ deviceId }: { deviceId: number }) {
 }
 
 // ── 1. Live location map ───────────────────────────────────────────────────────
-function LiveLocationCard({ device, trail, status }: { device: Device; trail: Array<{ lat: number; lng: number; t: string | null }>; status: MyStatus }) {
+function LiveLocationCard({ device, trail, status, pulse }: { device: Device; trail: Array<{ lat: number; lng: number; t: string | null }>; status: MyStatus; pulse?: number }) {
     const mapRef  = useRef<HTMLDivElement>(null);
     const gmapRef = useRef<google.maps.Map | null>(null);
+    // The marker's dot element + last-seen socket pulse, so we can briefly blink the dot ONLY when a
+    // fresh real-time update for this device arrives (not on the initial render or unrelated rerenders).
+    const dotRef  = useRef<HTMLDivElement | null>(null);
+    const lastPulseRef = useRef<number | undefined>(undefined);
     const [ready, setReady] = useState(false);
 
     const lat = device.last_lat != null ? Number(device.last_lat) : null;
@@ -370,7 +374,8 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
         // Marker (small status-coloured dot)
         const dot = document.createElement('div');
         const color = STATUS_PIN[status];
-        dot.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4)`;
+        dot.style.cssText = `width:11px;height:11px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);transform-origin:center center`;
+        dotRef.current = dot;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AdvMarker = (google.maps as any).marker?.AdvancedMarkerElement;
         let marker: { setMap: (m: google.maps.Map | null) => void };
@@ -397,8 +402,27 @@ function LiveLocationCard({ device, trail, status }: { device: Device; trail: Ar
             });
         }
 
-        return () => { marker.setMap(null); lines.forEach(l => l.setMap(null)); };
+        return () => {
+            marker.setMap(null);
+            lines.forEach(l => l.setMap(null));
+            if (dotRef.current === dot) dotRef.current = null;
+        };
     }, [ready, hasLocation, lat, lng, status, trail, device.name]);
+
+    // Blink the dot ONLY when the per-device socket pulse counter actually increments — mirrors the
+    // device-list map behaviour. Seeding last-seen on first sight means the initial render never blinks.
+    useEffect(() => {
+        if (pulse === undefined) return;
+        const prev = lastPulseRef.current;
+        lastPulseRef.current = pulse;
+        const dot = dotRef.current;
+        if (prev === undefined || pulse <= prev || !dot) return;
+        dot.classList.remove('tad-pin-blink');
+        void dot.offsetWidth;       // reflow so re-adding the class re-triggers the animation
+        dot.classList.add('tad-pin-blink');
+        const t = setTimeout(() => dot.classList.remove('tad-pin-blink'), 1500);
+        return () => clearTimeout(t);
+    }, [pulse]);
 
     return (
         <Card title="Live location" flushBody>

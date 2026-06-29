@@ -137,9 +137,13 @@
 @keyframes tad-flash { 0%{opacity:1;transform:scale(0.35);} 55%{opacity:0.6;} 100%{opacity:0;transform:scale(2.8);} }
 @keyframes tad-mpulse { 0%{transform:scale(.4);opacity:.32;} 100%{transform:scale(1.5);opacity:0;} }
 @keyframes tad-btn-spin { to{transform:rotate(360deg);} }
-/* Device map pins: one-shot ring on every update, + a continuous live breathe for online devices. */
+/* Device map pins: markers sit still by default and BLINK only when a real-time update arrives
+   over the socket (tad-pin-blink is toggled imperatively for ~1.5s). tad-pin-ping/-pulse retained
+   for incident-pin emphasis and any legacy callers. */
 @keyframes tad-pin-ping { from{transform:scale(.6);opacity:.9;} to{transform:scale(3);opacity:0;} }
 @keyframes tad-pin-pulse { 0%{transform:scale(.8);opacity:.5;} 70%{transform:scale(2.4);opacity:0;} 100%{transform:scale(2.4);opacity:0;} }
+@keyframes tad-pin-blink { 0%,100%{transform:scale(1);filter:none;} 25%{transform:scale(1.45);filter:drop-shadow(0 0 6px rgba(255,255,255,.9)) brightness(1.35);} 60%{transform:scale(.95);} }
+.tad .tad-pin-blink, .tad-pin-blink { animation:tad-pin-blink 1.5s ease-in-out; transform-origin:center center; }
 
 /* ---------- COMPONENTS ---------- */
 /* Button */

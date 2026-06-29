@@ -22,6 +22,8 @@ interface RealtimeDevicesContextValue {
     connected: boolean;
     /** Human-readable description of the most recent real-time event. */
     lastEvent: string | null;
+    /** Per-device "just updated" counter — bumps each time a socket event touches a device. */
+    pulses: Record<number, number>;
     /** True while the one-time device-list fetch is in flight. */
     devicesLoading: boolean;
     /** Re-fetch the device list (e.g. after registering a new device). */
@@ -59,12 +61,13 @@ export function RealtimeDevicesProvider({ children }: { children: ReactNode }) {
     }, [token, loadDevices]);
 
     // One subscription for the whole portal. useRealtimeDevices no-ops without a token.
-    const { deviceList, connected, lastEvent } = useRealtimeDevices(initialDevices, token, userId);
+    const { deviceList, connected, lastEvent, pulses } = useRealtimeDevices(initialDevices, token, userId);
 
     const value: RealtimeDevicesContextValue = {
         deviceList,
         connected,
         lastEvent,
+        pulses,
         devicesLoading,
         reseedDevices: loadDevices,
     };
@@ -87,6 +90,7 @@ export function useRealtimeDevicesContext(): RealtimeDevicesContextValue {
             deviceList: [],
             connected: false,
             lastEvent: null,
+            pulses: {},
             devicesLoading: false,
             reseedDevices: () => {},
         };

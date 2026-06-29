@@ -23,6 +23,8 @@ interface Props {
     initialBeats:       Beat[];
     token:              string;
     realtimeConnected?: boolean;
+    /** Per-device "just updated" counter from the socket — an increment briefly blinks that pin. */
+    pulses?:            Record<number, number>;
     onRegisterClick:    () => void;
     /** Which left-column tab is active. /my/devices → assets, /my/beats → beats, /my/trips → trips. */
     initialTab?:        DevicesTab;
@@ -172,9 +174,9 @@ function formatTripCoords(p: { lat: number; lng: number } | null): string {
     return `${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}`;
 }
 
-// Build the marker DOM. The element is re-created whenever the device updates (see the marker
-// sync effect), so the one-shot `tad-pin-ping` ring replays on every update; online devices also
-// carry a continuous `tad-pin-pulse` halo so a live device visibly breathes on the map.
+// Build the marker DOM. Markers now sit STILL by default — no perpetual pulse. A brief blink is
+// applied imperatively (see the `pulses` effect) only when a real-time update for that device
+// arrives over the socket. Selection still gets a slightly larger dot + ring for emphasis.
 function makeMarkerElement(device: Device, selected = false): HTMLElement {
     const status  = getMyStatus(device);
     const color   = STATUS_PIN[status];
@@ -183,23 +185,10 @@ function makeMarkerElement(device: Device, selected = false): HTMLElement {
     const arrow   = useArrow(heading);
     const dotSize = selected ? PIN_SIZE + 8 : PIN_SIZE;
     const box     = arrow ? ARROW_SIZE : dotSize;
-    const ring    = arrow ? Math.round(ARROW_SIZE * 0.55) : dotSize;
 
     const wrap = document.createElement('div');
     wrap.title = device.name;
     wrap.style.cssText = `position:relative;display:flex;align-items:center;justify-content:center;width:${box}px;height:${box}px;cursor:pointer`;
-
-    // one-shot ping (replays on each re-create == each update)
-    const ping = document.createElement('div');
-    ping.style.cssText = `position:absolute;left:50%;top:50%;width:${ring}px;height:${ring}px;margin:${-ring / 2}px 0 0 ${-ring / 2}px;border-radius:50%;border:2px solid ${color};animation:tad-pin-ping .9s ease-out;pointer-events:none`;
-    wrap.appendChild(ping);
-
-    // continuous live pulse for online devices
-    if (status === 'online') {
-        const halo = document.createElement('div');
-        halo.style.cssText = `position:absolute;left:50%;top:50%;width:${ring}px;height:${ring}px;margin:${-ring / 2}px 0 0 ${-ring / 2}px;border-radius:50%;background:${color};opacity:.4;animation:tad-pin-pulse 1.8s ease-out infinite;pointer-events:none`;
-        wrap.appendChild(halo);
-    }
 
     if (arrow) {
         const img = document.createElement('img');
@@ -371,6 +360,7 @@ export default function DevicesView({
     initialBeats,
     token,
     realtimeConnected,
+    pulses,
     onRegisterClick,
     initialTab = 'assets',
 }: Props) {
@@ -429,6 +419,11 @@ export default function DevicesView({
     const gmapRef     = useRef<google.maps.Map | null>(null);
     const markersRef  = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; addListener?: (ev: string, fn: () => void) => void; position?: { lat: number; lng: number } }>>(new Map());
     const markerSigRef = useRef<Map<number, string>>(new Map());
+    // Last-seen `pulses` counter per device, so the blink fires only on an actual INCREMENT (a fresh
+    // socket update) — never on the initial render or an unrelated re-render. Paired with per-device
+    // timers so a blink is cleaned up (class removed, timer cleared) before another one can start.
+    const lastPulseRef  = useRef<Map<number, number>>(new Map());
+    const blinkTimerRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
     // Incident flag pins live in their OWN ref-map (separate from device markers) so they can be
     // rebuilt/cleared independently as visibleIncidents or the selection changes.
     const incidentMarkersRef = useRef<Map<number, { setMap: (m: google.maps.Map | null) => void; addListener?: (ev: string, fn: () => void) => void; position?: { lat: number; lng: number } }>>(new Map());
@@ -580,6 +575,46 @@ export default function DevicesView({
             }
         });
     }, [devices, selectedDev, mapsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Blink a marker ONLY when a fresh socket update arrives for that device ──
+    // `pulses[id]` increments on every device.updated / device.onboarded / device.signal.received
+    // event (see useRealtimeDevices). We compare each id's counter against its last-seen value and,
+    // on an actual INCREMENT, toggle a short-lived `tad-pin-blink` class on that marker's content
+    // element for ~1.5s, then remove it. Seeding last-seen on first sight means the initial render
+    // never blinks — only real, after-mount updates do.
+    useEffect(() => {
+        if (!pulses) return;
+        for (const [idStr, count] of Object.entries(pulses)) {
+            const id   = Number(idStr);
+            const prev = lastPulseRef.current.get(id);
+            lastPulseRef.current.set(id, count);
+            if (prev === undefined || count <= prev) continue; // first sight or no real increment
+
+            const marker = markersRef.current.get(id);
+            const el = marker && 'content' in marker
+                ? (marker as { content: HTMLElement }).content
+                : undefined;
+            if (!el) continue;
+
+            // Restart cleanly if a previous blink is still running on this marker.
+            const running = blinkTimerRef.current.get(id);
+            if (running) { clearTimeout(running); el.classList.remove('tad-pin-blink'); }
+            // Force a reflow so re-adding the class re-triggers the animation.
+            void el.offsetWidth;
+            el.classList.add('tad-pin-blink');
+            const t = setTimeout(() => {
+                el.classList.remove('tad-pin-blink');
+                blinkTimerRef.current.delete(id);
+            }, 1500);
+            blinkTimerRef.current.set(id, t);
+        }
+    }, [pulses]);
+
+    // Clear any in-flight blink timers on unmount.
+    useEffect(() => {
+        const timers = blinkTimerRef.current;
+        return () => { timers.forEach(t => clearTimeout(t)); timers.clear(); };
+    }, []);
 
     // ── Sync incident flag pins (own ref-map) when visibleIncidents / selection change ──
     // Rebuild ALL incident markers so stale ones are removed and the selected one is emphasised.

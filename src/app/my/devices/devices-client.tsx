@@ -16,7 +16,7 @@ export default function DevicesClient({ initialTab = 'assets' }: { initialTab?: 
 
     // Device list + socket come from the persistent shell context — loaded ONCE and kept
     // alive across navigation. This page only fetches its own incidents + beats.
-    const { deviceList, connected, devicesLoading, reseedDevices } = useRealtimeDevicesContext();
+    const { deviceList, connected, pulses, devicesLoading, reseedDevices } = useRealtimeDevicesContext();
 
     const [incidents,    setIncidents]    = useState<Incident[]>([]);
     const [beats,        setBeats]        = useState<Beat[]>([]);
@@ -58,6 +58,7 @@ export default function DevicesClient({ initialTab = 'assets' }: { initialTab?: 
                 initialBeats={beats}
                 token={token!}
                 realtimeConnected={connected}
+                pulses={pulses}
                 onRegisterClick={() => setShowRegister(true)}
                 initialTab={initialTab}
             />
