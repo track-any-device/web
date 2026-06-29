@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, Smartphone, MapPin, Upload, CheckCircle2, Route, ChevronRight, AlertTriangle, Pencil, X } from 'lucide-react';
 import { ApiClient } from '@/lib/api-client';
 import type { Device, Incident, Beat } from '@/lib/api-client';
 import { Badge, Card, Button } from '@/components/ui';
+import { DeviceSummaryCard } from './[id]/device-summary-card';
 import ImportBeatsModal from '../beats/import-beats-modal';
 import {
     arrowRotation,
@@ -63,6 +64,16 @@ function getMyStatus(device: Device): MyStatus {
     if (mins <= 1440) return 'offline';
     return 'unavailable';
 }
+
+// Customer-facing status wording for the pinned selected-device card (mirrors the detail page).
+const STATUS_CHIP: Record<MyStatus, { label: string; color: string }> = {
+    online:      { label: 'Moving',  color: 'var(--success)' },
+    offline:     { label: 'Idle',    color: 'var(--warning)' },
+    unavailable: { label: 'Offline', color: 'var(--text-muted)' },
+};
+
+// Incidents are loaded in pages of this size as the list is scrolled (infinite scroll).
+const INCIDENTS_PER_PAGE = 20;
 
 // Live metric shown under an OPEN incident (open/acknowledged/escalated): overspeed → current
 // speed, low_battery → current battery, beat_violation → current distance from the assigned beat.
@@ -235,9 +246,11 @@ export default function DevicesView({
     const [mapsReady,       setMapsReady]       = useState(false);
     const [showImport,      setShowImport]      = useState(false);
 
-    // Mobile-only: which single pane is shown (the desktop lg+ layout shows all three side by side).
-    // 'list' = the Assets/Beats/Trips panel · 'map' = the live map · 'alerts' = incidents.
-    type MobilePane = 'list' | 'map' | 'alerts';
+    // Mobile-only: which single pane is shown (the desktop lg+ layout shows both columns at once).
+    // 'list' = the LEFT column (device list + selected card + incidents, or the Beats list) ·
+    // 'map'  = the RIGHT column (live map + trail/trip playback). Incidents no longer have their
+    // own pane — they live under the device list, matching the new two-column desktop layout.
+    type MobilePane = 'list' | 'map';
     // Map is the default mobile pane. Section links carry ?view=list so tapping Devices/Beats
     // (which remounts this page on a route change) lands on the list, not back on the map.
     const [mobilePane, setMobilePane] = useState<MobilePane>(
@@ -259,12 +272,22 @@ export default function DevicesView({
     const [showBeats,  setShowBeats]  = useState(true);
     const beatsRef    = useRef<Beat[]>(initialBeats);
 
-    // ── Filtered incidents ────────────────────────────────────────────────────
-    const visibleIncidents = incidents.filter(i => {
-        if (selectedDev)  return i.device?.id === selectedDev;
-        if (selectedBeat) return i.beat?.id   === selectedBeat;
-        return true;
-    });
+    // ── Incidents list with infinite scroll ───────────────────────────────────
+    // Default scope is ALL devices' incidents; selecting a device filters server-side
+    // (device_id). The `incidents` prop seeds page 1 (already fetched by the parent), and
+    // further pages are pulled from ApiClient.incidents() as the sentinel scrolls into view.
+    // A selected beat narrows the seeded list client-side (no beat_id round-trip needed).
+    const [incidentItems,   setIncidentItems]   = useState<Incident[]>(incidents);
+    const [incidentPage,    setIncidentPage]    = useState(1);
+    const [incidentHasMore, setIncidentHasMore] = useState(incidents.length >= INCIDENTS_PER_PAGE);
+    const [incidentLoading, setIncidentLoading] = useState(false);
+    const incidentSentinelRef = useRef<HTMLDivElement>(null);
+
+    // The list the UI renders. When a beat is selected we filter the loaded set client-side;
+    // a selected device is already filtered server-side, so the loaded set IS the device's set.
+    const visibleIncidents = selectedBeat
+        ? incidentItems.filter(i => i.beat?.id === selectedBeat)
+        : incidentItems;
 
     // ── Load Google Maps (with marker library for AdvancedMarkerElement) ──────
     useEffect(() => {
@@ -426,6 +449,70 @@ export default function DevicesView({
             .finally(() => { if (!cancelled) setTripsLoading(false); });
         return () => { cancelled = true; };
     }, [selectedDev, token]);
+
+    // ── Incidents: (re)seed page 1 when the scope changes ─────────────────────
+    // No device selected → use the prop the parent already fetched (all devices, last 3 days).
+    // Device selected → fetch that device's incidents (page 1) server-side so we don't depend on
+    // the prop having included them. Either way this resets the infinite-scroll cursor.
+    useEffect(() => {
+        if (selectedDev == null) {
+            setIncidentItems(incidents);
+            setIncidentPage(1);
+            setIncidentHasMore(incidents.length >= INCIDENTS_PER_PAGE);
+            return;
+        }
+        let cancelled = false;
+        setIncidentLoading(true);
+        new ApiClient(token)
+            .incidents({ device_id: String(selectedDev), days: '3', page: '1', per_page: String(INCIDENTS_PER_PAGE) })
+            .then(res => {
+                if (cancelled) return;
+                setIncidentItems(res.data);
+                setIncidentPage(res.current_page);
+                setIncidentHasMore(res.current_page < res.last_page);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                // Fall back to the already-loaded set filtered to this device — never invent rows.
+                setIncidentItems(incidents.filter(i => i.device?.id === selectedDev));
+                setIncidentHasMore(false);
+            })
+            .finally(() => { if (!cancelled) setIncidentLoading(false); });
+        return () => { cancelled = true; };
+    }, [selectedDev, incidents, token]);
+
+    // ── Incidents: load the next page when the sentinel scrolls into view ─────
+    const loadMoreIncidents = useCallback(() => {
+        if (incidentLoading || !incidentHasMore) return;
+        const next = incidentPage + 1;
+        setIncidentLoading(true);
+        new ApiClient(token)
+            .incidents({
+                ...(selectedDev != null ? { device_id: String(selectedDev) } : {}),
+                days: '3', page: String(next), per_page: String(INCIDENTS_PER_PAGE),
+            })
+            .then(res => {
+                setIncidentItems(prev => {
+                    const seen = new Set(prev.map(i => i.id));
+                    return [...prev, ...res.data.filter(i => !seen.has(i.id))];
+                });
+                setIncidentPage(res.current_page);
+                setIncidentHasMore(res.current_page < res.last_page);
+            })
+            .catch(() => setIncidentHasMore(false))
+            .finally(() => setIncidentLoading(false));
+    }, [incidentLoading, incidentHasMore, incidentPage, selectedDev, token]);
+
+    useEffect(() => {
+        const el = incidentSentinelRef.current;
+        if (!el || !incidentHasMore) return;
+        const io = new IntersectionObserver(
+            entries => { if (entries[0]?.isIntersecting) loadMoreIncidents(); },
+            { rootMargin: '200px' },
+        );
+        io.observe(el);
+        return () => io.disconnect();
+    }, [incidentHasMore, loadMoreIncidents]);
 
     // ── Mobile: when the map pane becomes visible, Google needs a resize nudge ──
     // (it was laid out at 0×0 while hidden behind the List/Alerts pane). Re-center
@@ -597,10 +684,13 @@ export default function DevicesView({
     const newIncidentCount = visibleIncidents.filter(i =>
         ['open', 'acknowledged', 'escalated'].includes(i.status)).length;
 
+    const selectedStatus  = selectedDevice ? getMyStatus(selectedDevice) : null;
+
     return (
         // Fills the full-bleed <main> (flex:1; minHeight:0). On phones/tablets it's a single
-        // flex column with a List⇄Map⇄Alerts segmented control swapping one pane at a time; at
-        // lg+ it switches to the original three-column split (list · map · incidents).
+        // flex column with a Map⇄Devices⇄Beats segmented control swapping one pane at a time; at
+        // lg+ it switches to a TWO-column split: LEFT = slim device list + the pinned selected-device
+        // card + the infinite-scroll incidents list · RIGHT = the live map + trail/trip playback.
         <div
             className="tad flex min-h-0 w-full flex-1 flex-col lg:mx-auto lg:block lg:max-w-[1240px] lg:px-7 lg:py-6"
             style={{ background: 'var(--bg)' }}
@@ -609,7 +699,7 @@ export default function DevicesView({
                 My things
             </h1>
 
-            {/* Mobile segmented control (hidden at lg+) */}
+            {/* Mobile segmented control (hidden at lg+) — incidents live inside the Devices pane now. */}
             <div className="flex shrink-0 items-center gap-2 border-b px-3 py-2.5 lg:hidden"
                 style={{ borderColor: 'var(--border-subtle)', background: 'var(--surface)' }}>
                 <div className="tad-tabs tad-tabs--pill flex-1" role="tablist" aria-label="Views">
@@ -625,6 +715,7 @@ export default function DevicesView({
                         className="tad-tab flex-1 justify-center" style={{ textDecoration: 'none' }}>
                         Devices
                         {devices.length > 0 && <span className="tad-tab__count">{devices.length}</span>}
+                        {activeTab === 'assets' && newIncidentCount > 0 && <span className="tad-tab__count">{newIncidentCount}</span>}
                     </Link>
                     <Link href="/my/beats?view=list" role="tab"
                         aria-selected={mobilePane === 'list' && activeTab === 'beats'}
@@ -633,26 +724,21 @@ export default function DevicesView({
                         Beats
                         {beats.length > 0 && <span className="tad-tab__count">{beats.length}</span>}
                     </Link>
-                    <button type="button" role="tab"
-                        aria-selected={mobilePane === 'alerts'}
-                        onClick={() => setMobilePane('alerts')}
-                        className="tad-tab flex-1 justify-center">
-                        Incidents
-                        {newIncidentCount > 0 && <span className="tad-tab__count">{newIncidentCount}</span>}
-                    </button>
                 </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:flex-none lg:grid-cols-[320px_minmax(0,1fr)_300px] lg:items-start lg:gap-4">
+            <div className="flex min-h-0 flex-1 flex-col lg:grid lg:flex-none lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-4">
 
-                {/* ── LEFT: Assets · Beats · Trips ─────────────────────────── */}
+                {/* ── LEFT COLUMN: slim device list → pinned selected card → incidents ─────── */}
                 {/* Plain wrapper carries the responsive show/hide (Tailwind utilities can't override
                     the unlayered .tad-card display, so the toggle lives on this div instead). */}
-                <div className={`${mobilePane === 'list' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
+                <div className={`${mobilePane === 'list' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3 lg:flex lg:flex-none lg:overflow-visible lg:p-0`}>
+
+                {/* Device / Beat list card */}
                 <Card flushBody
-                    className="tad-card--fill min-h-0 flex-1 lg:flex-none">
+                    className="tad-card--fill min-h-0 lg:flex-none">
                     <div className="hidden shrink-0 overflow-x-auto lg:block" style={{ padding: '12px 14px 0' }}>
-                        {/* Pill tabs are real links — each view (Assets / Beats / Trips) is its own route.
+                        {/* Pill tabs are real links — each view (Assets / Beats) is its own route.
                             On narrow screens the row scrolls horizontally instead of wrapping/overflowing. */}
                         <div className="tad-tabs tad-tabs--pill w-max min-w-full" role="tablist">
                             {TAB_LINKS.map(t => {
@@ -669,7 +755,10 @@ export default function DevicesView({
                         </div>
                     </div>
 
-                    <div className="mt-2.5 min-h-0 flex-1 overflow-y-auto lg:max-h-[calc(100vh-14rem)] lg:flex-none">
+                    {/* Slim list. On mobile the whole LEFT column scrolls (parent has overflow-y-auto),
+                        so the list grows to its natural height; on desktop the list scrolls within a
+                        capped height so the pinned card + incidents below stay reachable in the column. */}
+                    <div className="mt-2.5 min-h-0 overflow-y-auto lg:max-h-[40vh]">
 
                         {/* ── ASSETS ──────────────────────────────────────── */}
                         {activeTab === 'assets' && (
@@ -680,28 +769,31 @@ export default function DevicesView({
                                 </div>
                             ) : devices.map(device => {
                                 const on = selectedDev === device.id;
+                                // Slim row: small live-status dot + name + IMEI, tightened padding.
+                                const dot = STATUS_PIN[getMyStatus(device)];
                                 return (
                                     <div key={device.id} id={`device-${device.id}`}
                                         style={{
-                                            display: 'flex', alignItems: 'center', gap: 11, padding: '12px 16px',
+                                            display: 'flex', alignItems: 'center', gap: 9, padding: '8px 14px',
                                             borderLeft: `3px solid ${on ? 'var(--brand)' : 'transparent'}`,
                                             background: on ? 'var(--brand-subtle)' : 'transparent',
                                         }}>
                                         <button onClick={() => selectDevice(device.id)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: 11, flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
-                                            <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flex: 'none', overflow: 'hidden' }}>
+                                            style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0, border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', padding: 0 }}>
+                                            <div style={{ width: 28, height: 28, borderRadius: 'var(--radius-md)', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', flex: 'none', overflow: 'hidden', position: 'relative' }}>
                                                 {device.image_url
                                                     ? <img src={device.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                    : <Smartphone width={18} height={18} />}
+                                                    : <Smartphone width={15} height={15} />}
+                                                <span style={{ position: 'absolute', right: -1, bottom: -1, width: 9, height: 9, borderRadius: '50%', background: dot, border: '2px solid var(--surface)' }} />
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div className="truncate" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>{device.name}</div>
-                                                <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)' }}>{device.imei}</div>
+                                                <div className="truncate" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3 }}>{device.name}</div>
+                                                <div className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--text-muted)' }}>{device.imei}</div>
                                             </div>
                                         </button>
                                         <button onClick={() => goToDevice(device.id)} aria-label="Details" title="Details"
                                             style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-subtle)', padding: 4, flex: 'none' }}>
-                                            <ChevronRight width={16} height={16} />
+                                            <ChevronRight width={15} height={15} />
                                         </button>
                                     </div>
                                 );
@@ -799,9 +891,82 @@ export default function DevicesView({
                         )}
                     </div>
                 </Card>
+
+                {/* ── Pinned selected-device card (sits ON TOP of the incidents) ───────────
+                    Only on the Assets view; reuses the device-detail DeviceSummaryCard. */}
+                {activeTab === 'assets' && selectedDevice && (
+                    <DeviceSummaryCard
+                        name={selectedDevice.name}
+                        speed={null}
+                        lastSeenAt={selectedDevice.last_seen_at}
+                        online={selectedStatus === 'online'}
+                        battery={selectedDevice.battery_percent}
+                        statusLabel={selectedStatus ? STATUS_CHIP[selectedStatus].label : undefined}
+                        statusColor={selectedStatus ? STATUS_CHIP[selectedStatus].color : undefined}
+                        productTag={selectedDevice.device_type?.name ?? null}
+                    />
+                )}
+
+                {/* ── Incidents & alerts (infinite scroll) ─────────────────────────────────
+                    All devices' incidents by default; a selected device filters server-side. */}
+                {activeTab === 'assets' && (
+                    <Card title="Incidents & alerts"
+                        action={newIncidentCount > 0 ? <Badge variant="danger">{newIncidentCount} new</Badge> : undefined}>
+                        {(selectedDev || selectedBeat) && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                <span className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                    Filtered by: {selectedDev
+                                        ? devices.find(d => d.id === selectedDev)?.name
+                                        : beats.find(b => b.id === selectedBeat)?.name}
+                                </span>
+                                <button onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', flex: 'none', marginLeft: 8 }}>
+                                    <X width={12} height={12} />
+                                    Show all
+                                </button>
+                            </div>
+                        )}
+                        {visibleIncidents.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center text-center" style={{ padding: 18, gap: 8 }}>
+                                <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
+                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                                    {incidentLoading ? 'Loading…' : 'No incidents in the last 3 days.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="lg:max-h-[calc(100vh-30rem)] lg:overflow-y-auto" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {visibleIncidents.map(incident => (
+                                    <div key={incident.id} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
+                                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)', flex: 'none' }}>
+                                            <AlertTriangle width={15} height={15} />
+                                        </span>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
+                                                {incident.display_label ?? incident.event_type.replace(/_/g, ' ')}
+                                            </div>
+                                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                {new Date(incident.triggered_at).toLocaleString()}
+                                            </div>
+                                            {incident.device && (
+                                                <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
+                                            )}
+                                            {renderLiveMetric(incident)}
+                                        </div>
+                                    </div>
+                                ))}
+                                {/* Infinite-scroll sentinel + loading hint */}
+                                {incidentHasMore && (
+                                    <div ref={incidentSentinelRef} style={{ padding: '6px 0', textAlign: 'center', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                                        {incidentLoading ? 'Loading more…' : ' '}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </Card>
+                )}
                 </div>
 
-                {/* ── CENTER: Live Map ─────────────────────────────────────── */}
+                {/* ── RIGHT COLUMN: Live Map + trail/trip playback ─────────────────────────── */}
                 <div className={`${mobilePane === 'map' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col lg:flex lg:flex-none`}>
                 <Card flushBody style={{ overflow: 'hidden' }}
                     className="tad-card--fill min-h-0 flex-1 lg:flex-none">
@@ -904,56 +1069,6 @@ export default function DevicesView({
                         )}
                     </div>
                 </Card>
-                </div>
-
-                {/* ── RIGHT: Incidents & alerts + Notify me on ─────────────── */}
-                <div className={`${mobilePane === 'alerts' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3 lg:flex lg:flex-none lg:overflow-visible lg:p-0`}>
-
-                    {/* Incidents & alerts */}
-                    <Card title="Incidents & alerts"
-                        action={newIncidentCount > 0 ? <Badge variant="danger">{newIncidentCount} new</Badge> : undefined}>
-                        {(selectedDev || selectedBeat) && (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                                <span className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-                                    Filtered by: {selectedDev
-                                        ? devices.find(d => d.id === selectedDev)?.name
-                                        : beats.find(b => b.id === selectedBeat)?.name}
-                                </span>
-                                <button onClick={() => { setSelectedDev(null); setSelectedBeat(null); }}
-                                    style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-medium)', color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', flex: 'none', marginLeft: 8 }}>
-                                    Show all
-                                </button>
-                            </div>
-                        )}
-                        {visibleIncidents.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center text-center" style={{ padding: 18, gap: 8 }}>
-                                <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
-                                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents in the last 3 days.</p>
-                            </div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                {visibleIncidents.map(incident => (
-                                    <div key={incident.id} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-                                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--surface-sunken)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: INCIDENT_STATUS_DOT[incident.status] ?? 'var(--text-muted)', flex: 'none' }}>
-                                            <AlertTriangle width={15} height={15} />
-                                        </span>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div className="capitalize" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.35 }}>
-                                                {incident.display_label ?? incident.event_type.replace(/_/g, ' ')}
-                                            </div>
-                                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                {new Date(incident.triggered_at).toLocaleString()}
-                                            </div>
-                                            {incident.device && (
-                                                <div className="truncate" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-subtle)', marginTop: 1 }}>{incident.device.name}</div>
-                                            )}
-                                            {renderLiveMetric(incident)}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Card>
                 </div>
             </div>
 
