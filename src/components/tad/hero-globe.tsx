@@ -1,26 +1,33 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import GPS_SATELLITES from '@/data/gps-satellites.json';
 
 /* TAD-PAK hero globe — ported from the design pack (track-any-device-ui-guidelines › Globe).
    2D-canvas dotted globe whose dots form continents (point-in-polygon land test), with city pins
    across every continent, 31 orbiting satellites and signal arcs. Brand green, scroll-reactive.
    Hovering a satellite freezes its orbit and shows its name. */
 
-// Satellite display names. The real 31-name list will be supplied later; until then each satellite
-// shows SAT-01 … SAT-31. To label them, fill this array in order (index 0 = first satellite).
-const SATELLITE_NAMES: string[] = [];
-const SAT_COUNT = 31;
-const satName = (i: number) => SATELLITE_NAMES[i] ?? `SAT-${String(i + 1).padStart(2, '0')}`;
+// Satellite reference data — loaded from src/data/gps-satellites.json (the real GPS constellation:
+// PRN, SVN, name/designation, block, launch origin). The number of orbiting satellites is driven by
+// this list, and hovering one shows its name plus a PRN/SVN/block sub-line.
+interface SatRecord { prn: number; svn: number; name: string; block: string; origin: string }
+const SATS_DATA = GPS_SATELLITES as SatRecord[];
+const SAT_COUNT = SATS_DATA.length;
+const satTitle = (i: number) => SATS_DATA[i]?.name ?? `SAT-${String(i + 1).padStart(2, '0')}`;
+const satSub = (i: number) => { const s = SATS_DATA[i]; return s ? `PRN ${s.prn} · SVN ${s.svn} · ${s.block}` : ''; };
 
-// Draws a satellite's name in a brand-green pill beside it. Canvas can't read CSS vars, so the
-// font/colours are literal; the pill flips to the left of the marker near the right edge.
-function drawSatLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, dpr: number, w: number) {
-  const fs = 11 * dpr;
-  ctx.font = `600 ${fs}px "DM Mono", ui-monospace, monospace`;
+// Draws a satellite's name (+ a mono sub-line) in a brand-green pill beside it. Canvas can't read CSS
+// vars, so the font/colours are literal; the pill flips to the left of the marker near the right edge.
+function drawSatLabel(ctx: CanvasRenderingContext2D, x: number, y: number, title: string, sub: string, dpr: number, w: number) {
+  const fs = 11 * dpr, sfs = 9 * dpr, padX = 8 * dpr, padY = 6 * dpr, gap = 12 * dpr, rr = 7 * dpr, lineGap = 3 * dpr;
   ctx.textBaseline = 'middle';
-  const padX = 7 * dpr, padY = 5 * dpr, gap = 12 * dpr, rr = 6 * dpr;
-  const bw = ctx.measureText(text).width + padX * 2, bh = fs + padY * 2;
+  ctx.font = `600 ${fs}px "DM Mono", ui-monospace, monospace`;
+  const tw = ctx.measureText(title).width;
+  ctx.font = `500 ${sfs}px "DM Mono", ui-monospace, monospace`;
+  const sw = sub ? ctx.measureText(sub).width : 0;
+  const bw = Math.max(tw, sw) + padX * 2;
+  const bh = (sub ? fs + sfs + lineGap : fs) + padY * 2;
   let bx = x + gap;
   if (bx + bw > w) bx = x - gap - bw;
   const by = y - bh / 2;
@@ -28,8 +35,14 @@ function drawSatLabel(ctx: CanvasRenderingContext2D, x: number, y: number, text:
   if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, rr); else ctx.rect(bx, by, bw, bh);
   ctx.fillStyle = 'rgba(1,65,28,0.94)';
   ctx.fill();
+  ctx.font = `600 ${fs}px "DM Mono", ui-monospace, monospace`;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(text, bx + padX, by + bh / 2 + 0.5 * dpr);
+  ctx.fillText(title, bx + padX, by + padY + fs / 2);
+  if (sub) {
+    ctx.font = `500 ${sfs}px "DM Mono", ui-monospace, monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.74)';
+    ctx.fillText(sub, bx + padX, by + padY + fs + lineGap + sfs / 2);
+  }
 }
 
 export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?: number; radiusFactor?: number } = {}) {
@@ -198,7 +211,7 @@ export function HeroGlobe({ cxFactor = 0.64, radiusFactor = 0.36 }: { cxFactor?:
         }
       }
       // Hovered satellite's name label, drawn on top of everything.
-      if (hovered >= 0) { const s = satScreen.find((p) => p[2] === hovered); if (s) drawSatLabel(ctx, s[0], s[1], satName(hovered), dpr, w); }
+      if (hovered >= 0) { const s = satScreen.find((p) => p[2] === hovered); if (s) drawSatLabel(ctx, s[0], s[1], satTitle(hovered), satSub(hovered), dpr, w); }
       raf = requestAnimationFrame(draw);
     };
     draw();
