@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { SiteShell } from '@/components/tad/site-shell';
 import { Section, ProductDetail, type ProductCategory } from '@/components/tad/marketing';
 import { AddToCart } from '@/components/tad/add-to-cart';
-import { getDeviceTypes } from '@/lib/catalog';
+import { getDeviceType } from '@/lib/catalog';
 import { getShopProductBySlug } from '@/lib/shop-api';
 
 const FEATURES = [
@@ -17,8 +17,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   // Marketing presentation comes from the catalogue (Sanity / placeholder); the orderable product
   // (real DB id, price, stock) comes from the Shop API. Both are fetched in parallel.
-  const [products, orderable] = await Promise.all([getDeviceTypes(), getShopProductBySlug(slug)]);
-  const p = products.find((x) => x.slug === slug);
+  const [p, orderable] = await Promise.all([getDeviceType(slug), getShopProductBySlug(slug)]);
 
   if (!p) {
     notFound();
@@ -36,9 +35,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           name={p.name}
           category={p.category as ProductCategory}
           image={image}
+          images={p.images}
           price={price}
           vendor={p.vendor}
-          features={FEATURES}
+          features={p.features?.length ? p.features : FEATURES}
+          typeApproved={p.typeApproved}
           actions={<AddToCart product={orderable} />}
         />
       </Section>
