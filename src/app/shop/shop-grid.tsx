@@ -32,19 +32,30 @@ export function ShopGrid({ products, orderable = [] }: { products: Product[]; or
       <div className="-mx-5 overflow-x-auto px-5 sm:mx-0 sm:overflow-visible sm:px-0">
         <Tabs variant="pill" value={cat} onChange={setCat} items={CATS} />
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {items.map((p) => {
-          const op = p.slug ? bySlug.get(slugify(p.slug)) : undefined;
-          return (
-            <ProductCard
-              key={p.slug || p.name}
-              {...p}
-              href={`/products/${p.slug}`}
-              addToCart={op && op.inStock ? <AddToCartMini product={op} /> : undefined}
-            />
-          );
-        })}
-      </div>
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[var(--border)] px-6 py-14 text-center">
+          <p className="font-[var(--font-display)] text-lg font-bold text-[var(--text)]">No products to show yet</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {cat === 'all'
+              ? 'Our catalogue is being updated — please check back soon.'
+              : 'No products in this category yet.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {items.map((p) => {
+            const op = p.slug ? bySlug.get(slugify(p.slug)) : undefined;
+            return (
+              <ProductCard
+                key={p.slug || p.name}
+                {...p}
+                href={`/products/${p.slug}`}
+                addToCart={op && op.inStock ? <AddToCartMini product={op} /> : undefined}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
