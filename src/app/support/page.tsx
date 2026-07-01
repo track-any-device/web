@@ -1,12 +1,22 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail, Phone, BookOpen, Cpu, Webhook, ArrowRight } from 'lucide-react';
+import { Blocks } from '@/components/tad/blocks';
 import { Hero, Section } from '@/components/tad/marketing';
 import { Card } from '@/components/ui';
+import { getPage } from '@/lib/pages';
 
 export const runtime = 'edge';
 
-export const metadata: Metadata = { title: 'Support' };
+const SUPPORT_SLUG = 'support';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPage(SUPPORT_SLUG);
+  return {
+    title: page?.metaTitle ?? 'Support',
+    description: page?.metaDescription ?? undefined,
+  };
+}
 
 const CONTACT_METHODS = [
   {
@@ -25,7 +35,16 @@ const CONTACT_METHODS = [
   },
 ];
 
-export default function SupportPage() {
+export default async function SupportPage() {
+  const page = await getPage(SUPPORT_SLUG);
+
+  // Sanity content wins when a published 'support' Page has sections.
+  // SiteShell is supplied by support/layout.tsx, so render Blocks directly here.
+  if (page?.sections?.length) {
+    return <Blocks sections={page.sections} />;
+  }
+
+  // Built-in default — renders until a 'support' Page is authored + published in Sanity.
   return (
     <>
       <Hero
