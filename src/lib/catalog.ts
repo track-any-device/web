@@ -1,8 +1,10 @@
 import { sanityFetch } from './sanity';
-import { PRODUCTS, type Product } from '@/lib/products';
+import { type Product } from '@/lib/products';
 
-/* Catalog data access — reads the DeviceType catalog from Sanity (server-side), with a graceful
-   fallback to the local placeholder list until Sanity read access is wired (viewer token / public). */
+/* Catalog data access — reads the DeviceType catalog from Sanity (server-side). There is NO
+   placeholder fallback: if Sanity has no products (or is unreachable) this returns [], so surfaces
+   render a real empty state rather than fabricated data. Publish `deviceType` docs in Sanity Studio
+   to populate the catalogue. */
 
 type SanityDeviceType = {
   name: string; slug: string; category: string;
@@ -16,19 +18,19 @@ const DEVICE_TYPES_QUERY = `*[_type == "deviceType" && active == true]|order(sor
 export async function getDeviceTypes(): Promise<Product[]> {
   try {
     const rows = await sanityFetch<SanityDeviceType[]>(DEVICE_TYPES_QUERY);
-    if (rows && rows.length) {
-      return rows.map((r) => ({
-        name: r.name,
-        slug: r.slug,
-        category: r.category as Product['category'],
-        vendor: r.vendor,
-        protocol: r.protocol as Product['protocol'],
-        price: r.price,
-        image: r.image,
-      }));
-    }
-  } catch {
-    // Sanity unreachable / not yet readable → fall back to placeholder.
+    return (rows ?? []).map((r) => ({
+      name: r.name,
+      slug: r.slug,
+      category: r.category as Product['category'],
+      vendor: r.vendor,
+      protocol: r.protocol as Product['protocol'],
+      price: r.price,
+      image: r.image,
+    }));
+  } catch (err) {
+    // No fabricated fallback — surface the failure in logs and return empty so the UI shows an
+    // honest empty state.
+    console.error('[catalog] getDeviceTypes — Sanity read failed:', err);
+    return [];
   }
-  return PRODUCTS;
 }
