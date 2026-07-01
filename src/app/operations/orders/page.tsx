@@ -1,13 +1,13 @@
 import React from 'react';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { DataTable, StatRow } from '@/components/tad/data-table';
-import { Badge, Button } from '@/components/ui';
+import { Badge } from '@/components/ui';
 import { fetchPortal } from '@/lib/admin-api';
 import { requirePortal } from '@/lib/portal-guard';
 import { type DeliveryOrder } from '@/lib/portal-data';
+import { OrderAction } from './order-action';
 
 const STATUS: Record<string, 'warning' | 'brand' | 'success' | 'neutral'> = { pending: 'warning', confirmed: 'brand', delivered: 'success', cancelled: 'neutral' };
-const NEXT: Record<string, string | null> = { pending: 'Confirm', confirmed: 'Mark delivered', delivered: null, cancelled: null };
 
 export default async function OrdersPage() {
   await requirePortal('orders');
@@ -31,7 +31,7 @@ export default async function OrdersPage() {
             { key: 'items', header: 'Devices', align: 'center' },
             { key: 'total', header: 'Total', align: 'right', mono: true, render: (r) => r.total != null ? `${r.currency ?? 'PKR'} ${Number(r.total).toLocaleString()}` : '—' },
             { key: 'status', header: 'Status', render: (r) => <Badge variant={STATUS[r.status ?? ''] ?? 'neutral'}>{r.status ?? '—'}</Badge> },
-            { key: 'act', header: '', align: 'right', render: (r) => NEXT[r.status ?? ''] ? <Button variant="secondary" size="sm">{NEXT[r.status ?? '']}</Button> : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span> },
+            { key: 'act', header: '', align: 'right', render: (r) => <OrderAction orderId={r.orderId} status={r.status ?? null} /> },
           ]}
         />
       </div>

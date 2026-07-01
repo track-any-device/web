@@ -121,7 +121,7 @@ export interface SupportTicket {
 }
 
 export interface DeliveryOrder {
-  id: string; customer: string | null; phone: string | null; items: number;
+  id: string; orderId?: number; customer: string | null; phone: string | null; items: number;
   status: 'pending' | 'confirmed' | 'delivered' | 'cancelled' | string | null;
   total?: number | null; currency?: string | null; placedAt: string | null;
 }
