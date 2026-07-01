@@ -88,9 +88,9 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
         {/* Activity / battery / reporting telemetry over time (full-width, below the 4-column row). */}
         <DeviceActivityCard deviceId={d.id} />
 
-        <Card title="Recent incidents" style={{ gridColumn: '1 / -1' }}>
+        <Card title="Recent alerts" style={{ gridColumn: '1 / -1' }}>
           {d.incidents.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No incidents recorded for this device.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>No alerts recorded for this device.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {d.incidents.map((i) => (

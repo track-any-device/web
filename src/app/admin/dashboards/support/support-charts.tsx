@@ -15,7 +15,7 @@ export function SupportCharts({ initial, initialDays }: { initial: DashboardData
       initialDays={initialDays}
       stats={(d) => [
         { label: 'Open tickets', value: d.totals.openTickets },
-        { label: 'Open incidents', value: d.totals.openIncidents },
+        { label: 'Open alerts', value: d.totals.openIncidents },
       ]}
       emptyTitle="No support data yet"
       emptyBody="Once support tickets are raised, the volume trend and status breakdown will appear here."

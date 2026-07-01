@@ -33,11 +33,11 @@ export default async function AdminIncidentDetailPage({ params }: { params: Prom
   if (!inc) {
     return (
       <>
-        <PortalTopbar title="Incident" subtitle="Incident detail" />
+        <PortalTopbar title="Alert" subtitle="Alert detail" />
         <div className="tad-portal__body">
           <Card>
-            <p style={{ color: 'var(--text-muted)' }}>{error ?? 'Incident not found.'}</p>
-            <div style={{ marginTop: 12 }}><Link href="/admin/incidents"><Button variant="ghost" size="sm">Back to incidents</Button></Link></div>
+            <p style={{ color: 'var(--text-muted)' }}>{error ?? 'Alert not found.'}</p>
+            <div style={{ marginTop: 12 }}><Link href="/admin/incidents"><Button variant="ghost" size="sm">Back to alerts</Button></Link></div>
           </Card>
         </div>
       </>
@@ -51,13 +51,13 @@ export default async function AdminIncidentDetailPage({ params }: { params: Prom
     <>
       <PortalTopbar
         title={title}
-        subtitle={`Incident #${inc.id}`}
+        subtitle={`Alert #${inc.id}`}
         right={<Link href="/admin/incidents"><Button variant="ghost" size="sm">Back</Button></Link>}
       />
       <div className="tad-portal__body">
        {/* Meta grid: 1 col on phones → 3 on lg. The playback card spans the full width below it. */}
        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card title="Incident">
+        <Card title="Alert">
           <div style={{ display: 'grid', gap: 12 }}>
             <Field label="Event" value={title} />
             <Field label="Type" value={inc.eventType ? <span style={{ fontFamily: 'var(--font-mono)' }}>{inc.eventType}</span> : '—'} />
@@ -85,7 +85,7 @@ export default async function AdminIncidentDetailPage({ params }: { params: Prom
             />
             <Field label="IMEI" value={inc.device?.imei ?? null} mono />
             <Field
-              label="Incident location"
+              label="Alert location"
               mono
               value={coords ? <a href={`https://maps.google.com/?q=${inc.lat},${inc.lon}`} target="_blank" rel="noopener noreferrer">{coords}</a> : null}
             />

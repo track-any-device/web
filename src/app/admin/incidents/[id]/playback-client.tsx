@@ -231,7 +231,7 @@ export function PlaybackCard({ locations }: { locations: AdminIncidentLocation[]
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg-sunken)', gap: 10 }}>
             <Route style={{ width: 30, height: 30, color: 'var(--text-subtle)' }} />
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.5 }}>
-              No archived track for this incident — locations are only captured while an incident is open.
+              No archived track for this alert — locations are only captured while an alert is open.
             </p>
           </div>
         ) : <div ref={mapRef} style={{ width: '100%', height: '100%' }} />}

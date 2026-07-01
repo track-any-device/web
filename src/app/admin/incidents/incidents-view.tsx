@@ -47,7 +47,7 @@ export function IncidentsView({ initialRows, initialDays }: { initialRows: Admin
     fetch(`/api/admin/incidents?days=${days}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((json: unknown) => { if (!cancelled) setRows(Array.isArray(json) ? (json as AdminIncidentRow[]) : []); })
-      .catch(() => { if (!cancelled) { setRows([]); setError('Could not load incidents for this window.'); } })
+      .catch(() => { if (!cancelled) { setRows([]); setError('Could not load alerts for this window.'); } })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [days]);
@@ -85,10 +85,10 @@ export function IncidentsView({ initialRows, initialDays }: { initialRows: Admin
 
       {view === 'table' ? (
         <DataTable<AdminIncidentRow>
-          empty={loading ? 'Loading…' : 'No incidents.'}
+          empty={loading ? 'Loading…' : 'No alerts.'}
           rows={rows}
           columns={[
-            { key: 'id', header: 'Incident', mono: true, render: (r) => <Link href={`/admin/incidents/${r.id}`}>{r.id}</Link> },
+            { key: 'id', header: 'Alert', mono: true, render: (r) => <Link href={`/admin/incidents/${r.id}`}>{r.id}</Link> },
             { key: 'priority', header: 'Priority', render: (r) => <Badge variant={PRIORITY[r.priority ?? ''] ?? 'neutral'}>{r.priority ?? '—'}</Badge> },
             { key: 'eventType', header: 'Event', render: (r) => r.label ?? eventLabel(r.eventType) },
             { key: 'device', header: 'Device IMEI', mono: true, render: (r) => r.device ?? '—' },
@@ -235,7 +235,7 @@ function IncidentsMap({ rows, loading }: { rows: AdminIncidentRow[]; loading: bo
         ) : rows.length === 0 ? (
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', background: 'var(--bg-sunken)', gap: 8 }}>
             <MapPin style={{ width: 32, height: 32, color: 'var(--text-subtle)' }} />
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loading ? 'Loading…' : 'No incidents with a location in this window.'}</p>
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loading ? 'Loading…' : 'No alerts with a location in this window.'}</p>
           </div>
         ) : <div ref={mapRef} style={{ width: '100%', height: '100%' }} />}
       </div>

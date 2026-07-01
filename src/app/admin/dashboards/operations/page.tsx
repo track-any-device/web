@@ -9,7 +9,7 @@ export default async function OperationsDashboard() {
   const dashboard = await fetchDashboard(INITIAL_DAYS);
   return (
     <>
-      <PortalTopbar title="Operations" subtitle="Incidents opened, resolved & priority" />
+      <PortalTopbar title="Operations" subtitle="Alerts opened, resolved & priority" />
       <OperationsCharts initial={dashboard} initialDays={INITIAL_DAYS} />
     </>
   );

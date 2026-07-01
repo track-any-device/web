@@ -7,7 +7,7 @@ const FEATURES: [string, string][] = [
   ['Live fleet map', 'Every vehicle, asset, and field worker on one map — updated the moment anything moves.'],
   ['Geofences & beats', 'Draw zones and routes; get alerted on enter, exit, or off-route.'],
   ['Trips & history', 'Replay any journey with stops, speed, and distance.'],
-  ['Roles & access', 'Give your team scoped access — manage drivers, assets, and incidents.'],
+  ['Roles & access', 'Give your team scoped access — manage drivers, assets, and alerts.'],
 ];
 
 export default function BusinessPage() {

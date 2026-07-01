@@ -10,7 +10,7 @@ export default async function SupportPage() {
   const { data: tickets, error } = await fetchPortal<SupportTicket>('/ops/support/tickets');
   return (
     <>
-      <PortalTopbar title="Support — Ticket board" subtitle="Triage incident tickets across all customers" />
+      <PortalTopbar title="Support — Ticket board" subtitle="Triage alert tickets across all customers" />
       <div className="tad-portal__body">
         <SupportBoard initial={tickets} loadError={error} />
       </div>
