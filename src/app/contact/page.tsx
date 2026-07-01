@@ -1,8 +1,13 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SiteShell } from '@/components/tad/site-shell';
+import { Blocks } from '@/components/tad/blocks';
 import { Hero, Section } from '@/components/tad/marketing';
 import { Card } from '@/components/ui';
+import { getPage } from '@/lib/pages';
+
+const CONTACT_SLUG = 'contact';
 
 const METHODS: [string, string, string][] = [
   ['Call us', '+92 21 111 823 725', 'Mon–Sat, 9am–8pm PKT'],
@@ -10,7 +15,29 @@ const METHODS: [string, string, string][] = [
   ['Help center', 'Guides, setup, and FAQs', '/support'],
 ];
 
-export default function ContactPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPage(CONTACT_SLUG);
+  return {
+    title: page?.metaTitle ?? undefined, // falls back to the root layout's default title
+    description:
+      page?.metaDescription ??
+      'Questions about a device, an order, or your account? Reach our team and we will get back to you quickly.',
+  };
+}
+
+export default async function ContactPage() {
+  const page = await getPage(CONTACT_SLUG);
+
+  // Sanity content wins when a published 'contact' Page has sections.
+  if (page?.sections?.length) {
+    return (
+      <SiteShell>
+        <Blocks sections={page.sections} />
+      </SiteShell>
+    );
+  }
+
+  // Built-in default — renders until a 'contact' Page is authored + published in Sanity.
   return (
     <SiteShell>
       <Hero

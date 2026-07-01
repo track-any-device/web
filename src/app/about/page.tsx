@@ -1,7 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/tad/site-shell';
+import { Blocks } from '@/components/tad/blocks';
 import { Hero, Section } from '@/components/tad/marketing';
 import { Card } from '@/components/ui';
+import { getPage } from '@/lib/pages';
+
+const ABOUT_SLUG = 'about';
 
 const POINTS: [string, string][] = [
   ['Pakistan-first', 'Built for local realities — PKR pricing, cash on delivery, SMS-OTP sign-in, and friendly support.'],
@@ -9,7 +14,29 @@ const POINTS: [string, string][] = [
   ['Simple and fair', 'Buy a tracker, fit it, and track from your phone or the web — no contracts, no jargon.'],
 ];
 
-export default function AboutPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPage(ABOUT_SLUG);
+  return {
+    title: page?.metaTitle ?? undefined, // falls back to the root layout's default title
+    description:
+      page?.metaDescription ??
+      'TAD-PAK keeps cars, bikes, and people safe across Pakistan with real-time GPS that anyone can set up.',
+  };
+}
+
+export default async function AboutPage() {
+  const page = await getPage(ABOUT_SLUG);
+
+  // Sanity content wins when a published 'about' Page has sections.
+  if (page?.sections?.length) {
+    return (
+      <SiteShell>
+        <Blocks sections={page.sections} />
+      </SiteShell>
+    );
+  }
+
+  // Built-in default — renders until an 'about' Page is authored + published in Sanity.
   return (
     <SiteShell>
       <Hero

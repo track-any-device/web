@@ -1,7 +1,12 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { SiteShell } from '@/components/tad/site-shell';
+import { Blocks } from '@/components/tad/blocks';
 import { Hero, Section } from '@/components/tad/marketing';
 import { Card } from '@/components/ui';
+import { getPage } from '@/lib/pages';
+
+const BUSINESS_SLUG = 'business';
 
 const FEATURES: [string, string][] = [
   ['Live fleet map', 'Every vehicle, asset, and field worker on one map — updated the moment anything moves.'],
@@ -10,7 +15,29 @@ const FEATURES: [string, string][] = [
   ['Roles & access', 'Give your team scoped access — manage drivers, assets, and alerts.'],
 ];
 
-export default function BusinessPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getPage(BUSINESS_SLUG);
+  return {
+    title: page?.metaTitle ?? undefined, // falls back to the root layout's default title
+    description:
+      page?.metaDescription ??
+      'Live tracking, geofences, and trip history for cars, bikes, and field staff — one dashboard for your whole fleet.',
+  };
+}
+
+export default async function BusinessPage() {
+  const page = await getPage(BUSINESS_SLUG);
+
+  // Sanity content wins when a published 'business' Page has sections.
+  if (page?.sections?.length) {
+    return (
+      <SiteShell>
+        <Blocks sections={page.sections} />
+      </SiteShell>
+    );
+  }
+
+  // Built-in default — renders until a 'business' Page is authored + published in Sanity.
   return (
     <SiteShell>
       <Hero
