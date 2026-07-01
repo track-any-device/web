@@ -36,9 +36,9 @@ const DRILL_CARDS: DrillCard[] = [
     href: '/admin/dashboards/operations',
     icon: 'alert',
     title: 'Operations',
-    blurb: 'Incidents & priority',
+    blurb: 'Alerts & priority',
     value: (d) => d.totals.openIncidents,
-    valueLabel: 'open incidents',
+    valueLabel: 'open alerts',
   },
   {
     href: '/admin/dashboards/support',
@@ -101,14 +101,14 @@ export function OverviewCharts({ initial, initialDays }: { initial: DashboardDat
         { label: 'Users', value: d.totals.users },
         { label: 'Active devices', value: d.totals.activeDevices, hint: `${d.totals.devices} total · ${d.totals.pendingDevices} pending` },
         { label: 'Organisations', value: d.totals.organisations },
-        { label: 'Open incidents', value: d.totals.openIncidents },
+        { label: 'Open alerts', value: d.totals.openIncidents },
         { label: 'Open tickets', value: d.totals.openTickets },
         { label: 'Forwarded 24h', value: d.totals.forwarded24h },
         { label: 'SMS sent 24h', value: d.totals.smsSent24h },
         { label: 'SMS received 24h', value: d.totals.smsReceived24h },
       ]}
       emptyTitle="No activity data yet"
-      emptyBody="Once the platform records users, devices, incidents and signal traffic, the trends and breakdowns will appear here."
+      emptyBody="Once the platform records users, devices, alerts and signal traffic, the trends and breakdowns will appear here."
     >
       {(d) => (
         <>

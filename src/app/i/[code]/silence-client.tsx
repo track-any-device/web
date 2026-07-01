@@ -44,7 +44,7 @@ export function SilenceClient({ code }: { code: string }) {
     let cancelled = false;
     fetch(`/api/i/${code}`)
       .then(async (res) => {
-        if (!res.ok) throw new Error(res.status === 404 ? 'This link has expired or is invalid.' : 'Could not load this incident.');
+        if (!res.ok) throw new Error(res.status === 404 ? 'This link has expired or is invalid.' : 'Could not load this alert.');
         return res.json();
       })
       .then((data) => { if (!cancelled) { setIncident(data); setDone(data.silencedUntil ? `Already silenced until ${new Date(data.silencedUntil).toLocaleString()}.` : null); } })
@@ -107,12 +107,12 @@ export function SilenceClient({ code }: { code: string }) {
                   const map = staticMapUrl({ lat: incident.lat, lng: incident.lng, deviceLat: incident.deviceLat, deviceLng: incident.deviceLng });
                   return map ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={map} alt="Incident location" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border-subtle, #E7E0D6)', display: 'block' }} />
+                    <img src={map} alt="Alert location" style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border-subtle, #E7E0D6)', display: 'block' }} />
                   ) : null;
                 })()}
                 {incident.deviceLat != null && incident.deviceLng != null && (
                   <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-                    <span><span style={{ color: 'var(--danger, #F0463C)' }}>●</span> Incident</span>
+                    <span><span style={{ color: 'var(--danger, #F0463C)' }}>●</span> Alert</span>
                     <span><span style={{ color: '#1F9462' }}>●</span> Device now</span>
                   </div>
                 )}

@@ -26,7 +26,7 @@ const ADMIN_NAV: PortalNavItem[] = [
   { href: '/admin/devices', label: 'Devices', icon: 'cpu' },
   { href: '/admin/device-types', label: 'Device types', icon: 'tag' },
   { href: '/admin/exclusion-beats', label: 'Exclusion zones', icon: 'map' },
-  { href: '/admin/incidents', label: 'Incidents', icon: 'alert' },
+  { href: '/admin/incidents', label: 'Alerts', icon: 'alert' },
   { href: '/admin/sms', label: 'SMS', icon: 'message' },
 ];
 

@@ -12,7 +12,7 @@ export default async function AdminIncidentsPage() {
   const { data: rows } = await fetchPortal<AdminIncidentRow>(`/admin/incidents?days=${DEFAULT_DAYS}`);
   return (
     <>
-      <PortalTopbar title="Incidents" subtitle="Alerts raised across all devices" />
+      <PortalTopbar title="Alerts" subtitle="Alerts raised across all devices" />
       <div className="tad-portal__body">
         <IncidentsView initialRows={rows} initialDays={DEFAULT_DAYS} />
       </div>

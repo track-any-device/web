@@ -91,7 +91,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
         setLoading(true);
         new ApiClient(token).getIncident(incidentId)
             .then(data => { if (!cancelled) setIncident(data); })
-            .catch(() => { if (!cancelled) setLoadError('We could not load this incident.'); })
+            .catch(() => { if (!cancelled) setLoadError('We could not load this alert.'); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [token, incidentId]);
@@ -108,12 +108,12 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
             <div className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-7">
                 <div className="max-w-3xl space-y-4">
                     <Link href="/my/incidents" className="inline-flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                        <ChevronLeft className="w-4 h-4" /> Incidents
+                        <ChevronLeft className="w-4 h-4" /> Alerts
                     </Link>
                     <Card>
                         <div className="flex flex-col items-center text-center py-8" style={{ gap: 10 }}>
                             <AlertTriangle className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
-                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loadError ?? 'Incident not found.'}</p>
+                            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{loadError ?? 'Alert not found.'}</p>
                         </div>
                     </Card>
                 </div>
@@ -141,7 +141,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
             {/* Back link */}
             <Link href="/my/incidents" className="inline-flex items-center gap-1"
                 style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-medium)', color: 'var(--text-muted)', textDecoration: 'none' }}>
-                <ChevronLeft className="w-4 h-4" /> Incidents
+                <ChevronLeft className="w-4 h-4" /> Alerts
             </Link>
 
             {/* Header */}
@@ -175,7 +175,7 @@ export default function IncidentDetailClient({ incidentId }: { incidentId: numbe
             </div>
 
             {/* 1 ── Location map */}
-            <IncidentMapCard lat={lat} lng={lng} coords={coords} trail={trail} deviceName={incident.device?.name ?? 'Incident'} />
+            <IncidentMapCard lat={lat} lng={lng} coords={coords} trail={trail} deviceName={incident.device?.name ?? 'Alert'} />
 
             {/* 2 ── Lifecycle timeline */}
             <Card title="Lifecycle">
@@ -322,7 +322,7 @@ function IncidentMapCard({ lat, lng, coords, trail, deviceName }: {
                 ) : !hasLocation ? (
                     <div className="h-full flex flex-col items-center justify-center p-8 text-center" style={{ background: 'var(--bg-sunken)', gap: 8 }}>
                         <MapPin className="w-8 h-8" style={{ color: 'var(--text-subtle)' }} />
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No location recorded for this incident.</p>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No location recorded for this alert.</p>
                     </div>
                 ) : <div ref={mapRef} className="w-full h-full" />}
             </div>

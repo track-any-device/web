@@ -9,7 +9,7 @@ export const runtime = 'edge';
    pin + the device's current location. Falls back to a generic title if the link is invalid. */
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }): Promise<Metadata> {
   const { code } = await params;
-  const fallback: Metadata = { title: 'Incident · Track Any Device' };
+  const fallback: Metadata = { title: 'Alert · Track Any Device' };
   try {
     const res = await fetch(`${process.env.API_URL}/api/public/incidents/${code}`, {
       headers: { Accept: 'application/json' },
@@ -17,10 +17,10 @@ export async function generateMetadata({ params }: { params: Promise<{ code: str
     });
     if (!res.ok) return fallback;
     const d = await res.json();
-    const title = `${d.label ?? 'Incident'}${d.device?.name ? ` · ${d.device.name}` : ''} · Track Any Device`;
+    const title = `${d.label ?? 'Alert'}${d.device?.name ? ` · ${d.device.name}` : ''} · Track Any Device`;
     const description = d.triggeredAt
       ? `Alert triggered ${new Date(d.triggeredAt).toLocaleString()}. Tap to view the location and silence reminders.`
-      : 'Live incident on Track Any Device — view the location and silence reminders.';
+      : 'Live alert on Track Any Device — view the location and silence reminders.';
     const img = staticMapUrl({ lat: d.lat, lng: d.lng, deviceLat: d.deviceLat, deviceLng: d.deviceLng, size: '600x315' });
     return {
       title,

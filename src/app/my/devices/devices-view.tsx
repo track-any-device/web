@@ -1253,7 +1253,7 @@ export default function DevicesView({
                 {/* ── Incidents & alerts (infinite scroll) ─────────────────────────────────
                     All devices' incidents by default; a selected device filters server-side. */}
                 {activeTab === 'assets' && (
-                    <Card title="Incidents & alerts"
+                    <Card title="Alerts"
                         action={newIncidentCount > 0 ? <Badge variant="danger">{newIncidentCount} new</Badge> : undefined}>
                         {(selectedDev || selectedBeat) && (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -1273,7 +1273,7 @@ export default function DevicesView({
                             <div className="flex flex-col items-center justify-center text-center" style={{ padding: 18, gap: 8 }}>
                                 <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
                                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
-                                    {incidentLoading ? 'Loading…' : 'No incidents in the last 3 days.'}
+                                    {incidentLoading ? 'Loading…' : 'No alerts in the last 3 days.'}
                                 </p>
                             </div>
                         ) : (

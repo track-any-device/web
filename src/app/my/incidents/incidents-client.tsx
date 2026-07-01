@@ -63,7 +63,7 @@ export default function IncidentsClient() {
         <div className="mx-auto w-full max-w-[1240px] px-4 py-6 space-y-6 sm:px-6 sm:py-8">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h1 style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-                    Incidents
+                    Alerts
                     <span className="ml-2" style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--weight-regular)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>({total})</span>
                 </h1>
                 {/* Status filter tabs */}
@@ -119,7 +119,7 @@ export default function IncidentsClient() {
                 {incidents.length === 0 && (
                     <div className="flex flex-col items-center justify-center text-center py-16 gap-2">
                         <ShieldCheck className="w-7 h-7" style={{ color: 'var(--success)' }} />
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No incidents found.</p>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>No alerts found.</p>
                     </div>
                 )}
             </div>

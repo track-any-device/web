@@ -28,17 +28,17 @@ export function OperationsCharts({ initial, initialDays }: { initial: DashboardD
       initial={initial}
       initialDays={initialDays}
       stats={(d) => [
-        { label: 'Open incidents', value: d.totals.openIncidents },
+        { label: 'Open alerts', value: d.totals.openIncidents },
         { label: 'Mean time-to-resolve', value: formatMttr(d.totals.mttrHours), hint: 'resolved in window' },
         { label: 'Active devices', value: d.totals.activeDevices },
         { label: 'Organisations', value: d.totals.organisations },
       ]}
-      emptyTitle="No incident data yet"
-      emptyBody="Once incidents are raised and worked, the opened-vs-resolved trend and priority mix will appear here."
+      emptyTitle="No alert data yet"
+      emptyBody="Once alerts are raised and worked, the opened-vs-resolved trend and priority mix will appear here."
     >
       {(d) => (
         <>
-          <Card title="Incidents opened vs resolved" className="tad-charts-grid__full">
+          <Card title="Alerts opened vs resolved" className="tad-charts-grid__full">
             <MultiTrend
               data={d.timeseries.incidents as unknown as Array<Record<string, string | number>>}
               series={[
@@ -48,7 +48,7 @@ export function OperationsCharts({ initial, initialDays }: { initial: DashboardD
               variant="area"
             />
           </Card>
-          <Card title="Incident priority">
+          <Card title="Alert priority">
             <Donut data={d.distributions.incidentPriority.map((s) => ({ label: s.label, count: s.count }))} centerLabel="incidents" />
           </Card>
         </>
