@@ -35,3 +35,39 @@ export async function getDeviceTypes(): Promise<Product[]> {
     return [];
   }
 }
+
+// Single device type + its gallery images / features, for the product detail page.
+type SanityDeviceTypeDetail = SanityDeviceType & {
+  images?: (string | null)[];
+  features?: string[];
+  typeApproved?: boolean;
+};
+
+const DEVICE_TYPE_QUERY = `*[_type == "deviceType" && slug.current == $slug && active == true][0]{
+  name, "slug": slug.current, category, vendor, protocol, "price": pricePkr,
+  "image": coalesce(imageUrl, image.asset->url),
+  "images": images[].asset->url,
+  features, typeApproved
+}`;
+
+export async function getDeviceType(slug: string): Promise<Product | null> {
+  try {
+    const row = await sanityFetch<SanityDeviceTypeDetail | null>(DEVICE_TYPE_QUERY, { slug });
+    if (!row) return null;
+    return {
+      name: row.name,
+      slug: row.slug,
+      category: row.category as Product['category'],
+      vendor: row.vendor,
+      protocol: row.protocol as Product['protocol'],
+      price: row.price,
+      image: row.image,
+      images: (row.images ?? []).filter((x): x is string => !!x),
+      features: row.features ?? [],
+      typeApproved: row.typeApproved,
+    };
+  } catch (err) {
+    console.error('[catalog] getDeviceType — Sanity read failed:', err);
+    return null;
+  }
+}

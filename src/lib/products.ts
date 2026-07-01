@@ -9,6 +9,10 @@ export type Product = {
   slug: string;
   category: ProductCategory;
   image?: string;
+  /** Gallery image URLs shown on the product detail page (in addition to `image`). */
+  images?: string[];
+  features?: string[];
+  typeApproved?: boolean;
   price?: number; // PKR
   vendor?: string;
   protocol?: 'GT06' | 'JT808';

@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Badge, Card } from '@/components/ui';
 import { HeroGlobe } from '@/components/tad/hero-globe';
+import { ProductGallery } from '@/components/tad/product-gallery';
 
 /* TAD-PAK marketing primitives (server-compatible). Compose marketing/shop surfaces from these. */
 
@@ -111,12 +112,12 @@ export function ProductCard({ name, category, image, price, href = '/shop', vend
   return (
     <Card interactive raised flushBody>
       <div className="relative grid aspect-[4/3] place-items-center bg-[var(--surface-sunken)]">
-        <span className="absolute left-3 top-3">
+        <span className="absolute left-3 top-3 z-10">
           <Badge variant="brand">{CATEGORY_LABEL[category]}</Badge>
         </span>
         {image
           // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={image} alt={name} className="max-h-[78%] max-w-[78%] object-contain" />
+          ? <img src={image} alt={name} className="absolute inset-0 h-full w-full object-cover" />
           : <span className="text-[length:var(--text-sm)] text-[var(--text-subtle)]">No image</span>}
       </div>
       <div className="grid gap-2 p-5">
@@ -141,6 +142,8 @@ export interface ProductDetailProps {
   name: string;
   category: ProductCategory;
   image?: string;
+  /** Additional gallery images shown after the main image. */
+  images?: string[];
   price?: number;
   vendor?: string;
   features?: string[];
@@ -150,17 +153,11 @@ export interface ProductDetailProps {
   actions?: React.ReactNode;
 }
 
-export function ProductDetail({ name, category, image, price, vendor, features = [], typeApproved = true, actions }: ProductDetailProps) {
+export function ProductDetail({ name, category, image, images = [], price, vendor, features = [], typeApproved = true, actions }: ProductDetailProps) {
+  const gallery = [image, ...images].filter((x): x is string => !!x);
   return (
     <div className="grid items-start gap-8 md:grid-cols-2 md:gap-10">
-      <Card flushBody>
-        <div className="grid aspect-square place-items-center bg-[var(--surface-sunken)]">
-          {image
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={image} alt={name} className="max-h-[74%] max-w-[74%] object-contain" />
-            : <span className="text-[var(--text-subtle)]">No image</span>}
-        </div>
-      </Card>
+      <ProductGallery images={gallery} name={name} />
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="brand">{CATEGORY_LABEL[category]}</Badge>
