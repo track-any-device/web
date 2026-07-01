@@ -12,7 +12,8 @@ type SanityDeviceType = {
 };
 
 const DEVICE_TYPES_QUERY = `*[_type == "deviceType" && active == true]|order(sortOrder){
-  name, "slug": slug.current, category, vendor, protocol, "price": pricePkr, "image": imageUrl
+  name, "slug": slug.current, category, vendor, protocol, "price": pricePkr,
+  "image": coalesce(imageUrl, image.asset->url)
 }`;
 
 export async function getDeviceTypes(): Promise<Product[]> {
