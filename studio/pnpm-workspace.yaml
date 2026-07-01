@@ -1,4 +1,4 @@
-allowBuilds:
-  esbuild: set this to true or false
+# pnpm 11 moved build-script approval out of package.json's "pnpm" field into this file.
+# esbuild ships a platform binary via its install script; Sanity's build/deploy needs it.
 onlyBuiltDependencies:
   - esbuild
