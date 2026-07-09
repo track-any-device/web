@@ -171,11 +171,11 @@ export function ExclusionBeatsClient({ initial, loadError }: { initial: Exclusio
     dblClickListener.current && google.maps.event.removeListener(dblClickListener.current);
 
     if (!drawing) {
-      map.setOptions({ cursor: '' });
+      map.setOptions({ draggableCursor: '' });
       return;
     }
 
-    map.setOptions({ cursor: 'crosshair' });
+    map.setOptions({ draggableCursor: 'crosshair' });
 
     clickListener.current = map.addListener('click', (e: google.maps.MapMouseEvent) => {
       if (!e.latLng) return;
