@@ -2,10 +2,13 @@
 
 import React from 'react';
 import {
+  buildFieldMap,
   buildOnboardingConfig,
+  type FieldMapRow,
   type KVRow,
   NOT_SENT,
   type RestMethod,
+  toFieldMapRows,
   toOnboardingRows,
   toRows,
   type Transport,
@@ -20,7 +23,7 @@ export function useForwardingConfigForm() {
   const [method, setMethod] = React.useState<RestMethod>('POST');
   const [headerRows, setHeaderRows] = React.useState<KVRow[]>([]);
   const [paramRows, setParamRows] = React.useState<KVRow[]>([]);
-  const [restFieldMap, setRestFieldMap] = React.useState<Record<string, string | null>>({});
+  const [restFieldMapRows, setRestFieldMapRows] = React.useState<FieldMapRow[]>([]);
   const [restTenantOnboarding, setRestTenantOnboarding] = React.useState('');
   const [restTenantOnboardingRows, setRestTenantOnboardingRows] = React.useState<KVRow[]>([]);
 
@@ -33,7 +36,7 @@ export function useForwardingConfigForm() {
   const [mqttTls, setMqttTls] = React.useState(false);
   const [mqttQos, setMqttQos] = React.useState('0');
   const [mqttParamRows, setMqttParamRows] = React.useState<KVRow[]>([]);
-  const [mqttFieldMap, setMqttFieldMap] = React.useState<Record<string, string | null>>({});
+  const [mqttFieldMapRows, setMqttFieldMapRows] = React.useState<FieldMapRow[]>([]);
   const [mqttTenantOnboarding, setMqttTenantOnboarding] = React.useState('');
   const [mqttTenantOnboardingRows, setMqttTenantOnboardingRows] = React.useState<KVRow[]>([]);
 
@@ -45,7 +48,7 @@ export function useForwardingConfigForm() {
     setMethod((cfg.rest_api?.method as RestMethod) ?? 'POST');
     setHeaderRows(toRows(cfg.rest_api?.headers ?? {}, true));
     setParamRows(toRows(cfg.rest_api?.params ?? {}, false));
-    setRestFieldMap(cfg.rest_api?.field_map ?? {});
+    setRestFieldMapRows(toFieldMapRows(cfg.rest_api?.field_map ?? {}));
     setRestTenantOnboarding(cfg.rest_api?.tenant_onboarding ?? '');
     setRestTenantOnboardingRows(toOnboardingRows(
       cfg.rest_api?.tenant_onboarding_config ?? {},
@@ -61,7 +64,7 @@ export function useForwardingConfigForm() {
     setMqttTls(!!cfg.mqtt?.tls);
     setMqttQos(cfg.mqtt?.qos != null ? String(cfg.mqtt.qos) : '0');
     setMqttParamRows(toRows(cfg.mqtt?.params ?? {}, false));
-    setMqttFieldMap(cfg.mqtt?.field_map ?? {});
+    setMqttFieldMapRows(toFieldMapRows(cfg.mqtt?.field_map ?? {}));
     setMqttTenantOnboarding(cfg.mqtt?.tenant_onboarding ?? '');
     setMqttTenantOnboardingRows(toOnboardingRows(
       cfg.mqtt?.tenant_onboarding_config ?? {},
@@ -92,7 +95,7 @@ export function useForwardingConfigForm() {
         method,
         headers,
         params,
-        field_map: restFieldMap,
+        field_map: buildFieldMap(restFieldMapRows),
         tenant_onboarding: restTenantOnboarding || null,
         tenant_onboarding_config: buildOnboardingConfig(restTenantOnboardingRows),
       };
@@ -113,7 +116,7 @@ export function useForwardingConfigForm() {
         tls: mqttTls,
         qos: Number(mqttQos),
         params,
-        field_map: mqttFieldMap,
+        field_map: buildFieldMap(mqttFieldMapRows),
         tenant_onboarding: mqttTenantOnboarding || null,
         tenant_onboarding_config: buildOnboardingConfig(mqttTenantOnboardingRows),
       };
@@ -128,7 +131,7 @@ export function useForwardingConfigForm() {
     endpointUrl,
     headerRows,
     method,
-    mqttFieldMap,
+    mqttFieldMapRows,
     mqttHost,
     mqttParamRows,
     mqttPassword,
@@ -140,7 +143,7 @@ export function useForwardingConfigForm() {
     mqttTopic,
     mqttUsername,
     paramRows,
-    restFieldMap,
+    restFieldMapRows,
     restTenantOnboarding,
     restTenantOnboardingRows,
     transport,
@@ -173,8 +176,8 @@ export function useForwardingConfigForm() {
     setHeaderRows,
     paramRows,
     setParamRows,
-    restFieldMap,
-    setRestFieldMap,
+    restFieldMapRows,
+    setRestFieldMapRows,
     restTenantOnboarding,
     setRestTenantOnboarding,
     restTenantOnboardingRows,
@@ -197,8 +200,8 @@ export function useForwardingConfigForm() {
     setMqttQos,
     mqttParamRows,
     setMqttParamRows,
-    mqttFieldMap,
-    setMqttFieldMap,
+    mqttFieldMapRows,
+    setMqttFieldMapRows,
     mqttTenantOnboarding,
     setMqttTenantOnboarding,
     mqttTenantOnboardingRows,

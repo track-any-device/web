@@ -144,10 +144,10 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setTenantOnboardingRows={form.setRestTenantOnboardingRows}
             onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
-            payloadFields={cfg.payloadFields}
+            availableVariables={cfg.availableVariables ?? []}
             fieldOptions={fieldOptions}
-            fieldMap={form.restFieldMap}
-            setFieldMap={form.setRestFieldMap}
+            fieldMapRows={form.restFieldMapRows}
+            setFieldMapRows={form.setRestFieldMapRows}
           />
         )}
 
@@ -176,10 +176,10 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setTenantOnboardingRows={form.setMqttTenantOnboardingRows}
             onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
-            payloadFields={cfg.payloadFields}
+            availableVariables={cfg.availableVariables ?? []}
             fieldOptions={fieldOptions}
-            fieldMap={form.mqttFieldMap}
-            setFieldMap={form.setMqttFieldMap}
+            fieldMapRows={form.mqttFieldMapRows}
+            setFieldMapRows={form.setMqttFieldMapRows}
           />
         )}
 
