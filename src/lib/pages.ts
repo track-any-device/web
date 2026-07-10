@@ -20,7 +20,10 @@ export type HomeHeroData = {
   eyebrow?: string; title?: string; subtitle?: string;
   primaryCta?: CtaLink; secondaryCta?: CtaLink;
 };
-export type HeroData = HomeHeroData;
+export type HeroData = HomeHeroData & {
+  /** Optional image beside the text (plain url string on the block); text-only without it. */
+  imageUrl?: string;
+};
 export type FullHeroData = HomeHeroData & {
   /** Optional second paragraph under the subtitle. */
   body?: string;
