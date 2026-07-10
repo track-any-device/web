@@ -5,7 +5,8 @@ export const runtime = 'edge'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https://api.track-any-device.com'
 
-/** BFF: advance a delivery order's status (Orders portal). */
+/** BFF: advance a delivery order's status (Orders portal). Cancelling requires a `reason`,
+    which the API stores and texts to the customer. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
   if (!session?.token) return NextResponse.json({ message: 'Unauthenticated' }, { status: 401 })
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       Accept: 'application/json',
       Authorization: `Bearer ${session.token}`,
     },
-    body: JSON.stringify({ status: body.status }),
+    body: JSON.stringify({ status: body.status, reason: body.reason }),
   })
   const data = await res.json().catch(() => ({}))
   return NextResponse.json(data, { status: res.status })
