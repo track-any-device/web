@@ -121,9 +121,11 @@ export interface SupportTicket {
 }
 
 export interface DeliveryOrder {
-  id: string; customer: string | null; phone: string | null; items: number;
-  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled' | string | null;
+  id: string; orderId?: number; customer: string | null; phone: string | null; items: number;
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled' | string | null;
   total?: number | null; currency?: string | null; placedAt: string | null;
+  cancellationReason?: string | null;
+  tracking?: { courier: string | null; number: string | null; url: string | null } | null;
 }
 
 /** /api/admin/sms/outgoing row — a queued/sent outbound SMS. */
