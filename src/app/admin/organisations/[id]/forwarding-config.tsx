@@ -140,8 +140,8 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setParamRows={form.setParamRows}
             tenantOnboarding={form.restTenantOnboarding}
             setTenantOnboarding={form.setRestTenantOnboarding}
-            tenantOnboardingRows={form.restTenantOnboardingRows}
-            setTenantOnboardingRows={form.setRestTenantOnboardingRows}
+            onboardingState={form.restOnboardingState}
+            setOnboardingState={form.setRestOnboardingState}
             onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
             availableVariables={cfg.availableVariables ?? []}
@@ -172,8 +172,8 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setMqttParamRows={form.setMqttParamRows}
             tenantOnboarding={form.mqttTenantOnboarding}
             setTenantOnboarding={form.setMqttTenantOnboarding}
-            tenantOnboardingRows={form.mqttTenantOnboardingRows}
-            setTenantOnboardingRows={form.setMqttTenantOnboardingRows}
+            onboardingState={form.mqttOnboardingState}
+            setOnboardingState={form.setMqttOnboardingState}
             onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
             availableVariables={cfg.availableVariables ?? []}

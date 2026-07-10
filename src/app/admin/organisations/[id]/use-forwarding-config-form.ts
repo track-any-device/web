@@ -3,13 +3,15 @@
 import React from 'react';
 import {
   buildFieldMap,
-  buildOnboardingConfig,
+  buildOnboardingBody,
+  emptyOnboardingState,
   type FieldMapRow,
   type KVRow,
   NOT_SENT,
+  type OnboardingState,
   type RestMethod,
   toFieldMapRows,
-  toOnboardingRows,
+  toOnboardingState,
   toRows,
   type Transport,
 } from './forwarding-config-sections';
@@ -25,7 +27,7 @@ export function useForwardingConfigForm() {
   const [paramRows, setParamRows] = React.useState<KVRow[]>([]);
   const [restFieldMapRows, setRestFieldMapRows] = React.useState<FieldMapRow[]>([]);
   const [restTenantOnboarding, setRestTenantOnboarding] = React.useState('');
-  const [restTenantOnboardingRows, setRestTenantOnboardingRows] = React.useState<KVRow[]>([]);
+  const [restOnboardingState, setRestOnboardingState] = React.useState<OnboardingState>(emptyOnboardingState);
 
   const [mqttHost, setMqttHost] = React.useState('');
   const [mqttPort, setMqttPort] = React.useState('');
@@ -38,7 +40,7 @@ export function useForwardingConfigForm() {
   const [mqttParamRows, setMqttParamRows] = React.useState<KVRow[]>([]);
   const [mqttFieldMapRows, setMqttFieldMapRows] = React.useState<FieldMapRow[]>([]);
   const [mqttTenantOnboarding, setMqttTenantOnboarding] = React.useState('');
-  const [mqttTenantOnboardingRows, setMqttTenantOnboardingRows] = React.useState<KVRow[]>([]);
+  const [mqttOnboardingState, setMqttOnboardingState] = React.useState<OnboardingState>(emptyOnboardingState);
 
   const hydrate = React.useCallback((cfg: ForwardingConfig) => {
     setTransport(cfg.transport ?? 'tad101_channel');
@@ -50,8 +52,8 @@ export function useForwardingConfigForm() {
     setParamRows(toRows(cfg.rest_api?.params ?? {}, false));
     setRestFieldMapRows(toFieldMapRows(cfg.rest_api?.field_map ?? {}));
     setRestTenantOnboarding(cfg.rest_api?.tenant_onboarding ?? '');
-    setRestTenantOnboardingRows(toOnboardingRows(
-      cfg.rest_api?.tenant_onboarding_config ?? {},
+    setRestOnboardingState(toOnboardingState(
+      cfg.rest_api?.tenant_onboarding_config,
       cfg.onboardingMethodDefinitions?.[cfg.rest_api?.tenant_onboarding ?? ''],
     ));
 
@@ -66,8 +68,8 @@ export function useForwardingConfigForm() {
     setMqttParamRows(toRows(cfg.mqtt?.params ?? {}, false));
     setMqttFieldMapRows(toFieldMapRows(cfg.mqtt?.field_map ?? {}));
     setMqttTenantOnboarding(cfg.mqtt?.tenant_onboarding ?? '');
-    setMqttTenantOnboardingRows(toOnboardingRows(
-      cfg.mqtt?.tenant_onboarding_config ?? {},
+    setMqttOnboardingState(toOnboardingState(
+      cfg.mqtt?.tenant_onboarding_config,
       cfg.onboardingMethodDefinitions?.[cfg.mqtt?.tenant_onboarding ?? ''],
     ));
   }, []);
@@ -97,7 +99,7 @@ export function useForwardingConfigForm() {
         params,
         field_map: buildFieldMap(restFieldMapRows),
         tenant_onboarding: restTenantOnboarding || null,
-        tenant_onboarding_config: buildOnboardingConfig(restTenantOnboardingRows),
+        tenant_onboarding_config: restTenantOnboarding ? buildOnboardingBody(restOnboardingState) : null,
       };
     }
 
@@ -118,7 +120,7 @@ export function useForwardingConfigForm() {
         params,
         field_map: buildFieldMap(mqttFieldMapRows),
         tenant_onboarding: mqttTenantOnboarding || null,
-        tenant_onboarding_config: buildOnboardingConfig(mqttTenantOnboardingRows),
+        tenant_onboarding_config: mqttTenantOnboarding ? buildOnboardingBody(mqttOnboardingState) : null,
       };
 
       if (mqttPassword) mqtt.password = mqttPassword;
@@ -133,19 +135,19 @@ export function useForwardingConfigForm() {
     method,
     mqttFieldMapRows,
     mqttHost,
+    mqttOnboardingState,
     mqttParamRows,
     mqttPassword,
     mqttPort,
     mqttQos,
     mqttTenantOnboarding,
-    mqttTenantOnboardingRows,
     mqttTls,
     mqttTopic,
     mqttUsername,
     paramRows,
     restFieldMapRows,
+    restOnboardingState,
     restTenantOnboarding,
-    restTenantOnboardingRows,
     transport,
   ]);
 
@@ -180,8 +182,8 @@ export function useForwardingConfigForm() {
     setRestFieldMapRows,
     restTenantOnboarding,
     setRestTenantOnboarding,
-    restTenantOnboardingRows,
-    setRestTenantOnboardingRows,
+    restOnboardingState,
+    setRestOnboardingState,
     mqttHost,
     setMqttHost,
     mqttPort,
@@ -204,8 +206,8 @@ export function useForwardingConfigForm() {
     setMqttFieldMapRows,
     mqttTenantOnboarding,
     setMqttTenantOnboarding,
-    mqttTenantOnboardingRows,
-    setMqttTenantOnboardingRows,
+    mqttOnboardingState,
+    setMqttOnboardingState,
     hydrate,
     buildBody,
     fieldOptions,
