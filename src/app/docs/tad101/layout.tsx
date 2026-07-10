@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getDocGroupNav } from '@/lib/docs-sanity';
-import { Tad101Shell, tad101Href, type Tad101Section } from '@/components/docs/tad101-layout';
+import { Tad101Shell } from '@/components/docs/tad101-layout';
+import { tad101Href, type Tad101Section } from '@/components/docs/tad101-nav';
 
 export const metadata: Metadata = {
     title: { template: '%s – TAD101 | Track Any Device', default: 'TAD101 Docs | Track Any Device' },
