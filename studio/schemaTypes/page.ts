@@ -18,6 +18,7 @@ export default defineType({
       of: [
         { type: 'homeHero' },
         { type: 'hero' },
+        { type: 'fullHero' },
         { type: 'ctaBand' },
         { type: 'split' },
         { type: 'featureGrid' },

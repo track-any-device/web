@@ -30,6 +30,7 @@ export default defineType({
             defineField({ name: 'icon', title: 'Icon', type: 'string', description: "A lucide-react icon name, e.g. 'MapPin', 'Bell', 'ShieldCheck'." }),
             defineField({ name: 'title', title: 'Title', type: 'string' }),
             defineField({ name: 'text', title: 'Text', type: 'text', rows: 2 }),
+            defineField({ name: 'href', title: 'Link', type: 'string', description: 'Optional — makes the whole card a link, e.g. /docs/mqtt.' }),
           ],
           preview: { select: { title: 'title', subtitle: 'icon' } },
         }),

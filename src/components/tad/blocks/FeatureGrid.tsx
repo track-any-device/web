@@ -1,8 +1,10 @@
 import React from 'react';
+import Link from 'next/link';
 import {
   MapPin, Bell, ShieldCheck, Shield, Route, Navigation, Clock, History,
   Gauge, Battery, Zap, Users, Car, Bike, Truck, Map, Radar, Activity,
   BellRing, Lock, Wifi, Signal, Smartphone, Globe, Sparkles, Star,
+  Cpu, Radio, Network, Code,
   type LucideIcon,
 } from 'lucide-react';
 import { Card } from '@/components/ui';
@@ -16,6 +18,7 @@ const ICONS: Record<string, LucideIcon> = {
   MapPin, Bell, BellRing, ShieldCheck, Shield, Route, Navigation, Clock, History,
   Gauge, Battery, Zap, Users, Car, Bike, Truck, Map, Radar, Activity,
   Lock, Wifi, Signal, Smartphone, Globe, Sparkles, Star,
+  Cpu, Radio, Network, Code,
 };
 const FALLBACK_ICON: LucideIcon = Sparkles;
 
@@ -36,8 +39,8 @@ export function FeatureGrid({ eyebrow, title, subtitle, columns = 3, features }:
       <div className={`grid grid-cols-1 gap-5 ${COL_CLASS[cols]}`}>
         {items.map((f, i) => {
           const Icon = (f.icon && ICONS[f.icon]) || FALLBACK_ICON;
-          return (
-            <Card key={i} className="grid gap-3 p-6">
+          const card = (
+            <Card interactive={!!f.href} className="grid h-full gap-3 p-6">
               <span
                 className="grid h-11 w-11 place-items-center rounded-[var(--radius-lg)] text-[var(--brand-on-subtle)]"
                 style={{ background: 'var(--brand-subtle)' }}
@@ -48,6 +51,10 @@ export function FeatureGrid({ eyebrow, title, subtitle, columns = 3, features }:
               {f.text && <p className="m-0 text-[length:var(--text-base)] leading-normal text-[var(--text-secondary)]">{f.text}</p>}
             </Card>
           );
+          // An authored href makes the whole card a link (e.g. a protocol card → its docs page).
+          return f.href
+            ? <Link key={i} href={f.href} className="block">{card}</Link>
+            : <React.Fragment key={i}>{card}</React.Fragment>;
         })}
       </div>
     </Section>
