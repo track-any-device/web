@@ -20,6 +20,9 @@ export interface OnboardingMethodDefinition {
 
 export type KVRow = { id: number; key: string; value: string; masked: string; dirty: boolean };
 
+/** One field-map row — external payload key → platform source (null = sent as null). */
+export type FieldMapRow = { id: number; key: string; source: string | null };
+
 export const TRANSPORTS: { value: Transport; label: string }[] = [
   { value: 'tad101_channel', label: 'TAD101 channel (default)' },
   { value: 'rest_api', label: 'REST API' },
@@ -51,6 +54,19 @@ export function toOnboardingRows(config: Record<string, string>, definition?: On
       dirty: !secret,
     };
   });
+}
+
+export function toFieldMapRows(map: Record<string, string | null>): FieldMapRow[] {
+  return Object.entries(map ?? {}).map(([key, source]) => ({ id: rowSeq++, key, source: source ?? null }));
+}
+
+export function buildFieldMap(rows: FieldMapRow[]): Record<string, string | null> {
+  const out: Record<string, string | null> = {};
+  for (const row of rows) {
+    const key = row.key.trim();
+    if (key) out[key] = row.source;
+  }
+  return out;
 }
 
 export function buildOnboardingConfig(rows: KVRow[]): Record<string, string> | null {
@@ -114,10 +130,10 @@ export function RestForwardingSection({
   setTenantOnboardingRows,
   onboardingMethodDefinitions,
   onboardingOptions,
-  payloadFields,
+  availableVariables,
   fieldOptions,
-  fieldMap,
-  setFieldMap,
+  fieldMapRows,
+  setFieldMapRows,
 }: {
   endpointUrl: string;
   setEndpointUrl: (value: string) => void;
@@ -133,10 +149,10 @@ export function RestForwardingSection({
   setTenantOnboardingRows: React.Dispatch<React.SetStateAction<KVRow[]>>;
   onboardingMethodDefinitions: Record<string, OnboardingMethodDefinition>;
   onboardingOptions: { value: string; label: string }[];
-  payloadFields: string[];
+  availableVariables: string[];
   fieldOptions: { value: string; label: string }[];
-  fieldMap: Record<string, string | null>;
-  setFieldMap: (next: Record<string, string | null>) => void;
+  fieldMapRows: FieldMapRow[];
+  setFieldMapRows: React.Dispatch<React.SetStateAction<FieldMapRow[]>>;
 }) {
   const definition = onboardingMethodDefinitions[tenantOnboarding];
 
@@ -150,6 +166,7 @@ export function RestForwardingSection({
           <Select label="Method" value={method} onChange={(e) => setMethod(e.target.value as RestMethod)} options={['POST', 'PUT', 'PATCH']} />
         </div>
       </div>
+      <VariableHints variables={availableVariables} note="Usable in the endpoint URL, header values, and param values — substituted at send time:" />
 
       <KVEditor
         title="Headers"
@@ -157,13 +174,6 @@ export function RestForwardingSection({
         rows={headerRows}
         setRows={setHeaderRows}
         secret
-      />
-
-      <KVEditor
-        title="Params"
-        note="Static constants added to every payload."
-        rows={paramRows}
-        setRows={setParamRows}
       />
 
       <OnboardingSection
@@ -177,7 +187,14 @@ export function RestForwardingSection({
         setRows={setTenantOnboardingRows}
       />
 
-      <FieldMap payloadFields={payloadFields} options={fieldOptions} value={fieldMap} onChange={setFieldMap} />
+      <KVEditor
+        title="Params"
+        note="Static constants added to every payload — values may use the template variables above."
+        rows={paramRows}
+        setRows={setParamRows}
+      />
+
+      <FieldMap options={fieldOptions} rows={fieldMapRows} setRows={setFieldMapRows} />
     </div>
   );
 }
@@ -206,10 +223,10 @@ export function MqttForwardingSection({
   setTenantOnboardingRows,
   onboardingMethodDefinitions,
   onboardingOptions,
-  payloadFields,
+  availableVariables,
   fieldOptions,
-  fieldMap,
-  setFieldMap,
+  fieldMapRows,
+  setFieldMapRows,
 }: {
   mqttHost: string;
   setMqttHost: (value: string) => void;
@@ -234,10 +251,10 @@ export function MqttForwardingSection({
   setTenantOnboardingRows: React.Dispatch<React.SetStateAction<KVRow[]>>;
   onboardingMethodDefinitions: Record<string, OnboardingMethodDefinition>;
   onboardingOptions: { value: string; label: string }[];
-  payloadFields: string[];
+  availableVariables: string[];
   fieldOptions: { value: string; label: string }[];
-  fieldMap: Record<string, string | null>;
-  setFieldMap: (next: Record<string, string | null>) => void;
+  fieldMapRows: FieldMapRow[];
+  setFieldMapRows: React.Dispatch<React.SetStateAction<FieldMapRow[]>>;
 }) {
   const definition = onboardingMethodDefinitions[tenantOnboarding];
 
@@ -252,8 +269,9 @@ export function MqttForwardingSection({
         </div>
       </div>
 
-      <div>
-        <Input label="Topic" value={mqttTopic} onChange={(e) => setMqttTopic(e.target.value)} placeholder="tad/{tenant_slug}/signals" hint="{tenant_slug} is substituted at send time." />
+      <div style={{ display: 'grid', gap: 8 }}>
+        <Input label="Topic" value={mqttTopic} onChange={(e) => setMqttTopic(e.target.value)} placeholder="tad/{tenant_slug}/signals" />
+        <VariableHints variables={availableVariables} note="Usable in the topic and param values — substituted at send time:" />
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -272,13 +290,6 @@ export function MqttForwardingSection({
         </div>
       </div>
 
-      <KVEditor
-        title="Params"
-        note="Static constants added to every payload."
-        rows={mqttParamRows}
-        setRows={setMqttParamRows}
-      />
-
       <OnboardingSection
         label="Device tenant auth / onboarding"
         method={tenantOnboarding}
@@ -291,7 +302,14 @@ export function MqttForwardingSection({
         hint="Tech impliment onboarding still uses HTTP endpoints even when live signal delivery uses MQTT."
       />
 
-      <FieldMap payloadFields={payloadFields} options={fieldOptions} value={fieldMap} onChange={setFieldMap} />
+      <KVEditor
+        title="Params"
+        note="Static constants added to every payload — values may use the template variables above."
+        rows={mqttParamRows}
+        setRows={setMqttParamRows}
+      />
+
+      <FieldMap options={fieldOptions} rows={fieldMapRows} setRows={setFieldMapRows} />
     </div>
   );
 }
@@ -396,42 +414,67 @@ function OnboardingSection({
   );
 }
 
+/** All template variables the platform substitutes at send time, rendered as code chips. */
+function VariableHints({ variables, note }: { variables: string[]; note: string }) {
+  if (!variables.length) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+      <span>{note}</span>
+      {variables.map((v) => (
+        <code
+          key={v}
+          style={{ fontFamily: 'var(--font-mono)', fontSize: 11, padding: '2px 6px', borderRadius: 6, background: 'var(--surface-2, var(--bg-subtle))', color: 'var(--text-secondary)' }}
+        >
+          {v}
+        </code>
+      ))}
+    </div>
+  );
+}
+
 function FieldMap({
-  payloadFields, options, value, onChange,
+  options, rows, setRows,
 }: {
-  payloadFields: string[];
   options: { value: string; label: string }[];
-  value: Record<string, string | null>;
-  onChange: (next: Record<string, string | null>) => void;
+  rows: FieldMapRow[];
+  setRows: React.Dispatch<React.SetStateAction<FieldMapRow[]>>;
 }) {
-  function set(field: string, picked: string) {
-    onChange({ ...value, [field]: picked === NOT_SENT ? null : picked });
+  function update(id: number, patch: Partial<FieldMapRow>) {
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
   return (
     <div>
-      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Field map</div>
-      <div className="tad-table-scroll">
-        <table className="tad-table">
-          <tbody>
-            {payloadFields.map((field) => {
-              const current = value[field] ?? NOT_SENT;
-              return (
-                <tr key={field}>
-                  <td style={{ fontWeight: 600 }}>
-                    {field}
-                    {field === 'Humidity' && (
-                      <span style={{ display: 'block', fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>Not available from current devices.</span>
-                    )}
-                  </td>
-                  <td style={{ width: 260 }}>
-                    <Select size="sm" value={current} onChange={(e) => set(field, e.target.value)} options={options} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>Field map</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+        External payload keys and the platform value each one carries — rename, remove, or add keys to match what your system expects.
+      </div>
+      <div style={{ display: 'grid', gap: 8 }}>
+        {rows.map((r) => (
+          <div key={r.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 140 }}>
+              <Input
+                value={r.key}
+                onChange={(e) => update(r.id, { key: e.target.value })}
+                placeholder="Payload key"
+                hint={r.key === 'Humidity' ? 'Not available from current devices.' : undefined}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <Select
+                value={r.source ?? NOT_SENT}
+                onChange={(e) => update(r.id, { source: e.target.value === NOT_SENT ? null : e.target.value })}
+                options={options}
+              />
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setRows((rs) => rs.filter((x) => x.id !== r.id))}>Remove</Button>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 8 }}>
+        <Button type="button" variant="secondary" size="sm" onClick={() => setRows((rs) => [...rs, { id: rowSeq++, key: '', source: null }])}>
+          Add field
+        </Button>
       </div>
     </div>
   );

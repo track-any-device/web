@@ -38,11 +38,13 @@ export interface HeroProps {
   subtitle?: React.ReactNode;
   primaryCta?: { label: string; href: string };
   secondaryCta?: { label: string; href: string };
-  /** Full-bleed, full-height landing hero with an enlarged right-anchored globe (home page). */
+  /** Full-bleed, full-height landing hero with an enlarged right-anchored globe (home page ONLY). */
   full?: boolean;
+  /** Optional image beside the text (panel variant). The globe belongs to `full` alone. */
+  image?: string;
 }
 
-export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full }: HeroProps) {
+export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full, image }: HeroProps) {
   const ctas = (primaryCta || secondaryCta) && (
     <div className="tad-cta-row mt-2 flex flex-wrap gap-3">
       {primaryCta && <Link href={primaryCta.href} className="tad-btn tad-btn--primary tad-btn--lg">{primaryCta.label}</Link>}
@@ -79,13 +81,19 @@ export function Hero({ eyebrow, title, subtitle, primaryCta, secondaryCta, full 
           border: '1px solid var(--border)',
         }}
       >
-        <div className="relative z-[1] grid max-w-[640px] gap-5">
-          {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
-          <h1 className="tad-hero__title text-[length:var(--text-6xl)] font-extrabold leading-[var(--leading-tight)] tracking-[var(--tracking-tighter)]">{title}</h1>
-          {subtitle && <p className="tad-hero__subtitle text-[length:var(--text-xl)] text-[var(--text-secondary)]">{subtitle}</p>}
-          {ctas}
+        {/* Text-only or text + image — no globe here; the globe is the home page's (`full`). */}
+        <div className={`relative z-[1] grid items-center gap-8 ${image ? 'md:grid-cols-2' : ''}`}>
+          <div className="grid max-w-[640px] gap-5">
+            {eyebrow && <span className="tad-eyebrow">{eyebrow}</span>}
+            <h1 className="tad-hero__title text-[length:var(--text-6xl)] font-extrabold leading-[var(--leading-tight)] tracking-[var(--tracking-tighter)]">{title}</h1>
+            {subtitle && <p className="tad-hero__subtitle text-[length:var(--text-xl)] text-[var(--text-secondary)]">{subtitle}</p>}
+            {ctas}
+          </div>
+          {image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" className="w-full rounded-[var(--radius-xl)] border border-[var(--border)] object-cover" />
+          )}
         </div>
-        <HeroGlobe />
       </div>
     </section>
   );
@@ -103,8 +111,8 @@ export interface ProductCardProps {
   price?: number;
   href?: string;
   vendor?: string;
-  /** Order action (client-side Add-to-cart). When provided, replaces the placeholder "Add to cart"
-      link so the grid card can add the real orderable product to the cart. */
+  /** Order action (client-side Add-to-cart). Rendered next to "View details" when provided;
+      cards without an orderable product show no order button. */
   addToCart?: React.ReactNode;
 }
 
@@ -131,7 +139,7 @@ export function ProductCard({ name, category, image, price, href = '/shop', vend
         )}
         <div className="mt-2 flex flex-wrap gap-2">
           <Link href={href} className="tad-btn tad-btn--secondary tad-btn--sm">View details</Link>
-          {addToCart ?? <Link href={href} className="tad-btn tad-btn--primary tad-btn--sm">View to order</Link>}
+          {addToCart}
         </div>
       </div>
     </Card>

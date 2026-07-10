@@ -2,10 +2,10 @@
 
 import { Card } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import { ArrowRight, BookOpen, Building2, Code, Cpu, Radio, Wrench } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, Code, Cpu, Network, Radio, Wrench } from 'lucide-react';
 import Link from 'next/link';
 
-const ICONS = { BookOpen, Building2, Code, Cpu, Radio, Wrench } as const;
+const ICONS = { BookOpen, Building2, Code, Cpu, Network, Radio, Wrench } as const;
 export type IconName = keyof typeof ICONS;
 
 type Tone = 'primary' | 'info' | 'success' | 'accent' | 'warning';

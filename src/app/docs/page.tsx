@@ -21,7 +21,8 @@ type Card = { icon: IconName; tone: DocCardProps['tone']; audience: string; badg
 const CARD_BY_KEY: Record<string, Card> = {
     'tad101':       { icon: 'Cpu',      tone: 'success', audience: 'Hardware & mobile developers', badge: 'v1.0' },
     'user-manual':  { icon: 'BookOpen', tone: 'primary', audience: 'End users' },
-    'forwarding':   { icon: 'Code',     tone: 'accent',  audience: 'Integration developers' },
+    'mqtt':         { icon: 'Radio',    tone: 'accent',  audience: 'Business integration teams' },
+    'rest-api':     { icon: 'Network',  tone: 'accent',  audience: 'Business integration teams' },
 };
 const DEFAULT_CARD: Card = { icon: 'BookOpen', tone: 'primary', audience: 'Documentation' };
 
@@ -71,7 +72,7 @@ export default async function DocsIndex() {
                 <p className="text-xs font-semibold uppercase tracking-widest text-primary">Documentation</p>
                 <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Everything you need.</h1>
                 <p className="mt-4 text-base text-muted-foreground">
-                    The User Manual covers tracking your devices day to day. TAD101 is the protocol for connecting your own hardware to the platform. Pick the one that matches what you&apos;re trying to do.
+                    The User Manual covers day-to-day tracking. TAD101 is the developer protocol for building on the platform, while MQTT and REST API forwarding get real-time device updates into your own systems. Pick the one that matches what you&apos;re trying to do.
                 </p>
             </header>
 

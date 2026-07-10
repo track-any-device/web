@@ -7,14 +7,14 @@ import { DocBody } from '@/components/docs/DocBody';
 
 export const runtime = 'edge';
 
-export const metadata: Metadata = { title: 'Signal Forwarding (REST & MQTT) | Track Any Device' };
+export const metadata: Metadata = { title: 'REST API Forwarding | Track Any Device' };
 
-/* For Business — how an organisation receives its devices' signals into its own
-   systems. Content lives in Sanity (docPage slug "forwarding"). */
+/* For Business — receive real-time device updates on your own REST endpoint.
+   Content lives in Sanity (docPage slug "rest-api"). */
 
-const SLUG = 'forwarding';
+const SLUG = 'rest-api';
 
-export default async function ForwardingDoc() {
+export default async function RestApiForwardingDoc() {
   const doc = await getDocPage(SLUG);
   if (!doc) notFound();
 

@@ -11,6 +11,7 @@ import docPage from './docPage';
 import ctaLink from './ctaLink';
 import homeHero from './blocks/homeHero';
 import hero from './blocks/hero';
+import fullHero from './blocks/fullHero';
 import ctaBand from './blocks/ctaBand';
 import split from './blocks/split';
 import featureGrid from './blocks/featureGrid';
@@ -30,6 +31,7 @@ export const schemaTypes = [
   ctaLink,
   homeHero,
   hero,
+  fullHero,
   ctaBand,
   split,
   featureGrid,

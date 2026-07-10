@@ -9,6 +9,12 @@ export default defineType({
     defineField({ name: 'eyebrow', title: 'Eyebrow', type: 'string' }),
     defineField({ name: 'title', title: 'Title', type: 'string', validation: (r) => r.required() }),
     defineField({ name: 'subtitle', title: 'Subtitle', type: 'text', rows: 2 }),
+    defineField({
+      name: 'imageUrl',
+      title: 'Image URL',
+      type: 'url',
+      description: 'Optional image shown beside the text (text-only without it).',
+    }),
     defineField({ name: 'primaryCta', title: 'Primary CTA', type: 'ctaLink' }),
     defineField({ name: 'secondaryCta', title: 'Secondary CTA', type: 'ctaLink' }),
   ],

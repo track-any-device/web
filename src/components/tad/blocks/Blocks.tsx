@@ -2,6 +2,7 @@ import React from 'react';
 import type { Section } from '@/lib/pages';
 import { HomeHero } from './HomeHero';
 import { HeroBlock } from './HeroBlock';
+import { FullHero } from './FullHero';
 import { CtaBand } from './CtaBand';
 import { Split } from './Split';
 import { FeatureGrid } from './FeatureGrid';
@@ -21,6 +22,8 @@ export function Blocks({ sections }: { sections?: Section[] }) {
             return <HomeHero key={section._key} {...section} />;
           case 'hero':
             return <HeroBlock key={section._key} {...section} />;
+          case 'fullHero':
+            return <FullHero key={section._key} {...section} />;
           case 'ctaBand':
             return <CtaBand key={section._key} {...section} />;
           case 'split':
