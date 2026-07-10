@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Mail, Phone, BookOpen, Cpu, Webhook, ArrowRight } from 'lucide-react';
+import { Mail, Phone, BookOpen, Cpu, Network, Radio, ArrowRight } from 'lucide-react';
 import { Blocks } from '@/components/tad/blocks';
 import { Hero, Section } from '@/components/tad/marketing';
 import { Card } from '@/components/ui';
@@ -104,7 +104,7 @@ export default async function SupportPage() {
           your own systems over REST API or MQTT.
         </p>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <Link href="/docs/tad101" className="group block">
             <Card interactive raised className="flex h-full flex-row items-start gap-4 p-6">
               <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
@@ -120,15 +120,30 @@ export default async function SupportPage() {
             </Card>
           </Link>
 
-          <Link href="/docs/forwarding" className="group block">
+          <Link href="/docs/mqtt" className="group block">
             <Card interactive raised className="flex h-full flex-row items-start gap-4 p-6">
               <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
-                <Webhook size={20} strokeWidth={2} aria-hidden />
+                <Radio size={20} strokeWidth={2} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="font-semibold text-[var(--text)]">Signal forwarding</p>
+                <p className="font-semibold text-[var(--text)]">MQTT Forwarding</p>
                 <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">
-                  Forward your devices&apos; location &amp; heartbeat signals to your systems via REST API or MQTT.
+                  Real-time device updates delivered straight to your own MQTT broker.
+                </p>
+              </div>
+              <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />
+            </Card>
+          </Link>
+
+          <Link href="/docs/rest-api" className="group block">
+            <Card interactive raised className="flex h-full flex-row items-start gap-4 p-6">
+              <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--brand-subtle)] text-[var(--brand-on-subtle)]">
+                <Network size={20} strokeWidth={2} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-[var(--text)]">REST API Forwarding</p>
+                <p className="mt-0.5 text-[length:var(--text-sm)] leading-normal text-[var(--text-secondary)]">
+                  Real-time device updates pushed to your own REST endpoint.
                 </p>
               </div>
               <ArrowRight size={16} strokeWidth={2} className="ml-auto mt-0.5 shrink-0 text-[var(--text-muted)] transition-transform group-hover:translate-x-0.5" aria-hidden />

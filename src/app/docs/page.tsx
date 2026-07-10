@@ -21,7 +21,6 @@ type Card = { icon: IconName; tone: DocCardProps['tone']; audience: string; badg
 const CARD_BY_KEY: Record<string, Card> = {
     'tad101':       { icon: 'Cpu',      tone: 'success', audience: 'Hardware & mobile developers', badge: 'v1.0' },
     'user-manual':  { icon: 'BookOpen', tone: 'primary', audience: 'End users' },
-    'forwarding':   { icon: 'Code',     tone: 'accent',  audience: 'Integration developers' },
     'mqtt':         { icon: 'Radio',    tone: 'accent',  audience: 'Business integration teams' },
     'rest-api':     { icon: 'Network',  tone: 'accent',  audience: 'Business integration teams' },
 };
