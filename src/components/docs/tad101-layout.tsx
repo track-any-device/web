@@ -8,10 +8,14 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(' ');
+// Type-only import — safe across the client boundary. `tad101Href` deliberately stays in the
+// non-client `tad101-nav` module so the (server) docs layout can call it; re-exporting it here
+// would re-taint it as a client reference.
+import type { Tad101Section } from './tad101-nav';
 
-/** A TAD101 sidebar entry, derived from a Sanity docPage in group "tad101". */
-export type Tad101Section = { slug: string; title: string; href: string };
+export type { Tad101Section };
+
+const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(' ');
 
 export const TAD101_VERSION = '1.0.0';
 
@@ -22,12 +26,6 @@ const ICON_BY_SLUG: Record<string, LucideIcon> = {
     'tad101-envelope':     Box,
     'tad101-sensors':      Wifi,
 };
-
-/** Map a tad101 docPage slug to its kept route. */
-export function tad101Href(slug: string): string {
-    if (slug === 'tad101') return '/docs/tad101';
-    return `/docs/tad101/${slug.replace(/^tad101-/, '')}`;
-}
 
 export function Tad101Shell({
     sections,
