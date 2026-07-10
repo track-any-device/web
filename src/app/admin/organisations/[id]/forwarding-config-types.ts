@@ -7,7 +7,8 @@ export interface RestApiConfig {
   params: Record<string, string>;
   field_map: Record<string, string | null>;
   tenant_onboarding: string | null;
-  tenant_onboarding_config: Record<string, string> | null;
+  // Method-specific. For techimpliment: { get_device_url, create_device_url, headers, body }.
+  tenant_onboarding_config: Record<string, unknown> | null;
 }
 
 export interface MqttConfig {
@@ -21,7 +22,7 @@ export interface MqttConfig {
   params: Record<string, string>;
   field_map: Record<string, string | null>;
   tenant_onboarding: string | null;
-  tenant_onboarding_config: Record<string, string> | null;
+  tenant_onboarding_config: Record<string, unknown> | null;
 }
 
 export interface Health {
