@@ -151,9 +151,10 @@ export function useForwardingConfigForm() {
     ...cfg.availableFields.map((field) => ({ value: field, label: field })),
   ], []);
 
+  // onboardingMethods is absent on API versions that predate tenant onboarding — degrade to "None".
   const onboardingOptions = React.useCallback((cfg: ForwardingConfig) => [
     { value: '', label: 'None' },
-    ...cfg.onboardingMethods.map((methodName) => ({
+    ...(cfg.onboardingMethods ?? []).map((methodName) => ({
       value: methodName,
       label: cfg.onboardingMethodDefinitions?.[methodName]?.label ?? methodName,
     })),

@@ -37,8 +37,9 @@ export interface ForwardingConfig {
   mqtt: MqttConfig;
   availableFields: string[];
   availableVariables: string[];
-  onboardingMethods: string[];
-  onboardingMethodDefinitions: Record<string, OnboardingMethodDefinition>;
+  // Optional: absent on API versions that predate tenant onboarding (app PR #117).
+  onboardingMethods?: string[];
+  onboardingMethodDefinitions?: Record<string, OnboardingMethodDefinition>;
   payloadFields: string[];
   mqttAvailable: boolean;
   health: Health;
