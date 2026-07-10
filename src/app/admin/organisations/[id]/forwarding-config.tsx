@@ -37,6 +37,9 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
   const [test, setTest] = React.useState<TestResult | null>(null);
   const [showPreview, setShowPreview] = React.useState(false);
 
+  // Depend on the stable hydrate callback, not `form` — the hook returns a fresh object every
+  // render, so `form` in the deps would refetch in a loop.
+  const { hydrate } = form;
   React.useEffect(() => {
     let alive = true;
     (async () => {
@@ -47,7 +50,7 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
         if (!alive) return;
         if (!res.ok) { setLoadError(data?.message ?? 'Could not load the forwarding config.'); return; }
         setCfg(data as ForwardingConfig);
-        form.hydrate(data as ForwardingConfig);
+        hydrate(data as ForwardingConfig);
       } catch {
         if (alive) setLoadError('Network error — could not load the forwarding config.');
       } finally {
@@ -55,7 +58,7 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
       }
     })();
     return () => { alive = false; };
-  }, [tenantId, form]);
+  }, [tenantId, hydrate]);
 
   async function save() {
     setBusy(true); setSaveMsg(null);
@@ -139,7 +142,7 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setTenantOnboarding={form.setRestTenantOnboarding}
             tenantOnboardingRows={form.restTenantOnboardingRows}
             setTenantOnboardingRows={form.setRestTenantOnboardingRows}
-            onboardingMethodDefinitions={cfg.onboardingMethodDefinitions}
+            onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
             payloadFields={cfg.payloadFields}
             fieldOptions={fieldOptions}
@@ -171,7 +174,7 @@ export function ForwardingConfig({ tenantId }: { tenantId: number | string }) {
             setTenantOnboarding={form.setMqttTenantOnboarding}
             tenantOnboardingRows={form.mqttTenantOnboardingRows}
             setTenantOnboardingRows={form.setMqttTenantOnboardingRows}
-            onboardingMethodDefinitions={cfg.onboardingMethodDefinitions}
+            onboardingMethodDefinitions={cfg.onboardingMethodDefinitions ?? {}}
             onboardingOptions={onboardingOptions}
             payloadFields={cfg.payloadFields}
             fieldOptions={fieldOptions}
