@@ -558,16 +558,16 @@ function OnboardingSection({
           <Accordion title={endpoints?.label ?? 'Endpoints'} note={endpoints?.note} defaultOpen>
             <Input label="Get device URL" value={state.getDeviceUrl} onChange={(e) => setField({ getDeviceUrl: e.target.value })} placeholder="https://api.vendor.com/GetDevice" type="url" />
             <Input label="Create device URL" value={state.createDeviceUrl} onChange={(e) => setField({ createDeviceUrl: e.target.value })} placeholder="https://api.vendor.com/CreateDevice" type="url" />
-            <VariableHints variables={availableVariables} note="Usable in URLs, header and body values — substituted per device at onboarding time:" />
+            <VariableHints variables={availableVariables} note="Usable in URLs, header and query param values — substituted per device at onboarding time:" />
           </Accordion>
 
           <Accordion title={headerSec?.label ?? 'Headers'} note={headerSec?.note}>
             <KVEditor title="" note="" rows={state.headerRows} setRows={setHeaderRows} secret />
           </Accordion>
 
-          <Accordion title={bodySec?.label ?? 'Body'} note={bodySec?.note}>
+          <Accordion title={bodySec?.label ?? 'Query params'} note={bodySec?.note}>
             <OnboardingBodyEditor rows={state.bodyRows} setRows={setBodyRows} />
-            <VariableHints variables={availableVariables} note="Map body values to device fields:" />
+            <VariableHints variables={availableVariables} note="Map query param values to device fields:" />
           </Accordion>
         </div>
       )}
