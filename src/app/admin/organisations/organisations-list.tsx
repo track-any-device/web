@@ -6,7 +6,9 @@ import { Globe, Radio, Waypoints, KeyRound, ArrowUpRight, Pencil, Trash2, Star }
 import type { LucideIcon } from 'lucide-react';
 import { StatRow } from '@/components/tad/data-table';
 import { PortalTopbar } from '@/components/tad/portal-shell';
+import { TablePager, TableSearch } from '@/components/tad/table-controls';
 import { Badge, Button, IconButton, Input, Card, Switch } from '@/components/ui';
+import type { PortalMeta } from '@/lib/admin-api';
 
 /* Admin organisations listing (Wave E).
    Each org is a card showing a per-transport protocol badge plus, depending on transport:
@@ -75,8 +77,11 @@ const isTad101 = (t: TenantRow) => transportOf(t) === 'tad101_channel';
 
 type Revealed = { id: number | string; name: string; key: string };
 
-export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]; loadError: string | null }) {
+export function OrganisationsList({ initial, meta, loadError }: { initial: TenantRow[]; meta: PortalMeta | null; loadError: string | null }) {
   const [rows, setRows] = React.useState<TenantRow[]>(initial);
+
+  // Server pagination: a page/search navigation delivers new `initial` rows.
+  React.useEffect(() => setRows(initial), [initial]);
   const [showForm, setShowForm] = React.useState(false);
   const [name, setName] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -170,11 +175,13 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
       />
       <div className="tad-portal__body">
         <StatRow stats={[
-          { label: 'Organisations', value: rows.length },
-          { label: 'On TAD101 channel', value: tad101Count, hint: 'broadcast over the channel' },
-          { label: 'Forwarding out', value: forwardingCount, hint: 'REST API / MQTT' },
-          { label: 'Devices managed', value: rows.reduce((n, t) => n + (t.devices || 0), 0) },
+          { label: 'Organisations', value: (meta?.total ?? rows.length).toLocaleString() },
+          { label: 'On TAD101 channel', value: tad101Count, hint: 'broadcast over the channel (this page)' },
+          { label: 'Forwarding out', value: forwardingCount, hint: 'REST API / MQTT (this page)' },
+          { label: 'Devices managed', value: rows.reduce((n, t) => n + (t.devices || 0), 0), hint: 'this page' },
         ]} />
+
+        <TableSearch placeholder="Search name or slug…" />
 
       {showForm && (
         <Card>
@@ -208,6 +215,8 @@ export function OrganisationsList({ initial, loadError }: { initial: TenantRow[]
           ))}
         </div>
       )}
+
+      <TablePager meta={meta} />
 
       {revealed && <KeyDialog data={revealed} onClose={() => setRevealed(null)} />}
       {editing && <EditDialog t={editing} onSave={save} onClose={() => setEditing(null)} />}

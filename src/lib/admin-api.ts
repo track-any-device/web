@@ -10,15 +10,24 @@ import { getSession } from '@/lib/auth';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'https://api.track-any-device.com';
 const DEV = process.env.NODE_ENV !== 'production';
 
+/** Server pagination block returned by the paginated /api/admin + /api/ops lists. */
+export interface PortalMeta {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+}
+
 export interface PortalResult<T> {
   data: T[];
+  meta: PortalMeta | null;
   error: string | null;
 }
 
 export async function fetchPortal<T>(path: string): Promise<PortalResult<T>> {
   const session = await getSession();
   if (!session?.token) {
-    return { data: [], error: DEV ? 'Not signed in (no session token) — cannot load data.' : null };
+    return { data: [], meta: null, error: DEV ? 'Not signed in (no session token) — cannot load data.' : null };
   }
   try {
     const res = await fetch(`${API_URL}/api${path}`, {
@@ -26,12 +35,19 @@ export async function fetchPortal<T>(path: string): Promise<PortalResult<T>> {
       cache: 'no-store',
     });
     if (!res.ok) {
-      return { data: [], error: DEV ? `API responded ${res.status} for ${path}.` : null };
+      return { data: [], meta: null, error: DEV ? `API responded ${res.status} for ${path}.` : null };
     }
     const json = await res.json();
-    return { data: Array.isArray(json) ? (json as T[]) : [], error: null };
+    // Bare-array endpoints and paginated {data, meta} endpoints both land here.
+    if (Array.isArray(json)) {
+      return { data: json as T[], meta: null, error: null };
+    }
+    if (json && Array.isArray(json.data)) {
+      return { data: json.data as T[], meta: (json.meta ?? null) as PortalMeta | null, error: null };
+    }
+    return { data: [], meta: null, error: null };
   } catch (e) {
-    return { data: [], error: DEV ? `Request to ${path} failed: ${(e as Error).message}` : null };
+    return { data: [], meta: null, error: DEV ? `Request to ${path} failed: ${(e as Error).message}` : null };
   }
 }
 

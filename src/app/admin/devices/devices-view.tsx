@@ -6,7 +6,9 @@ import { Table2, Map as MapIcon, MapPin, Smartphone } from 'lucide-react';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { HeartbeatCell } from '@/components/tad/heartbeat';
+import { TablePager, TableSearch } from '@/components/tad/table-controls';
 import { Badge, Button, Card, Tabs } from '@/components/ui';
+import type { PortalMeta } from '@/lib/admin-api';
 
 /* Admin devices — Table / Map view toggle.
    `page.tsx` does the server fetch and hands us the rows; this client component owns the
@@ -74,7 +76,7 @@ function MapsKeyPlaceholder({ minHeight = 320 }: { minHeight?: number }) {
   );
 }
 
-export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadError: string | null }) {
+export function DevicesView({ rows, meta, loadError }: { rows: AdminDeviceRow[]; meta: PortalMeta | null; loadError: string | null }) {
   const [view, setView] = React.useState<'table' | 'map'>('table');
   const [selectedId, setSelectedId] = React.useState<AdminDeviceRow['id'] | null>(null);
   const [mapsReady, setMapsReady] = React.useState(false);
@@ -181,10 +183,12 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
     document.getElementById(`admin-device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // Rows are one server page — page-local status counts would mislead, so the
+  // stat row shows platform totals (from meta) and page position only.
   const stats = [
-    { label: 'Active', value: rows.filter((d) => d.status === 'active').length },
-    { label: 'Pending', value: rows.filter((d) => d.status === 'pending').length },
-    { label: 'Blocked', value: rows.filter((d) => d.status === 'blocked').length },
+    { label: 'Devices', value: (meta?.total ?? rows.length).toLocaleString() },
+    { label: 'Page', value: meta ? `${meta.current_page} / ${meta.last_page}` : '1 / 1' },
+    { label: 'On this page', value: rows.length },
   ];
 
   return (
@@ -206,6 +210,8 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
       />
       <div className="tad-portal__body">
         <StatRow stats={stats} />
+
+        <TableSearch placeholder="Search IMEI, name or SIM…" />
 
       {view === 'table' ? (
         /* SIM is admin-only per the privacy rules — never shown in tenant/my portals. */
@@ -234,6 +240,8 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
           mapsReady={mapsReady}
         />
       )}
+
+      <TablePager meta={meta} />
     </div>
     </>
   );

@@ -25,8 +25,8 @@ export default async function AdminDeviceDetailPage({ params }: { params: Promis
 
   // Lightweight picker data for the editable Ownership card — reuse the existing admin list endpoints.
   const [{ data: users }, { data: tenants }] = await Promise.all([
-    fetchPortal<UserOption>('/admin/users'),
-    fetchPortal<TenantOption>('/admin/tenants'),
+    fetchPortal<UserOption>('/admin/users?per_page=100'),
+    fetchPortal<TenantOption>('/admin/tenants?per_page=100'),
   ]);
 
   if (!d) {
