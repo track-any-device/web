@@ -2,12 +2,17 @@
 
 import React from 'react';
 import { DataTable } from '@/components/tad/data-table';
+import { TablePager, TableSearch } from '@/components/tad/table-controls';
 import { Badge, Button } from '@/components/ui';
+import type { PortalMeta } from '@/lib/admin-api';
 import { ROLE_LABEL, type PortalUser } from '@/lib/portal-data';
 
-export function UsersClient({ initial, loadError }: { initial: PortalUser[]; loadError: string | null }) {
+export function UsersClient({ initial, meta, loadError }: { initial: PortalUser[]; meta: PortalMeta | null; loadError: string | null }) {
   const [rows, setRows] = React.useState<PortalUser[]>(initial);
   const [busy, setBusy] = React.useState<number | string | null>(null);
+
+  // Server pagination: a page/search navigation delivers new `initial` rows.
+  React.useEffect(() => setRows(initial), [initial]);
 
   async function act(u: PortalUser, kind: 'block' | 'unblock' | 'delete') {
     if (kind === 'delete' && !window.confirm(`Delete ${u.name}? This cannot be undone.`)) return;
@@ -32,6 +37,7 @@ export function UsersClient({ initial, loadError }: { initial: PortalUser[]; loa
 
   return (
     <div className="tad-portal__body">
+      <TableSearch placeholder="Search name or email…" />
       <DataTable<PortalUser>
         empty={loadError ?? 'No users yet.'}
         rows={rows}
@@ -53,6 +59,7 @@ export function UsersClient({ initial, loadError }: { initial: PortalUser[]; loa
           ) },
         ]}
       />
+      <TablePager meta={meta} />
     </div>
   );
 }

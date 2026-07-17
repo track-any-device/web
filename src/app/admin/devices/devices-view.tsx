@@ -2,11 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Table2, Map as MapIcon, MapPin, Smartphone } from 'lucide-react';
 import { DataTable, StatRow } from '@/components/tad/data-table';
 import { PortalTopbar } from '@/components/tad/portal-shell';
 import { HeartbeatCell } from '@/components/tad/heartbeat';
-import { Badge, Button, Card, Tabs } from '@/components/ui';
+import { TablePager, TableSearch } from '@/components/tad/table-controls';
+import { Badge, Button, Card, Select, Tabs } from '@/components/ui';
+import type { PortalMeta } from '@/lib/admin-api';
 
 /* Admin devices — Table / Map view toggle.
    `page.tsx` does the server fetch and hands us the rows; this client component owns the
@@ -74,8 +77,73 @@ function MapsKeyPlaceholder({ minHeight = 320 }: { minHeight?: number }) {
   );
 }
 
-export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadError: string | null }) {
+export function DevicesView({ rows, meta, loadError }: { rows: AdminDeviceRow[]; meta: PortalMeta | null; loadError: string | null }) {
   const [view, setView] = React.useState<'table' | 'map'>('table');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ── Bulk selection (table view) ──────────────────────────────────────────
+  const [selected, setSelected] = React.useState<Set<AdminDeviceRow['id']>>(new Set());
+  const [allMatching, setAllMatching] = React.useState(false);
+  const [bulkStatus, setBulkStatus] = React.useState('');
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+  const [bulkProgress, setBulkProgress] = React.useState<{ processed: number; total: number; status: string } | null>(null);
+
+  const pageIds = rows.map((r) => r.id);
+  const pageFullySelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const selectionCount = allMatching ? (meta?.total ?? rows.length) : selected.size;
+
+  const clearSelection = () => { setSelected(new Set()); setAllMatching(false); };
+
+  const toggleRow = (id: AdminDeviceRow['id']) => {
+    setAllMatching(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  async function pollOperation(id: number) {
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const res = await fetch(`/api/admin/bulk-operations/${id}`);
+      if (!res.ok) continue;
+      const op = await res.json();
+      setBulkProgress(op);
+      if (op.status === 'done' || op.status === 'failed') return;
+    }
+  }
+
+  async function runBulk() {
+    if (!bulkStatus || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const payload = allMatching
+        ? {
+            action: 'set_status', value: bulkStatus,
+            filter: {
+              ...(searchParams.get('search') ? { search: searchParams.get('search') } : {}),
+              ...(searchParams.get('status') ? { status: searchParams.get('status') } : {}),
+            },
+          }
+        : { action: 'set_status', value: bulkStatus, ids: [...selected].map(Number) };
+
+      const res = await fetch('/api/admin/devices/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { window.alert(data?.message ?? 'Bulk update failed.'); return; }
+      if (data.operation?.id) await pollOperation(data.operation.id);
+      clearSelection();
+      setBulkProgress(null);
+      router.refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
   const [selectedId, setSelectedId] = React.useState<AdminDeviceRow['id'] | null>(null);
   const [mapsReady, setMapsReady] = React.useState(false);
 
@@ -181,10 +249,12 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
     document.getElementById(`admin-device-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
+  // Rows are one server page — page-local status counts would mislead, so the
+  // stat row shows platform totals (from meta) and page position only.
   const stats = [
-    { label: 'Active', value: rows.filter((d) => d.status === 'active').length },
-    { label: 'Pending', value: rows.filter((d) => d.status === 'pending').length },
-    { label: 'Blocked', value: rows.filter((d) => d.status === 'blocked').length },
+    { label: 'Devices', value: (meta?.total ?? rows.length).toLocaleString() },
+    { label: 'Page', value: meta ? `${meta.current_page} / ${meta.last_page}` : '1 / 1' },
+    { label: 'On this page', value: rows.length },
   ];
 
   return (
@@ -207,12 +277,77 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
       <div className="tad-portal__body">
         <StatRow stats={stats} />
 
+        <TableSearch placeholder="Search IMEI, name or SIM…" />
+
+      {view === 'table' && (
+        <Card style={{ padding: '10px 14px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-sm)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={pageFullySelected}
+              onChange={() => { setAllMatching(false); setSelected(pageFullySelected ? new Set() : new Set(pageIds)); }}
+              aria-label="Select all devices on this page"
+            />
+            Select page
+          </label>
+          {selectionCount > 0 && (
+            <>
+              <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                {selectionCount.toLocaleString()} selected
+              </span>
+              <Select
+                size="sm"
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value)}
+                options={[
+                  { value: '', label: 'Set status…' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'blocked', label: 'Blocked' },
+                  { value: 'pending', label: 'Pending' },
+                ]}
+                aria-label="Bulk status"
+              />
+              <Button size="sm" disabled={!bulkStatus || bulkBusy} onClick={runBulk}>
+                {bulkBusy ? 'Applying…' : 'Apply'}
+              </Button>
+              <button type="button" onClick={clearSelection} style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textDecoration: 'underline', background: 'none', border: 0, cursor: 'pointer' }}>
+                Clear
+              </button>
+            </>
+          )}
+          {pageFullySelected && !allMatching && meta && meta.total > rows.length && (
+            <button type="button" onClick={() => setAllMatching(true)} style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', textDecoration: 'underline', background: 'none', border: 0, cursor: 'pointer' }}>
+              Select all {meta.total.toLocaleString()} matching devices
+            </button>
+          )}
+          {allMatching && (
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--brand)', fontWeight: 600 }}>
+              All matching devices selected — runs in the background
+            </span>
+          )}
+          {bulkProgress && bulkProgress.status !== 'done' && (
+            <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+              {bulkProgress.status === 'failed' ? 'failed at ' : ''}{bulkProgress.processed} / {bulkProgress.total}
+            </span>
+          )}
+        </Card>
+      )}
+
       {view === 'table' ? (
         /* SIM is admin-only per the privacy rules — never shown in tenant/my portals. */
         <DataTable<AdminDeviceRow>
           empty={loadError ?? 'No devices yet.'}
           rows={rows}
           columns={[
+            { key: 'sel', header: '', render: (r) => (
+              <input
+                type="checkbox"
+                checked={allMatching || selected.has(r.id)}
+                onChange={() => toggleRow(r.id)}
+                aria-label={`Select device ${r.imei}`}
+                style={{ cursor: 'pointer' }}
+              />
+            ) },
             { key: 'imei', header: 'IMEI', mono: true },
             { key: 'model', header: 'Model', render: (r) => r.model ?? '—' },
             { key: 'sim', header: 'SIM', mono: true, render: (r) => r.sim ?? '—' },
@@ -234,6 +369,8 @@ export function DevicesView({ rows, loadError }: { rows: AdminDeviceRow[]; loadE
           mapsReady={mapsReady}
         />
       )}
+
+      <TablePager meta={meta} />
     </div>
     </>
   );
